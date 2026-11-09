@@ -6,10 +6,12 @@
   <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
   <defs>
     <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9cdb3"/><stop offset="1" stop-color="#d9c499"/></linearGradient>
-    <!-- the maroon swirl texture, stretched over each panel's box -->
-    <pattern id="swirl" patternContentUnits="objectBoundingBox" width="1" height="1">
-      <image href="panel-swirl.png" width="1" height="1" preserveAspectRatio="none"/>
-    </pattern>
+    <!-- frosted glass: a shape named "glass" shows the background blurred behind its own fill (docs/DESIGNING.md).
+         These are the tints: neutral, team A (maroon) and team B (cream), and the light edge. -->
+    <linearGradient id="glassTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3d6" stop-opacity=".17"/><stop offset="1" stop-color="#3a0816" stop-opacity=".34"/></linearGradient>
+    <linearGradient id="glassMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a01c3c" stop-opacity=".74"/><stop offset="1" stop-color="#5e0c23" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="glassCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".9"/><stop offset="1" stop-color="#e4d6b6" stop-opacity=".86"/></linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3dc" stop-opacity=".6"/><stop offset="1" stop-color="#fff3dc" stop-opacity=".12"/></linearGradient>
     <!-- halftone dots laid over the panels -->
     <pattern id="dots" patternUnits="userSpaceOnUse" width="7" height="7">
       <circle cx="1.75" cy="1.75" r="1.35" fill="#000"/><circle cx="5.25" cy="5.25" r="1.35" fill="#000"/>
@@ -32,18 +34,18 @@
 
   <g inkscape:groupmode="layer" inkscape:label="result">
     <g inkscape:label="team-a">
-      <g><path d="M300,476 H830 L812,566 H282 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M300,476 H830 L812,566 H282 Z" fill="url(#dots)" opacity=".45"/></g>
+      <path inkscape:label="glass" d="M300,476 H830 L812,566 H282 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
       <path transform="translate(322 492) scale(0.10751)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
       <text inkscape:label="{a.name | upper} fit:400" x="790" y="536" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU MAROON</tspan></text>
     </g>
     <g inkscape:label="score">
-      <g><path d="M846,466 H1092 L1074,576 H828 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M846,466 H1092 L1074,576 H828 Z" fill="url(#dots)" opacity=".45"/></g>
+      <path inkscape:label="glass" d="M846,466 H1092 L1074,576 H828 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
       <text x="960" y="544" style="font-family:Shader;font-size:64px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:2;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{a.points}-{b.points}</tspan></text>
     </g>
     <g inkscape:label="team-b">
-      <g><path d="M1108,476 H1638 L1620,566 H1090 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1108,476 H1638 L1620,566 H1090 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="{b.name | upper} fit:400" x="1130" y="536" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLACEHOLDER</tspan></text>
-      <polygon points="1590.0,490.0 1597.9,509.1 1618.5,510.7 1602.8,524.2 1607.6,544.3 1590.0,533.5 1572.4,544.3 1577.2,524.2 1561.5,510.7 1582.1,509.1" fill="url(#cream)"/>
+      <path inkscape:label="glass" d="M1108,476 H1638 L1620,566 H1090 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{b.name | upper} fit:400" x="1130" y="536" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:start;fill:#2a0510;stroke:#2a0510;stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke"><tspan>PLACEHOLDER</tspan></text>
+      <polygon points="1590.0,490.0 1597.9,509.1 1618.5,510.7 1602.8,524.2 1607.6,544.3 1590.0,533.5 1572.4,544.3 1577.2,524.2 1561.5,510.7 1582.1,509.1" fill="#2a0510"/>
     </g>
     <text inkscape:label="show:match.winner #winner" x="960" y="650" style="font-family:Shader;font-size:34px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{match.winnerName | upper} WINS</tspan></text>
   </g>

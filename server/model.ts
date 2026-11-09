@@ -99,7 +99,8 @@ export interface OverlayData {
   b: SideData;
   diff: number;            // a.acc - b.acc while playing
   tug: number;             // 0..1, 0.5 = even; ±2 % accuracy fills it
-  map: (MapData & { progress: number; time: string }) | null;   // current or next map
+  // current or next map; pickedBy/pickedByName: the side that picked it (null/"" for the tiebreaker)
+  map: (MapData & { progress: number; time: string; pickedBy: Side | null; pickedByName: string; tiebreaker: boolean }) | null;
   pool: PoolItem[];
   picks: {
     next: { type: "pick" | "ban"; verb: "picking" | "banning"; by: Side; byName: string } | null;
@@ -184,6 +185,9 @@ export interface ShowState {
   playlist: Playlist;                     // Starting Soon / Intermission / BRB replays (server/playlist.ts)
   replays?: string[];                     // (older show.json files: the playlist as plain links)
   streamDelayMs: number;                  // how far behind live the player streams are
+  /** The Casters scene's "up next" block, typed in the panel (the overlay can't know whose match is next). Two team
+   *  names, or a line of text; all empty = the block is hidden. Scenes read it as `nextUp.…` */
+  upNext: { a: string; b: string; text: string };
   // every replay viewer: hold the up/down look near level (degrees); resolution (1 = full) and frame cap, which a
   // stream PC drawing replays on the CPU (OBS on Linux + NVIDIA) needs lower
   viewer: { lockPitch: boolean; pitchLimit: number; renderScale: number; maxFps: number;

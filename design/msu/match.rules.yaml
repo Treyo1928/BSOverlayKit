@@ -1,15 +1,14 @@
 # Rules for match.svg (MSU). Two layouts: 'solo' for 1v1s, 'team' for 2 players a side (match.solo decides).
 enter:
-  - { target: wing-left, from: { y: -60 }, duration: 500 }
-  - { target: wing-right, from: { y: -60 }, duration: 500 }
-  - { target: team-a, play: slideRight, delay: 200 }
-  - { target: team-b, play: slideLeft, delay: 200 }
-  - { target: score, play: popIn, delay: 300 }
-  - { target: stats, play: slideUp, delay: 300 }
+  - { target: team-a, play: slideRight }
+  - { target: team-b, play: slideLeft }
+  - { target: score, play: slideDown, delay: 100 }
+  - { target: stats, play: slideUp, delay: 250 }
+  - { target: centre, play: slideUp, delay: 350 }
   - { target: player-a, play: slideRight, delay: 300 }
   - { target: player-b, play: slideLeft, delay: 300 }
-  - { target: song-info, play: slideUp, delay: 400 }
-  - { target: song-team, play: slideUp, delay: 400 }
+  - { target: song-team, play: fadeIn, delay: 350 }
+  - { target: totals, play: fadeIn, delay: 450 }
 
 on:
   increase:a.points:
@@ -20,20 +19,25 @@ on:
     - { target: misses-a, play: pulse }
   increase:b.misses:
     - { target: misses-b, play: pulse }
-  becomes:a.leading:
-    - { target: acc-a, play: pulse }
-  becomes:b.leading:
-    - { target: acc-b, play: pulse }
+  becomes:diff>0:                 # team A takes the lead (by accuracy)
+    - { target: lead-a, play: popIn }
+    - { target: acc-a-team, play: pulse }
+  becomes:diff<0:
+    - { target: lead-b, play: popIn }
+    - { target: acc-b-team, play: pulse }
   mapStart:
     - { target: song-info, play: slideUp }
   mapEnd:
     - { target: result, play: popIn }
     - { target: result-team, play: popIn }
 
+loop:
+  - { target: pip-now, keyframes: [ { opacity: 1 }, { opacity: 0.45 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
+
 repeat:
-  maps: { dx: 112 }          # MAP 1 / MAP 2 / ... / TB tabs
-  a.players: { dy: 439 }     # team layout: the second player's plate sits by the second video
-  b.players: { dy: 439 }
+  maps: { dx: 76, center: true }   # one pip per map of the series, centred under the score
+  a.players: { dy: 482 }           # team layout: the second player's numbers sit on the second video
+  b.players: { dy: 482 }
 
 fx:
   dust: { amount: 0.5, clouds: 0.3 }

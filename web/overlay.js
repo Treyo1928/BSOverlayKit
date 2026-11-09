@@ -91,6 +91,12 @@ function ctxFrom(st) {
     replay: replayCtx(st.replay),
     caster: show.casters ?? [],
     header: show.header || d.tournament?.round || "",
+    // the Casters scene's "up next" block, typed in the panel: hidden until something is set
+    nextUp: (() => {
+      const n = show.upNext ?? {}, teams = !!(n.a && n.b);
+      // two names = a match-up (`teams`, with the text as its `label`); otherwise one `line` of text
+      return { a: n.a ?? "", b: n.b ?? "", teams, label: teams ? n.text ?? "" : "", line: teams ? "" : n.text || n.a || n.b || "", set: !!(n.a || n.b || n.text) };
+    })(),
     brb: show.brb ?? {},
     ticker: (show.ticker ?? []).join("     ◆     "),
     show,

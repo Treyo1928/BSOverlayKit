@@ -6,8 +6,11 @@ enter:
   - { target: caster-4, play: popIn, delay: 300 }
   - { target: team-a, play: slideRight, delay: 300 }
   - { target: team-b, play: slideLeft, delay: 300 }
+  - { target: next-line, play: slideUp, delay: 300 }
 
 on:
+  becomes:nextUp.set:            # "up next" was set in the panel
+    - { target: upnext, play: slideUp }
   change:caster.length:          # someone joined or left the voice channel
     - { target: caster-1, play: popIn }
     - { target: caster-2, play: popIn, delay: 80 }

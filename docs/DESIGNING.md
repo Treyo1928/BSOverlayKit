@@ -63,6 +63,7 @@ and call it `player-name` for animations.
 | `state:path` | a group | shows exactly one child: the one named `when:<value>` (`when:a\|b` for several, `when:else` for the rest) |
 | `repeat:path` | a group | copies its contents once per item in a list (`repeat:pool`, `repeat:results`); inside, use `item.…` |
 | `feed:a` / `feed:b` | a rectangle | a hole where that side's video goes (link set in the panel). Team layouts use `feed:a1`, `feed:a2`, `feed:b1`, `feed:b2` (side + lineup position). A hole inside a hidden layer gets no video |
+| `glass` | a shape (path, rectangle, circle) | a frosted-glass panel: the scene's background shows through, blurred, behind the shape's own fill (see §6, *Frosted glass*). `glass:20` = that shape's own blur strength |
 | `fx:dust` / `fx:glitter` | a rectangle | live particles (WebGL) filling that rectangle, in that spot of the layer order (see §6, *Particles*) |
 | `pulse:path` | anything | pulses whenever that number goes up (shortcut for a rule) |
 | `enter:2` | anything | default entrance order, if the scene has no `enter:` rules |
@@ -102,6 +103,8 @@ No spaces inside a condition.
 | `flag` | `{a.country \| flag}` | 🇺🇸 (needs an emoji font in OBS) |
 | `or:"TBD"` | `{a.name \| or:"TBD"}` | fallback when empty |
 | `plus:1` | `{index \| plus:1}` | adds a number |
+| `gap` | `{diff \| gap}` | an accuracy difference without its sign: `0.42%` |
+| `first` | `{item.name \| first}` | the first letter, in capitals (a stand-in for a missing picture) |
 | `ordinal` | `{a.seed \| ordinal}` | `1st` |
 
 ---
@@ -119,11 +122,11 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `match.maps` (list) | one per map of the best-of, for "MAP 1 / MAP 2 / MAP 3" tabs: `number`, `label` ("MAP 2", or "TB" for the tiebreaker), `tiebreaker`, `state` (`played` `current` `upcoming` `unneeded`), `name`, `winner`, `winnerName` |
 | `match.winner`, `match.winnerName` | `a`/`b` and the name, once decided |
 | `match.playersPerMap`, `match.solo` | players per map (1 = 1v1, 2 = duos); `solo` is true in a 1v1, so one scene can hold both layouts with `show:match.solo` / `hide:match.solo` |
-| `a.players` / `b.players` (list) | who plays the current/next map for that side: `name`, `avatar`, and live `acc`, `score`, `combo`, `misses`, `finished`. Use `repeat:a.players` |
+| `a.players` / `b.players` (list) | who plays the current/next map for that side: `name`, `avatar` (picture URL, empty if they have none), and live `acc`, `score`, `combo`, `misses`, `finished`. Use `repeat:a.players`, or `a.players.1.name` for one of them |
 | `a.roster` | everyone on the team (names) |
 | `a.…` / `b.…` | each side (the team; in a 1v1, the player). For teams the live numbers are the lineup together (average accuracy, total score and misses): `name`, `avatar` (image URL), `initials`, `country`, `seed`, `points` (maps won), and live while playing: `acc`, `score`, `combo`, `maxCombo`, `misses`, `health` (0–1), `finished`, `leading`, `winner` |
 | `diff`, `tug` | accuracy difference a − b, and the same as 0–1 for `bar:tug` (0.5 = even, ±2 % fills it) |
-| `map.…` | current or next map: `name`, `artist`, `mapper`, `difficulty`, `category`, `cover`, `bpm`, `nps`, `length` ("3:35"), `duration` (s), `progress` (0–1), `time` ("1:12") |
+| `map.…` | current or next map: `name`, `artist`, `mapper`, `difficulty`, `category`, `cover`, `bpm`, `nps`, `length` ("3:35"), `duration` (s), `progress` (0–1), `time` ("1:12"), `pickedBy` (`a`/`b`, empty for the tiebreaker), `pickedByName`, `tiebreaker` |
 | `pool` (list) | every map in the pool. Per item: the map fields above plus `state` (`available` `banned` `picked` `tiebreaker` `current` `played`), `by` (`a`/`b`), `byName`, `order` (play order), `winner`, `winnerName` |
 | `picks.next` | the step being decided now: `type` (`pick`/`ban`), `verb` (`picking`/`banning`), `by`, `byName` |
 | `picks.done` | true when picks and bans are finished |
@@ -133,6 +136,7 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `upNext` (list) | upcoming matches: `label`, `a`, `b` |
 | `caster` (list) | `caster.1.name`, `caster.1.handle`, `caster.1.avatar` (Discord picture URL), set in the panel |
 | `header` | the top bar's event text from the panel (falls back to the round name) |
+| `nextUp` | "up next", typed in the panel's **Up next** card (the overlay can't know whose match is next): `nextUp.set` is true once anything is set; with two team names `nextUp.teams` is true and you get `nextUp.a`, `nextUp.b` and the optional text as `nextUp.label`; otherwise the text is `nextUp.line`. Hide the block with `show:nextUp.set` |
 | `bracket` | `bracket.name`, `bracket.rounds` (list; per round `name` and `matches`: `a`, `b`, `aScore`, `bScore`, `winner`, `state` = `upcoming`/`live`/`done`, `current`) |
 | `bracket.double` | true for double elimination. Then `bracket.winners` and `bracket.losers` are the two brackets' rounds (same shape as `rounds`: `bracket.winners.1.matches`, `bracket.losers.2.name` …) and `bracket.final` the grand final's matches. The MSU bracket scene has a layout for each kind (`show:bracket.double` / `hide:bracket.double`) |
 | `replay.…` | the replay playlist's song in the `feed:main` box (Starting Soon, Intermission, Be Right Back): `song`, `artist`, `mapper`, `cover`, `difficulty`, `stars`, `player`, `playerAvatar`, `acc`, `fc`, `misses`, ready-made lines `byline` ("Artist · mapped by Mapper") and `diffline` ("Expert+ · ★ 7.69"), the clock `time`, `length`, `progress` (0–1, for `bar:replay.progress`), `index`/`count` in the list, and `replay.next.song` / `replay.next.player` (what plays after it, empty in shuffle) |
@@ -173,11 +177,15 @@ repeat:           # spacing of repeat: copies (otherwise a row with 20 px gaps)
   pool: { dx: 242 }            # next copy 242 px to the right
   results: { dy: 104 }         # or downward
   # wrap: 4, rowHeight: 300    # grid: 4 per row
+  # center: true               # the row stays centred on where you drew the first copy (3 or 5 map pips)
 
 tween: 250        # how long counting numbers take (ms), 0 = jump
 
 fx:               # particle layers (rectangles named fx:…), see "Particles" below
   dust: { amount: 0.5 }
+
+glass:            # the frosted panels (shapes named glass), see "Frosted glass" below
+  blur: 14
 ```
 
 ### A step
@@ -229,6 +237,24 @@ fx:
 A weak streaming PC can turn all particles off with `&nofx` at the end of the OBS URL; `&fps` shows the frame rate
 in the corner while testing. A particle layer inside a hidden layer (`show:`/`hide:`) stops drawing.
 
+### Frosted glass (`glass`)
+
+Name a panel's shape **`glass`** and the background shows through it, blurred, like frosted glass. The shape's own
+**fill is the tint**, so give it some transparency: the MSU scenes have three ready-made gradients in their `<defs>`,
+`glassTint` (neutral), `glassMaroon` (team A, cream text on it) and `glassCream` (team B, dark text on it), plus
+`glassEdge` for the light outline. In Inkscape you see the tint over the sharp background; the overlay adds the blur.
+
+- It works on one shape at a time (a path, rectangle, circle, ellipse or polygon), not on a group. Put the text on top
+  of it as usual. `show:`, `hide:`, a name for animations and `enter:` on the same shape apply to the glass as a whole.
+- What shows through is the scene's **background picture** (the first image in the `back` layer), not video or
+  particles that happen to be behind the panel. That is on purpose: the blur is made once when the scene loads, so it
+  costs nothing while on stream (a true live blur would be redone every frame, which OBS's browser can't afford on a
+  PC that draws it on the CPU). For a plate on top of a video, use a plain fill with 90 % opacity instead.
+- Inside a `repeat:` group it works too (each copy lines up with the background behind it), except in a repeat with
+  `center: true`, whose copies move after they are made.
+- Strength, for all of a scene's glass, in its rules file: `glass: { blur: 14, brightness: 1.5, saturate: 1.35 }`
+  (those are the defaults; blur in pixels). One shape can have its own blur: name it `glass:24`.
+
 ### Events (`on:` keys)
 
 | Event | When |
@@ -238,7 +264,7 @@ in the corner while testing. A particle layer inside a hidden layer (`show:`/`hi
 | `picksDone` | picks and bans finished |
 | `mapLoad` | the next map is loading |
 | `mapStart` | players started the map (after the stream delay set in the panel) |
-| `songEnd` | every player has finished the song (TA's scores are in; the referee hasn't closed the map yet) |
+| `songEnd` | the song is over, before the referee closes the map: every player has finished (or failed, or left), as seen in the live feed or in BSCompStats' TA status |
 | `mapEnd` | the referee closed the map's scores (the result is final) |
 | `matchEnd` | the match is decided |
 
@@ -251,11 +277,21 @@ Data changes: `increase:path`, `decrease:path`, `change:path`, `becomes:conditio
 ```yaml
 automation:
   - { on: mapStart, scene: match, when: "casters, brb, picks" }   # only from these scenes
-  - { on: mapEnd, scene: picks, after: 10s }
-  - { on: matchEnd, scene: results, after: 10s }
+  - { on: mapStart, scene: match, when: "ready", fade: 200ms }    # this switch with its own (quick) crossfade
+  - { on: songEnd, scene: picks, after: 12s, when: "match" }
+  - { on: mapEnd, scene: picks, after: 10s, when: "match" }
+  - { on: matchEnd, scene: picks, after: 10s, when: "match" }     # Picks & Bans shows the winner and final score
 ```
 
-The panel's **Auto-switch** box turns all of them on or off.
+`on:` an event from §6, `scene:` where to go, `when:` only if one of these scenes is on, `after:` wait first,
+`fade:` this switch's own crossfade instead of the `crossfade:` setting. The panel's **Auto-switch** box turns all of
+them on or off.
+
+How the MSU show runs with these: the overlay never leaves a scene because the organiser *asked* for a map to start
+or because the map is loading; `mapStart` only comes once the players are really playing. So switch to **Getting
+Ready** by hand while everyone puts their headset on (it shows the replay playlist, the match-up and the next map),
+and it cuts to **Match** by itself. After the last map the overlay goes back to **Picks & Bans**, which then shows
+the winner; **Final** is switched to by hand (or add `{ on: matchEnd, scene: final, after: 60s, when: "picks" }`).
 
 ---
 
@@ -267,5 +303,8 @@ The panel's **Auto-switch** box turns all of them on or off.
 - **Long names:** always give names a `fit:`. Test with a 20-character name.
 - **Rounded images:** draw a rounded rectangle over the image, select both, then *Object → Clip → Set Clip*.
 - **Gradients, blur, shadows** all work, but heavy blur over large areas costs performance in OBS. Prefer
-  soft gradients.
+  soft gradients, and `glass` for panels (its blur is free).
+- **Two sides, two colours:** in the MSU scenes team A (left) is always maroon with cream text and team B (right)
+  cream with dark text: plates, video frames, score pips, the tug bar. `color:a` / `color:b` use the same two colours
+  from `overlay.yaml`. Keep to it when you add something, so viewers can tell the sides apart at a glance.
 - **Errors** (a typo in a rules file, a broken SVG) show in red in the panel, never on stream.

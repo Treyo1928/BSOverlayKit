@@ -12,6 +12,14 @@ export interface SimOptions {
 
 interface Live { score: number; acc: number; combo: number; maxCombo: number; misses: number; health: number; pos: number; skill: number; finished: boolean }
 
+/** A placeholder player picture (the simulator has no real ones): the initial on a coloured disc. */
+const avatar = (name: string) => {
+  const hue = [...name].reduce((t, c) => (t * 31 + c.charCodeAt(0)) % 360, 7);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="hsl(${hue} 45% 32%)"/>` +
+    `<circle cx="48" cy="38" r="17" fill="hsl(${hue} 50% 78%)"/><path d="M12 96c2-24 18-34 36-34s34 10 36 34z" fill="hsl(${hue} 50% 78%)"/></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+};
+
 const ORDER: { type: "pick" | "ban"; by: Side }[] = [
   { type: "ban", by: "a" }, { type: "ban", by: "b" }, { type: "pick", by: "a" }, { type: "pick", by: "b" },
   { type: "pick", by: "a" }, { type: "pick", by: "b" },
@@ -200,10 +208,10 @@ export class SimSource implements DataSource {
       const l = this.#agg(s), o = this.#agg(s === "a" ? "b" : "a");
       const players = this.#lineup[s].map((name, i) => {
         const p = this.#live[s][i];
-        return { name, avatar: "", score: playing ? p.score : 0, acc: playing ? p.acc : null, combo: playing ? p.combo : 0, misses: playing ? p.misses : 0, finished: playing && p.finished };
+        return { name, avatar: avatar(name), score: playing ? p.score : 0, acc: playing ? p.acc : null, combo: playing ? p.combo : 0, misses: playing ? p.misses : 0, finished: playing && p.finished };
       });
       return {
-        ...blankSide(), name: P[s].name, players, roster: this.#roster[s], initials: P[s].name.slice(0, 1), country: P[s].country, seed: P[s].seed, points: pts[s],
+        ...blankSide(), avatar: this.#perMap === 1 ? avatar(P[s].name) : "", name: P[s].name, players, roster: this.#roster[s], initials: P[s].name.slice(0, 1), country: P[s].country, seed: P[s].seed, points: pts[s],
         ...(playing ? { score: l.score, acc: l.acc, combo: l.combo, maxCombo: l.maxCombo, misses: l.misses, health: l.health } : {}),
         finished: playing && l.finished, leading: playing && l.score > o.score, winner: matchWinner === s,
       };
@@ -255,6 +263,9 @@ export class SimSource implements DataSource {
         ...curMap,
         progress: playing ? Math.min(1, this.#live.a[0].pos / curMap.duration) : 0,
         time: fmtTime(playing ? this.#live.a[0].pos : 0),
+        pickedBy: this.#picks.find((p) => p.type === "pick" && this.#pool[p.index] === curMap)?.by ?? null,
+        pickedByName: name(this.#picks.find((p) => p.type === "pick" && this.#pool[p.index] === curMap)?.by ?? null),
+        tiebreaker: curMap.tiebreaker,
       } : null,
       pool,
       picks: {

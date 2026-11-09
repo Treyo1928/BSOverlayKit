@@ -6,10 +6,12 @@
   <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
   <defs>
     <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9cdb3"/><stop offset="1" stop-color="#d9c499"/></linearGradient>
-    <!-- the maroon swirl texture, stretched over each panel's box -->
-    <pattern id="swirl" patternContentUnits="objectBoundingBox" width="1" height="1">
-      <image href="panel-swirl.png" width="1" height="1" preserveAspectRatio="none"/>
-    </pattern>
+    <!-- frosted glass: a shape named "glass" shows the background blurred behind its own fill (docs/DESIGNING.md).
+         These are the tints: neutral, team A (maroon) and team B (cream), and the light edge. -->
+    <linearGradient id="glassTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3d6" stop-opacity=".17"/><stop offset="1" stop-color="#3a0816" stop-opacity=".34"/></linearGradient>
+    <linearGradient id="glassMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a01c3c" stop-opacity=".74"/><stop offset="1" stop-color="#5e0c23" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="glassCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".9"/><stop offset="1" stop-color="#e4d6b6" stop-opacity=".86"/></linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3dc" stop-opacity=".6"/><stop offset="1" stop-color="#fff3dc" stop-opacity=".12"/></linearGradient>
     <!-- halftone dots laid over the panels -->
     <pattern id="dots" patternUnits="userSpaceOnUse" width="7" height="7">
       <circle cx="1.75" cy="1.75" r="1.35" fill="#000"/><circle cx="5.25" cy="5.25" r="1.35" fill="#000"/>
@@ -41,7 +43,6 @@
     <g inkscape:label="upnext show:replay.switching" clip-path="url(#holeRound)">
       <rect x="595" y="171" width="1234" height="737" fill="#12020a"/>
       <image inkscape:label="img:replay.cover" x="595" y="171" width="1234" height="737" preserveAspectRatio="xMidYMid slice" filter="url(#coverBlur)" opacity=".5"/>
-      <rect x="595" y="171" width="1234" height="737" fill="url(#swirl)" opacity=".55"/>
       <rect x="595" y="171" width="1234" height="737" fill="url(#dots)" opacity=".3"/>
       <g inkscape:label="upnext-content">
         <rect x="700" y="379" width="320" height="320" rx="14" fill="#12020a"/>
@@ -74,7 +75,7 @@
   <!-- the replay that is playing in the big box (the panel's Replay playlist) -->
   <g inkscape:groupmode="layer" inkscape:label="nowplaying show:replay.loaded">
     <text x="50" y="636" style="font-family:Geom Graphic;fill:url(#cream);font-size:20px;letter-spacing:6px" filter="url(#textShadow)">NOW PLAYING</text>
-    <g><path d="M60,648 H566 L550,904 H44 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M60,648 H566 L550,904 H44 Z" fill="url(#dots)" opacity=".45"/></g>
+    <path inkscape:label="glass" d="M60,648 H566 L550,904 H44 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
     <rect x="66" y="668" width="128" height="128" rx="10" fill="#12020a"/>
     <image inkscape:label="img:replay.cover" x="66" y="668" width="128" height="128" preserveAspectRatio="xMidYMid slice" clip-path="url(#npCover)"/>
     <rect x="66" y="668" width="128" height="128" rx="10" fill="none" stroke="url(#cream)" stroke-width="2"/>

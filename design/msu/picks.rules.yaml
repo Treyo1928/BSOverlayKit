@@ -4,12 +4,19 @@ enter:
   - { target: team-b, play: slideLeft }
   - { target: title, play: popIn, delay: 150 }
   - { target: card, play: slideUp, delay: 250 }
+  - { target: winner, play: popIn, delay: 400 }
 
 on:
   mapBan:
     - { target: card, play: shake }
   mapPick:
     - { target: card, play: pulse }
+  increase:a.points:
+    - { target: points-a, play: popIn }
+  increase:b.points:
+    - { target: points-b, play: popIn }
+  becomes:match.winner:
+    - { target: winner, play: popIn }
 
 loop:
   - { target: prompt-text, play: breathe }
@@ -17,7 +24,7 @@ loop:
 
 repeat:
   pool: { dx: 256, wrap: 7, rowHeight: 380 }
-  picks.steps: { dx: 128 }
+  picks.steps: { dx: 128, center: true }   # the pick/ban order, centred
 
 fx:
   dust: { amount: 0.6, clouds: 0.4 }

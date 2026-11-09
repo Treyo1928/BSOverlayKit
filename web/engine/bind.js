@@ -19,17 +19,18 @@ export function parseTokens(label) {
   const out = { names: [] };
   if (!label) return out;
   // a plain name ("Score box") is just a name for animations
-  if (!/[{}:#]/.test(label)) { out.names.push(label); return out; }
+  if (!/[{}:#]/.test(label) && !/(^|\s)glass(\s|$)/.test(label)) { out.names.push(label); return out; }
   let rest = label.replace(/\{([^}]*)\}/g, (_, expr) => { out.text = expr.trim(); return " "; });
   for (const tok of rest.split(/\s+/).filter(Boolean)) {
     const m = /^([a-z]+):(.*)$/i.exec(tok);
     if (tok.startsWith("#")) out.names.push(tok.slice(1));
+    else if (tok === "glass") out.glass = "";
     else if (m && KNOWN.has(m[1].toLowerCase())) out[m[1].toLowerCase()] = m[2];
     else out.names.push(tok);                      // a plain name is also an animation target
   }
   return out;
 }
-const KNOWN = new Set(["img", "bar", "vbar", "show", "hide", "color", "stroke", "feed", "repeat", "state", "when", "fit", "pulse", "enter", "widget", "fx"]);
+const KNOWN = new Set(["img", "bar", "vbar", "show", "hide", "color", "stroke", "feed", "repeat", "state", "when", "fit", "pulse", "enter", "widget", "fx", "glass"]);
 
 // ---------------------------------------------------------------- expressions
 /** Resolve "a.name", "pool.3.cover" (1-based), "item.name", with scene vars ("big" -> "a"). */
@@ -62,6 +63,9 @@ export const FILTERS = {
   },
   flag: (v) => (v && v.length === 2 ? String.fromCodePoint(...[...v.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0))) : ""),
   or: (v, d = "") => (v === undefined || v === null || v === "" ? d.replace(/^["']|["']$/g, "") : v),
+  // a difference of two accuracies as percentage points, without its sign: 0.0042 -> "0.42%"
+  gap: (v) => (typeof v === "number" ? (Math.abs(v) * 100).toFixed(2) + "%" : ""),
+  first: (v) => String(v ?? "").trim().charAt(0).toUpperCase(),
   plus: (v, n = "1") => (typeof v === "number" ? v + Number(n) : v),
   ordinal: (v) => (typeof v === "number" ? v + (["th", "st", "nd", "rd"][(v % 100 - 20) % 10] || ["th", "st", "nd", "rd"][v % 100] || "th") : v),
 };
@@ -113,6 +117,10 @@ export function collect(root, env) {
   const walk = (el, inRepeat) => {
     if (!(el instanceof SVGElement)) return;
     const t = parseTokens(layerName(el));
+    // a glass shape gets a group around it (the frosted background, then the shape): names, show:/hide: and
+    // entrances apply to that group, so both move and hide together
+    const shape = el;
+    if (t.glass !== undefined) el = glass(el, t.glass, env);
     for (const n of t.names) {
       if (!result.names.has(n)) result.names.set(n, []);
       result.names.get(n).push(el);
@@ -125,8 +133,9 @@ export function collect(root, env) {
     if (t.bar !== undefined) result.bindings.push(barBinding(el, t.bar, false));
     if (t.vbar !== undefined) result.bindings.push(barBinding(el, t.vbar, true));
     if (t.show !== undefined || t.hide !== undefined) result.bindings.push(visBinding(el, t.show, t.hide));
-    if (t.color !== undefined) result.bindings.push(colorBinding(el, t.color, "fill", env));
-    if (t.stroke !== undefined) result.bindings.push(colorBinding(el, t.stroke, "stroke", env));
+    if (t.color !== undefined) result.bindings.push(colorBinding(shape, t.color, "fill", env));
+    if (t.stroke !== undefined) result.bindings.push(colorBinding(shape, t.stroke, "stroke", env));
+    if (t.glass !== undefined) return;
     if (t.state !== undefined) result.bindings.push(stateBinding(el, t.state));
     if (t.feed !== undefined || t.widget !== undefined) {
       const id = t.feed !== undefined ? `feed:${t.feed}` : `widget:${t.widget}`;
@@ -147,6 +156,79 @@ export function collect(root, env) {
   walk(root, false);
   result.bindings.push(...result.repeats);
   return result;
+}
+
+// ---------------------------------------------------------------- frosted glass
+// A shape named `glass` shows the scene's background blurred behind its own fill (the fill is the glass's tint, so
+// give it some transparency). The blur is made ONCE per background picture, small, on a canvas; each glass shape then
+// just draws that picture clipped to its outline, lined up with the real background. So it costs nothing per frame:
+// CSS backdrop-filter would blur again every frame the particles move, which OBS's CPU-drawn browser can't afford.
+// It is the background picture that shows through, not whatever else is behind the shape (video, particles).
+const frosts = new Map();            // "src|blur|…" -> Promise<blob URL>
+let glassCount = 0;
+function frost(src, o = {}) {
+  const blur = Number(o.blur ?? 14), brightness = Number(o.brightness ?? 1.5), saturate = Number(o.saturate ?? 1.35);
+  const key = [src, blur, brightness, saturate].join("|");
+  if (!frosts.has(key)) {
+    frosts.set(key, (async () => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const k = 4, w = 1920 / k, h = 1080 / k, r = blur / k, pad = Math.ceil(r * 3) + 2;
+      const canvas = (cw, ch) => Object.assign(document.createElement("canvas"), { width: cw, height: ch });
+      // the picture with its edges stretched outward, so the blur has something to read beyond them
+      const a = canvas(w + 2 * pad, h + 2 * pad), ax = a.getContext("2d");
+      ax.drawImage(img, 0, 0, a.width, a.height);
+      ax.drawImage(img, 0, 0, img.naturalWidth, 1, pad, 0, w, pad);
+      ax.drawImage(img, 0, img.naturalHeight - 1, img.naturalWidth, 1, pad, pad + h, w, pad);
+      ax.drawImage(img, 0, 0, 1, img.naturalHeight, 0, pad, pad, h);
+      ax.drawImage(img, img.naturalWidth - 1, 0, 1, img.naturalHeight, pad + w, pad, pad, h);
+      ax.drawImage(img, pad, pad, w, h);
+      const b = canvas(a.width, a.height), bx = b.getContext("2d");
+      bx.filter = `blur(${r}px) brightness(${brightness}) saturate(${saturate})`;
+      bx.drawImage(a, 0, 0);
+      const c = canvas(w, h);
+      c.getContext("2d").drawImage(b, -pad, -pad);
+      const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.92));
+      return URL.createObjectURL(blob);
+    })().catch((e) => { console.warn(`glass: ${src}: ${e.message}`); return ""; }));
+  }
+  return frosts.get(key);
+}
+
+/** Wrap a glass shape in a group holding the blurred background (clipped to the shape) under it. Returns the group. */
+function glass(el, value, env) {
+  const host = document.createElementNS(SVGNS, "g");
+  el.parentNode.insertBefore(host, el);
+  const tf = el.getAttribute("transform");            // the shape's own position applies to both
+  if (tf) { host.setAttribute("transform", tf); el.removeAttribute("transform"); }
+  if (el.style.display === "none") { host.style.display = "none"; el.style.display = ""; }
+  host.append(el);
+  const bg = env.glass;
+  if (!bg?.src || !/^(path|rect|circle|ellipse|polygon)$/.test(el.tagName)) return host;
+  const clip = document.createElementNS(SVGNS, "clipPath");
+  clip.id = `bso-glass-${++glassCount}`;
+  const outline = el.cloneNode(false);
+  for (const a of [...outline.attributes]) if (!/^(d|x|y|width|height|rx|ry|cx|cy|r|points)$/.test(a.name)) outline.removeAttribute(a.name);
+  clip.append(outline);
+  // where the page's top-left corner is, seen from the shape: undo every transform above it (Inkscape layers and
+  // groups, repeat: copies), so the blurred picture sits exactly on the real background
+  let m = new DOMMatrix();
+  for (let n = host; n && n.tagName !== "svg"; n = n.parentNode) {
+    const t = n.transform?.baseVal?.consolidate?.()?.matrix;
+    if (t) m = new DOMMatrix([t.a, t.b, t.c, t.d, t.e, t.f]).multiply(m);
+  }
+  const i = m.inverse();
+  const img = document.createElementNS(SVGNS, "image");
+  for (const [k, v] of Object.entries({ x: 0, y: 0, width: 1920, height: 1080, preserveAspectRatio: "none", transform: `matrix(${i.a} ${i.b} ${i.c} ${i.d} ${i.e} ${i.f})` })) img.setAttribute(k, v);
+  const behind = document.createElementNS(SVGNS, "g");
+  behind.setAttribute("clip-path", `url(#${clip.id})`);
+  behind.append(img);
+  host.insertBefore(behind, el);
+  host.insertBefore(clip, behind);
+  const blur = Number(value) > 0 ? { ...bg.options, blur: Number(value) } : bg.options;
+  frost(bg.src, blur).then((url) => { if (url) img.setAttribute("href", url); });
+  return host;
 }
 
 // ---------------------------------------------------------------- binding kinds
@@ -350,6 +432,11 @@ function repeatBinding(group, path, env) {
         clones.push({ g, sub: collect(g, env) });
       }
       while (clones.length > items.length) clones.pop().g.remove();
+      // center: true = the row stays centred on where the template was drawn (3 or 5 map tabs, 1 or 2 players)
+      if (layout.center && !wrap) {
+        const n = Math.max(0, items.length - 1);
+        clones.forEach((c, i) => c.g.setAttribute("transform", `translate(${(i - n / 2) * dx} ${(i - n / 2) * dy})`));
+      }
       clones.forEach((c, i) => {
         const sub = { ...ctx, item: items[i], index: i + 1 };
         for (const b of c.sub.bindings) b.update(sub);

@@ -40,6 +40,13 @@
       <div class="hint">The match the overlay shows. Pick it here when the next match starts.</div></div>
     <div class="card"><h2>Casters <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="castersFrom"> From Discord</label></h2>
       <div class="hint" id="castersHint"></div><div id="casters"></div></div>
+    <div class="card"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
+      <div class="row"><div><label>Team (left)</label><input id="upA" list="teamNames" placeholder="pick or type a team"></div>
+        <div><label>Team (right)</label><input id="upB" list="teamNames" placeholder="pick or type a team"></div></div>
+      <label>Text: a round name to go with the two teams, or a line of its own ("Grand final at 8 pm")</label><input id="upText" placeholder="e.g. Winners Final">
+      <datalist id="teamNames"></datalist>
+      <div class="btns"><button id="upSet">Show on Casters</button><button id="upClear">Clear (hide it)</button></div>
+      <div class="hint">The Casters scene's "up next" block. It stays hidden until you set it here: the overlay can't know whose match is next.</div></div>
     <div class="card"><h2>Be right back</h2>
       <div class="row"><div><label>Title</label><input id="brbTitle"></div><div><label>Message</label><input id="brbMsg"></div></div>
       <div class="btns" id="brbBtns"></div></div>

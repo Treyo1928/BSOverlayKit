@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MSU Esports - Getting ready: the players are putting their headsets on. The replay playlist plays in the big box (like Intermission), with the match-up, the map that is about to be played and who plays it. Switched to by hand in the panel; the automation rule 'on: mapStart ... when: ready' in overlay.yaml fades to Match the moment the players are actually playing. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+
+  <defs>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9cdb3"/><stop offset="1" stop-color="#d9c499"/></linearGradient>
+    <!-- frosted glass: a shape named "glass" shows the background blurred behind its own fill (docs/DESIGNING.md).
+         These are the tints: neutral, team A (maroon) and team B (cream), and the light edge. -->
+    <linearGradient id="glassTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3d6" stop-opacity=".17"/><stop offset="1" stop-color="#3a0816" stop-opacity=".34"/></linearGradient>
+    <linearGradient id="glassMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a01c3c" stop-opacity=".74"/><stop offset="1" stop-color="#5e0c23" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="glassCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".9"/><stop offset="1" stop-color="#e4d6b6" stop-opacity=".86"/></linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3dc" stop-opacity=".6"/><stop offset="1" stop-color="#fff3dc" stop-opacity=".12"/></linearGradient>
+    <filter id="textShadow" x="-10%" y="-30%" width="120%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.2"/><feOffset dy="1.5" result="blur"/>
+      <feFlood flood-color="#12020a" flood-opacity=".9"/><feComposite in2="blur" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="chipMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f1936" stop-opacity=".93"/><stop offset="1" stop-color="#4a0a1c" stop-opacity=".95"/></linearGradient>
+    <linearGradient id="chipCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".95"/><stop offset="1" stop-color="#e2d3b0" stop-opacity=".95"/></linearGradient>
+    <pattern id="dots" patternUnits="userSpaceOnUse" width="7" height="7">
+      <circle cx="1.75" cy="1.75" r="1.35" fill="#000"/><circle cx="5.25" cy="5.25" r="1.35" fill="#000"/>
+    </pattern>
+    <clipPath id="hole"><path clip-rule="evenodd" d="M0,0 H1920 V1080 H0 Z M611,171 H1813 A16,16 0 0 1 1829,187 V892 A16,16 0 0 1 1813,908 H611 A16,16 0 0 1 595,892 V187 A16,16 0 0 1 611,171 Z"/></clipPath>
+    <linearGradient id="frameGrad" gradientUnits="userSpaceOnUse" x1="0" y1="163" x2="0" y2="915"><stop offset="0" stop-color="#5e0c23"/><stop offset=".85" stop-color="#000"/></linearGradient>
+    <clipPath id="upCover"><rect x="700" y="379" width="320" height="320" rx="14"/></clipPath>
+    <clipPath id="upAvatar"><circle cx="1101" cy="690" r="30"/></clipPath>
+    <clipPath id="holeRound"><rect x="595" y="171" width="1234" height="737" rx="16"/></clipPath>
+    <filter id="coverBlur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="28"/></filter>
+    <clipPath id="mapCover"><rect x="42" y="232" width="168" height="168" rx="10"/></clipPath>
+    <clipPath id="npCover"><rect x="611" y="940" width="104" height="104" rx="8"/></clipPath>
+    <clipPath id="avA"><circle cx="72" cy="528" r="27"/></clipPath>
+    <clipPath id="avB"><circle cx="72" cy="770" r="27"/></clipPath>
+  </defs>
+  <g inkscape:groupmode="layer" inkscape:label="back" clip-path="url(#hole)">
+    <image inkscape:label="background" href="bg-clean.png" x="0" y="0" width="1920" height="1080" preserveAspectRatio="none"/>
+    <rect inkscape:label="fx:dust" x="0" y="0" width="1920" height="1080" fill="none"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="screen">
+    <!-- the replay playlist plays here (feed:main), as on Intermission -->
+    <rect inkscape:label="feed:main" x="595" y="171" width="1234" height="737" rx="16"/>
+    <!-- between songs: covers the video while the next replay loads (show: replay.switching, animated in the rules) -->
+    <g inkscape:label="upnext show:replay.switching" clip-path="url(#holeRound)">
+      <rect x="595" y="171" width="1234" height="737" fill="#12020a"/>
+      <image inkscape:label="img:replay.cover" x="595" y="171" width="1234" height="737" preserveAspectRatio="xMidYMid slice" filter="url(#coverBlur)" opacity=".5"/>
+      <rect x="595" y="171" width="1234" height="737" fill="url(#dots)" opacity=".3"/>
+      <g inkscape:label="upnext-content">
+        <rect x="700" y="379" width="320" height="320" rx="14" fill="#12020a"/>
+        <image inkscape:label="img:replay.cover" x="700" y="379" width="320" height="320" preserveAspectRatio="xMidYMid slice" clip-path="url(#upCover)"/>
+        <rect x="700" y="379" width="320" height="320" rx="14" fill="none" stroke="url(#cream)" stroke-width="3"/>
+        <text x="1066" y="430" style="font-family:Geom Graphic;fill:url(#cream);font-size:24px;letter-spacing:8px" filter="url(#textShadow)">UP NEXT</text>
+        <text inkscape:label="{replay.song | upper} fit:700" x="1064" y="498" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:54px" filter="url(#textShadow)">SONG NAME</text>
+        <text inkscape:label="{replay.byline} fit:700" x="1066" y="544" style="font-family:Geom Graphic;fill:url(#cream);font-size:26px" filter="url(#textShadow)">Artist · mapped by Mapper</text>
+        <text inkscape:label="{replay.diffline} fit:700" x="1066" y="586" style="font-family:Geom Graphic;fill:url(#cream);font-size:24px;opacity:.85" filter="url(#textShadow)">Expert+ · ★ 7.69</text>
+        <rect x="1066" y="616" width="420" height="2" fill="url(#cream)" opacity=".45"/>
+        <text x="1066" y="652" style="font-family:Geom Graphic;fill:url(#cream);font-size:18px;letter-spacing:6px;opacity:.8">PLAYED BY</text>
+        <g inkscape:label="show:replay.playerAvatar">
+          <circle cx="1101" cy="690" r="32" fill="url(#cream)"/>
+          <image inkscape:label="img:replay.playerAvatar" x="1071" y="660" width="60" height="60" clip-path="url(#upAvatar)"/>
+          <text inkscape:label="{replay.player | upper} fit:600" x="1148" y="704" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:40px" filter="url(#textShadow)">PLAYER</text>
+        </g>
+        <g inkscape:label="hide:replay.playerAvatar">
+          <text inkscape:label="{replay.player | upper} fit:680" x="1064" y="704" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:40px" filter="url(#textShadow)">PLAYER</text>
+        </g>
+      </g>
+    </g>
+    <path inkscape:label="frame" d="M611,167 H1813 A20,20 0 0 1 1833,187 V892 A20,20 0 0 1 1813,912 H611 A20,20 0 0 1 591,892 V187 A20,20 0 0 1 611,167 Z" fill="none" stroke="url(#frameGrad)" stroke-width="8"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="topbar">
+    <g inkscape:label="team-a">
+      <path inkscape:label="glass" d="M16,8 H724 L700,92 H16 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <path transform="translate(40 22) scale(0.10380)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
+      <text inkscape:label="{a.name | upper} fit:560" x="108" y="66" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.44;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU MAROON</tspan></text>
+    </g>
+    <g inkscape:label="team-b">
+      <path inkscape:label="glass" d="M1196,8 H1904 V92 H1220 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{b.name | upper} fit:560" x="1812" y="66" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:1.44;stroke-linejoin:miter;paint-order:stroke"><tspan>MSU WHITE</tspan></text>
+      <polygon points="1862.0,25.0 1868.4,42.2 1886.7,43.0 1872.4,54.4 1877.3,72.0 1862.0,61.9 1846.7,72.0 1851.6,54.4 1837.3,43.0 1855.6,42.2" fill="#2a0510"/>
+    </g>
+    <g inkscape:label="score">
+      <path inkscape:label="glass" d="M740,8 H1180 L1204,92 H716 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="fit:400" x="960" y="27" style="font-family:Shader;font-size:12px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{header | upper}</tspan></text>
+      <text x="812" y="57" style="font-family:Geom Graphic;font-size:13px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>BEST OF {match.bestOf}</tspan></text>
+      <rect x="884" y="34" width="12" height="28" fill="#b3233f" stroke="url(#cream)" stroke-width="1"/>
+      <text inkscape:label="{a.points} #points-a" x="926" y="64" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
+      <text x="960" y="61" style="font-family:Shader;font-size:24px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.86;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>-</tspan></text>
+      <text inkscape:label="{b.points} #points-b" x="994" y="64" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
+      <rect x="1024" y="34" width="12" height="28" fill="#f2ead8"/>
+      <text x="1108" y="57" style="font-family:Geom Graphic;font-size:13px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>FIRST TO {match.need}</tspan></text>
+      <!-- one pip per map of the series, centred (match.rules.yaml: repeat: maps: center) -->
+      <g inkscape:label="repeat:match.maps">
+        <g inkscape:label="pip">
+          <g inkscape:label="state:item.state">
+            <g inkscape:label="when:played" style="display:none">
+              <g inkscape:label="state:item.winner">
+                <g inkscape:label="when:a"><path d="M930,70 H996 L991,86 H925 Z" fill="#b3233f" stroke="#f2ead8" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+                <g inkscape:label="when:b" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#f2ead8"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+                <g inkscape:label="when:else" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#6b5a55"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+              </g>
+            </g>
+            <g inkscape:label="when:current"><path inkscape:label="pip-now" d="M930,70 H996 L991,86 H925 Z" fill="#12020a" fill-opacity=".5" stroke="url(#cream)" stroke-width="2"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+            <g inkscape:label="when:upcoming" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#12020a" fill-opacity=".45" stroke="#d9cdb3" stroke-opacity=".4" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.65"><tspan>{item.label}</tspan></text></g>
+            <g inkscape:label="when:unneeded" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="none" stroke="#d9cdb3" stroke-opacity=".18" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.25"><tspan>{item.label}</tspan></text></g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="status">
+    <g inkscape:label="state:match.phase">
+      <g inkscape:label="when:loading" style="display:none"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MAP LOADING · STARTING ANY MOMENT</tspan></text></g>
+      <g inkscape:label="when:else"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYERS ARE GETTING READY</tspan></text></g>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="nextmap">
+    <path inkscape:label="glass" d="M30,171 H566 V420 H30 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+    <text x="46" y="208" style="font-family:Geom Graphic;font-size:16px;letter-spacing:5px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>UP NEXT · MAP {match.mapNumber}</tspan></text>
+    <g inkscape:label="show:map">
+      <rect x="42" y="232" width="168" height="168" rx="10" fill="#12020a"/>
+      <g clip-path="url(#mapCover)"><image inkscape:label="img:map.cover" x="42" y="232" width="168" height="168"/></g>
+      <rect x="42" y="232" width="168" height="168" rx="10" fill="none" stroke="url(#cream)" stroke-width="2"/>
+      <text inkscape:label="{map.name | upper} fit:322" x="228" y="262" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
+      <text inkscape:label="{map.artist} fit:322" x="229" y="292" style="font-family:Geom Graphic;font-size:18px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
+      <text inkscape:label="show:map.mapper fit:322" x="229" y="320" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
+      <text inkscape:label="fit:322" x="229" y="350" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category} · {map.length}</tspan></text>
+      <text inkscape:label="show:map.pickedBy fit:322" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>PICKED BY {map.pickedByName | upper}</tspan></text>
+      <text inkscape:label="hide:map.pickedBy" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>TIEBREAKER</tspan></text>
+    </g>
+    <g inkscape:label="hide:map"><text x="298" y="326" style="font-family:Shader;font-size:22px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.79;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>MAP TO BE PICKED</tspan></text></g>
+  </g>
+
+  <!-- who plays it: one row per player (ready.rules.yaml: repeat: a.players: dy) -->
+  <g inkscape:groupmode="layer" inkscape:label="lineups">
+    <g inkscape:label="lineup-a">
+      <path inkscape:label="glass" d="M30,440 H566 V666 H30 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{a.name | upper} fit:380" x="46" y="476" style="font-family:Shader;font-size:22px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.79;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>TEAM</tspan></text>
+      <text x="550" y="474" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:end;fill:url(#cream);opacity:0.8"><tspan>PLAYING</tspan></text>
+      <g inkscape:label="repeat:a.players">
+        <g inkscape:label="player">
+          <circle cx="72" cy="528" r="27" fill="#1a0309"/>
+          <text inkscape:label="{item.name | first} hide:item.avatar" x="72" y="538" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+          <g clip-path="url(#avA)"><image inkscape:label="img:item.avatar" x="45" y="501" width="54" height="54"/></g>
+          <circle cx="72" cy="528" r="28" fill="none" stroke="url(#cream)" stroke-width="2"/>
+          <text inkscape:label="{item.name | upper} fit:430" x="116" y="539" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+        </g>
+      </g>
+    </g>
+    <g inkscape:label="lineup-b">
+      <path inkscape:label="glass" d="M30,682 H566 V908 H30 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{b.name | upper} fit:380" x="46" y="718" style="font-family:Shader;font-size:22px;letter-spacing:1px;text-anchor:start;fill:#2a0510;stroke:#2a0510;stroke-width:0.79;stroke-linejoin:miter;paint-order:stroke"><tspan>TEAM</tspan></text>
+      <text x="550" y="716" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:end;fill:#2a0510;opacity:0.8"><tspan>PLAYING</tspan></text>
+      <g inkscape:label="repeat:b.players">
+        <g inkscape:label="player">
+          <circle cx="72" cy="770" r="27" fill="#1a0309"/>
+          <text inkscape:label="{item.name | first} hide:item.avatar" x="72" y="780" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+          <g clip-path="url(#avB)"><image inkscape:label="img:item.avatar" x="45" y="743" width="54" height="54"/></g>
+          <circle cx="72" cy="770" r="28" fill="none" stroke="#2a0510" stroke-width="2"/>
+          <text inkscape:label="{item.name | upper} fit:430" x="116" y="781" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:#2a0510;stroke:#2a0510;stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke"><tspan>PLAYER</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- the replay that is playing in the big box -->
+  <g inkscape:groupmode="layer" inkscape:label="nowplaying show:replay.loaded">
+    <path inkscape:label="glass" d="M595,928 H1829 V1056 H595 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+    <rect x="611" y="940" width="104" height="104" rx="8" fill="#12020a"/>
+    <image inkscape:label="img:replay.cover" x="611" y="940" width="104" height="104" preserveAspectRatio="xMidYMid slice" clip-path="url(#npCover)"/>
+    <rect x="611" y="940" width="104" height="104" rx="8" fill="none" stroke="url(#cream)" stroke-width="2"/>
+    <text x="734" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>WHILE WE WAIT · NOW PLAYING</tspan></text>
+    <text inkscape:label="{replay.song | upper} fit:640" x="733" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
+    <text inkscape:label="{replay.byline} fit:640" x="734" y="1022" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist · mapped by Mapper</tspan></text>
+    <text x="1813" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>PLAYED BY</tspan></text>
+    <text inkscape:label="{replay.player | upper} fit:380" x="1813" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+    <text inkscape:label="{replay.acc | acc}" x="1813" y="1022" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>97.79%</tspan></text>
+    <rect x="734" y="1038" width="1079" height="5" rx="2" fill="#12020a"/>
+    <rect inkscape:label="bar:replay.progress" x="734" y="1038" width="1079" height="5" rx="2" fill="url(#cream)"/>
+  </g>
+</svg>

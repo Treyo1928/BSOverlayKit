@@ -1,0 +1,34 @@
+# Rules for ready.svg (MSU): players getting ready. Reference: docs/DESIGNING.md
+enter:
+  - { target: team-a, play: slideRight }
+  - { target: team-b, play: slideLeft }
+  - { target: score, play: slideDown, delay: 100 }
+  - { target: frame, play: fadeIn, duration: 700 }
+  - { target: nextmap, play: slideRight, delay: 200 }
+  - { target: lineup-a, play: slideRight, delay: 300 }
+  - { target: lineup-b, play: slideRight, delay: 400 }
+  - { target: nowplaying, play: slideUp, delay: 450 }
+
+loop:
+  - { target: status-text, play: breathe }
+  - { target: pip-now, keyframes: [ { opacity: 1 }, { opacity: 0.45 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
+
+repeat:
+  maps: { dx: 76, center: true }
+  a.players: { dy: 68 }
+  b.players: { dy: 68 }
+
+fx:
+  dust: { amount: 0.8 }
+
+# The replay playlist: the "up next" card over the video between songs (same as Intermission).
+on:
+  becomes:replay.switching:
+    - { target: upnext, keyframes: [ { opacity: 0 }, { opacity: 1 } ], duration: 450, easing: ease-out }
+    - { target: upnext-content, play: slideRight, delay: 150 }
+  becomes:replay.revealing:
+    - { target: upnext, to: { opacity: 0 }, duration: 650, easing: ease-in }
+  change:replay.song:
+    - { target: nowplaying, play: slideUp }
+  change:map.name:
+    - { target: nextmap, play: slideRight }

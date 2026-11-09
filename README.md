@@ -10,8 +10,8 @@ A Beat Saber tournament stream overlay you **design in Inkscape**. No CSS, no Ja
 - Match data comes from a **data source**. Today that's a built-in **simulator** (a full Bo5 with picks,
   bans, live scores and results); next it's **BeatKhana** (see "Next steps").
 
-**MSU Esports:** `overlay.yaml` runs the MSU scenes in `design/msu/` (Starting Soon, Intermission, Casters,
-Match, Final) with live gold-dust particles. The generic starter scenes still work:
+**MSU Esports:** `overlay.yaml` runs the MSU scenes in `design/msu/` (Starting Soon, Intermission, Be Right Back,
+Casters, Picks & Bans, Getting Ready, Match, Bracket, Final) with frosted-glass panels and live gold-dust particles. The generic starter scenes still work:
 `OVERLAY=overlay.starter.yaml ./run.sh`. Where the MSU art came from: `design/msu/SOURCES.md`.
 
 **Designing:** read [`docs/DESIGNING.md`](docs/DESIGNING.md). It's the complete reference: layer names,
@@ -38,7 +38,7 @@ cd ~/DevStuff/BSOverlayKit
 overlay.yaml               scene list, side colours, crossfade, automatic scene switching (MSU)
 overlay.starter.yaml       the same for the generic starter scenes
 design/                    ← what you edit
-  msu/                     MSU scenes + their art (background, logo, swirl texture), see msu/SOURCES.md
+  msu/                     MSU scenes + their art (background, logo), see msu/SOURCES.md
   casters/brb/picks/match/focus/results .svg   starter scenes
   *.rules.yaml             their animations and reactions
   logo.svg                 placeholder logo (replace it)
@@ -68,6 +68,8 @@ data/                      runtime state: panel settings, secrets (login code, o
 | `{"action":"scene","scene":"match"}` | switch scene |
 | `{"action":"auto","on":true}` | automation on/off |
 | `{"action":"brb","minutes":5}` | BRB countdown |
+| `{"action":"upNext","a":"Team 1","b":"Team 2","text":"Winners Final"}` | the Casters scene's "up next" block (`{"action":"upNext"}` hides it) |
+| `{"action":"live","phase":"playing","time":12,"duration":180,"players":{"a":[{"acc":0.97,"score":1,"combo":1,"misses":0,"finished":false}],"b":[…]}}` | live gameplay from a TA bridge (`phase`: `loading` / `playing` / `null` = over) |
 | `{"action":"source","control":"next"}` | simulator step (`reset`, `auto`, `speed`) |
 
 `GET /api/state` (same header) returns the current data and show state. `tools/act.sh '<json>'` is a shortcut.

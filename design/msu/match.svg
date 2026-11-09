@@ -1,30 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- MSU Esports - in-game. One layout per match type: 'solo' (1v1) and 'team' (2 players a side), chosen by match.solo. Top bar: event text, best-of, map tabs. -->
+<!-- MSU Esports - in-game. Left = team A (maroon), right = team B (cream). One layout per match type: 'solo' (1v1: two big videos, a stats panel per player below) and 'team' (2 players a side: four videos with each player's numbers on a corner of their own video, map and team numbers in the middle), chosen by match.solo. Top bar: teams, score, one pip per map of the series. -->
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
      xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:xlink="http://www.w3.org/1999/xlink"
      width="1920" height="1080" viewBox="0 0 1920 1080">
   <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+
   <defs>
     <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9cdb3"/><stop offset="1" stop-color="#d9c499"/></linearGradient>
-    <!-- the maroon swirl texture, stretched over each panel's box -->
-    <pattern id="swirl" patternContentUnits="objectBoundingBox" width="1" height="1">
-      <image href="panel-swirl.png" width="1" height="1" preserveAspectRatio="none"/>
-    </pattern>
-    <!-- halftone dots laid over the panels -->
-    <pattern id="dots" patternUnits="userSpaceOnUse" width="7" height="7">
-      <circle cx="1.75" cy="1.75" r="1.35" fill="#000"/><circle cx="5.25" cy="5.25" r="1.35" fill="#000"/>
-    </pattern>
+    <!-- frosted glass: a shape named "glass" shows the background blurred behind its own fill (docs/DESIGNING.md).
+         These are the tints: neutral, team A (maroon) and team B (cream), and the light edge. -->
+    <linearGradient id="glassTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3d6" stop-opacity=".17"/><stop offset="1" stop-color="#3a0816" stop-opacity=".34"/></linearGradient>
+    <linearGradient id="glassMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a01c3c" stop-opacity=".74"/><stop offset="1" stop-color="#5e0c23" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="glassCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".9"/><stop offset="1" stop-color="#e4d6b6" stop-opacity=".86"/></linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3dc" stop-opacity=".6"/><stop offset="1" stop-color="#fff3dc" stop-opacity=".12"/></linearGradient>
     <filter id="textShadow" x="-10%" y="-30%" width="120%" height="160%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="1.2"/><feOffset dy="1.5" result="blur"/>
       <feFlood flood-color="#12020a" flood-opacity=".9"/><feComposite in2="blur" operator="in"/>
       <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <clipPath id="holeSolo"><path clip-rule="evenodd" d="M0,0 H1920 V1080 H0 Z M38,140 H938 A14,14 0 0 1 952,154 V648 A14,14 0 0 1 938,662 H38 A14,14 0 0 1 24,648 V154 A14,14 0 0 1 38,140 Z M982,140 H1882 A14,14 0 0 1 1896,154 V648 A14,14 0 0 1 1882,662 H982 A14,14 0 0 1 968,648 V154 A14,14 0 0 1 982,140 Z"/></clipPath>
-    <clipPath id="holeTeam"><path clip-rule="evenodd" d="M0,0 H1920 V1080 H0 Z M38,132 H762 A14,14 0 0 1 776,146 V541 A14,14 0 0 1 762,555 H38 A14,14 0 0 1 24,541 V146 A14,14 0 0 1 38,132 Z M38,571 H762 A14,14 0 0 1 776,585 V980 A14,14 0 0 1 762,994 H38 A14,14 0 0 1 24,980 V585 A14,14 0 0 1 38,571 Z M1158,132 H1882 A14,14 0 0 1 1896,146 V541 A14,14 0 0 1 1882,555 H1158 A14,14 0 0 1 1144,541 V146 A14,14 0 0 1 1158,132 Z M1158,571 H1882 A14,14 0 0 1 1896,585 V980 A14,14 0 0 1 1882,994 H1158 A14,14 0 0 1 1144,980 V585 A14,14 0 0 1 1158,571 Z"/></clipPath>
-    <linearGradient id="frameGrad" gradientUnits="userSpaceOnUse" x1="0" y1="132" x2="0" y2="670"><stop offset="0" stop-color="#5e0c23"/><stop offset=".85" stop-color="#000"/></linearGradient>
-    <linearGradient id="frameGradTeam" gradientUnits="userSpaceOnUse" x1="0" y1="128" x2="0" y2="998"><stop offset="0" stop-color="#5e0c23"/><stop offset=".85" stop-color="#000"/></linearGradient>
-    <clipPath id="coverClip"><rect x="736" y="902" width="120" height="120" rx="10"/></clipPath>
-    <clipPath id="coverClipTeam"><rect x="792" y="1008" width="62" height="62" rx="6"/></clipPath>
+    <!-- the players' numbers on their videos: solid enough to read over gameplay -->
+    <linearGradient id="chipMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8f1936" stop-opacity=".93"/><stop offset="1" stop-color="#4a0a1c" stop-opacity=".95"/></linearGradient>
+    <linearGradient id="chipCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".95"/><stop offset="1" stop-color="#e2d3b0" stop-opacity=".95"/></linearGradient>
+    <linearGradient id="frameA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b3233f"/><stop offset="1" stop-color="#5e0c23"/></linearGradient>
+    <linearGradient id="frameB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df"/><stop offset="1" stop-color="#cdbd97"/></linearGradient>
+    <clipPath id="holeSolo"><path clip-rule="evenodd" d="M0,0 H1920 V1080 H0 Z M26,102 H942 A14,14 0 0 1 956,116 V619 A14,14 0 0 1 942,633 H26 A14,14 0 0 1 12,619 V116 A14,14 0 0 1 26,102 Z M978,102 H1894 A14,14 0 0 1 1908,116 V619 A14,14 0 0 1 1894,633 H978 A14,14 0 0 1 964,619 V116 A14,14 0 0 1 978,102 Z"/></clipPath>
+    <clipPath id="holeTeam"><path clip-rule="evenodd" d="M0,0 H1920 V1080 H0 Z M30,102 H834 A14,14 0 0 1 848,116 V556 A14,14 0 0 1 834,570 H30 A14,14 0 0 1 16,556 V116 A14,14 0 0 1 30,102 Z M30,584 H834 A14,14 0 0 1 848,598 V1038 A14,14 0 0 1 834,1052 H30 A14,14 0 0 1 16,1038 V598 A14,14 0 0 1 30,584 Z M1086,102 H1890 A14,14 0 0 1 1904,116 V556 A14,14 0 0 1 1890,570 H1086 A14,14 0 0 1 1072,556 V116 A14,14 0 0 1 1086,102 Z M1086,584 H1890 A14,14 0 0 1 1904,598 V1038 A14,14 0 0 1 1890,1052 H1086 A14,14 0 0 1 1072,1038 V598 A14,14 0 0 1 1086,584 Z"/></clipPath>
+    <clipPath id="avA"><circle cx="56" cy="534" r="25"/></clipPath>
+    <clipPath id="avB"><circle cx="1864" cy="534" r="25"/></clipPath>
+    <clipPath id="avSoloA"><circle cx="112" cy="748" r="68"/></clipPath>
+    <clipPath id="avSoloB"><circle cx="1808" cy="748" r="68"/></clipPath>
+    <clipPath id="coverTeam"><rect x="872" y="176" width="176" height="176" rx="10"/></clipPath>
+    <clipPath id="coverSolo"><rect x="672" y="768" width="264" height="264" rx="12"/></clipPath>
   </defs>
   <g inkscape:groupmode="layer" inkscape:label="back show:match.solo #back-solo" clip-path="url(#holeSolo)">
     <image href="bg-clean.png" x="0" y="0" width="1920" height="1080" preserveAspectRatio="none"/>
@@ -36,162 +42,210 @@
   </g>
 
   <g inkscape:groupmode="layer" inkscape:label="topbar">
-    <g inkscape:label="wing-left"><path d="M46,0 H854 L804,52 H73 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M46,0 H854 L804,52 H73 Z" fill="url(#dots)" opacity=".45"/></g>
-    <text inkscape:label="{header | upper} fit:440" x="112" y="33" style="font-family:Shader;font-size:20px;letter-spacing:2px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU BEAT SABER</tspan></text>
-    <path d="M598,0 L628,52" stroke="url(#cream)" stroke-width="4"/>
-    <polygon points="706.0,5.0 712.1,19.6 727.9,20.9 715.8,31.2 719.5,46.6 706.0,38.4 692.5,46.6 696.2,31.2 684.1,20.9 699.9,19.6" fill="url(#cream)"/>
-    <circle cx="796" cy="16" r="5.5" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-    <circle cx="815" cy="7" r="5.5" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-    <text x="960" y="31" style="font-family:Shader;font-size:23px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.5;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>BEST OF {match.bestOf}</tspan></text>
-    <g inkscape:label="wing-right"><path d="M1065,0 H1825 L1798,52 H1115 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1065,0 H1825 L1798,52 H1115 Z" fill="url(#dots)" opacity=".45"/></g>
-    <circle cx="1106" cy="12" r="6" fill="url(#cream)"/>
-    <circle cx="1125" cy="18" r="5" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-    <path transform="translate(1160 2) scale(0.08526)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
-    <g inkscape:label="repeat:match.maps">
-      <g inkscape:label="tab">
-        <path d="M1262,0 L1238,52" stroke="url(#cream)" stroke-width="4"/>
-        <g inkscape:label="state:item.state">
-          <g inkscape:label="when:current">
-            <path d="M1268,5 H1360 L1342,47 H1250 Z" fill="url(#cream)"/>
-            <text x="1303" y="33" style="font-family:Shader;font-size:17px;letter-spacing:0px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:1;paint-order:stroke"><tspan>{item.label}</tspan></text>
-          </g>
-          <g inkscape:label="when:played" style="display:none">
-            <text x="1303" y="33" style="font-family:Shader;font-size:17px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{item.label}</tspan></text>
-            <rect inkscape:label="color:item.winner" x="1268" y="42" width="72" height="5" rx="2" fill="#d9cdb3"/>
-          </g>
-          <g inkscape:label="when:upcoming" style="display:none">
-            <text x="1303" y="33" style="font-family:Shader;font-size:17px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1;stroke-linejoin:miter;paint-order:stroke;opacity:0.8" filter="url(#textShadow)"><tspan>{item.label}</tspan></text>
-          </g>
-          <g inkscape:label="when:unneeded" style="display:none">
-            <text x="1303" y="33" style="font-family:Shader;font-size:17px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.3" filter="url(#textShadow)"><tspan>{item.label}</tspan></text>
+    <g inkscape:label="team-a">
+      <path inkscape:label="glass" d="M16,8 H724 L700,92 H16 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <path transform="translate(40 22) scale(0.10380)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
+      <text inkscape:label="{a.name | upper} fit:560" x="108" y="66" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.44;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU MAROON</tspan></text>
+    </g>
+    <g inkscape:label="team-b">
+      <path inkscape:label="glass" d="M1196,8 H1904 V92 H1220 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{b.name | upper} fit:560" x="1812" y="66" style="font-family:Shader;font-size:40px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:1.44;stroke-linejoin:miter;paint-order:stroke"><tspan>MSU WHITE</tspan></text>
+      <polygon points="1862.0,25.0 1868.4,42.2 1886.7,43.0 1872.4,54.4 1877.3,72.0 1862.0,61.9 1846.7,72.0 1851.6,54.4 1837.3,43.0 1855.6,42.2" fill="#2a0510"/>
+    </g>
+    <g inkscape:label="score">
+      <path inkscape:label="glass" d="M740,8 H1180 L1204,92 H716 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="fit:400" x="960" y="27" style="font-family:Shader;font-size:12px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{header | upper}</tspan></text>
+      <text x="812" y="57" style="font-family:Geom Graphic;font-size:13px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>BEST OF {match.bestOf}</tspan></text>
+      <rect x="884" y="34" width="12" height="28" fill="#b3233f" stroke="url(#cream)" stroke-width="1"/>
+      <text inkscape:label="{a.points} #points-a" x="926" y="64" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
+      <text x="960" y="61" style="font-family:Shader;font-size:24px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.86;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>-</tspan></text>
+      <text inkscape:label="{b.points} #points-b" x="994" y="64" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
+      <rect x="1024" y="34" width="12" height="28" fill="#f2ead8"/>
+      <text x="1108" y="57" style="font-family:Geom Graphic;font-size:13px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>FIRST TO {match.need}</tspan></text>
+      <!-- one pip per map of the series, centred (match.rules.yaml: repeat: maps: center) -->
+      <g inkscape:label="repeat:match.maps">
+        <g inkscape:label="pip">
+          <g inkscape:label="state:item.state">
+            <g inkscape:label="when:played" style="display:none">
+              <g inkscape:label="state:item.winner">
+                <g inkscape:label="when:a"><path d="M930,70 H996 L991,86 H925 Z" fill="#b3233f" stroke="#f2ead8" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+                <g inkscape:label="when:b" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#f2ead8"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+                <g inkscape:label="when:else" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#6b5a55"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+              </g>
+            </g>
+            <g inkscape:label="when:current"><path inkscape:label="pip-now" d="M930,70 H996 L991,86 H925 Z" fill="#12020a" fill-opacity=".5" stroke="url(#cream)" stroke-width="2"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke"><tspan>{item.label}</tspan></text></g>
+            <g inkscape:label="when:upcoming" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="#12020a" fill-opacity=".45" stroke="#d9cdb3" stroke-opacity=".4" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.65"><tspan>{item.label}</tspan></text></g>
+            <g inkscape:label="when:unneeded" style="display:none"><path d="M930,70 H996 L991,86 H925 Z" fill="none" stroke="#d9cdb3" stroke-opacity=".18" stroke-width="1"/><text x="960" y="82" style="font-family:Shader;font-size:10px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.3;stroke-linejoin:miter;paint-order:stroke;opacity:0.25"><tspan>{item.label}</tspan></text></g>
           </g>
         </g>
       </g>
     </g>
   </g>
 
-  <g inkscape:groupmode="layer" inkscape:label="teams">
-    <g inkscape:label="team-a">
-      <g><path d="M398,64 H783 L796,112 H411 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M398,64 H783 L796,112 H411 Z" fill="url(#dots)" opacity=".45"/></g>
-      <path transform="translate(436 69) scale(0.07044)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
-      <text inkscape:label="{a.name | upper} fit:250" x="490" y="99" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.2;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU MAROON</tspan></text>
-    </g>
-    <g inkscape:label="score">
-      <g><path d="M815,64 H1104 L1096,112 H823 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M815,64 H1104 L1096,112 H823 Z" fill="url(#dots)" opacity=".45"/></g>
-      <circle cx="850" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:a.points>=1" cx="850" cy="88" r="7" fill="url(#cream)"/>
-      <circle cx="872" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:a.points>=2" cx="872" cy="88" r="7" fill="url(#cream)"/>
-      <circle inkscape:label="show:match.need>=3" cx="894" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:a.points>=3" cx="894" cy="88" r="7" fill="url(#cream)"/>
-      <text inkscape:label="{a.points} #points-a" x="935" y="102" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.6;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
-      <text x="960" y="100" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>-</tspan></text>
-      <text inkscape:label="{b.points} #points-b" x="985" y="102" style="font-family:Shader;font-size:36px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.6;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>0</tspan></text>
-      <circle inkscape:label="show:match.need>=3" cx="1026" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:b.points>=3" cx="1026" cy="88" r="7" fill="url(#cream)"/>
-      <circle cx="1048" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:b.points>=2" cx="1048" cy="88" r="7" fill="url(#cream)"/>
-      <circle cx="1070" cy="88" r="7" fill="none" stroke="url(#cream)" stroke-width="2.5"/>
-      <circle inkscape:label="show:b.points>=1" cx="1070" cy="88" r="7" fill="url(#cream)"/>
-    </g>
-    <g inkscape:label="team-b">
-      <g><path d="M1134,64 H1520 L1507,112 H1122 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1134,64 H1520 L1507,112 H1122 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="{b.name | upper} fit:250" x="1160" y="99" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.2;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MSU WHITE</tspan></text>
-      <polygon points="1465.0,69.0 1470.3,81.7 1484.0,82.8 1473.6,91.8 1476.8,105.2 1465.0,98.0 1453.2,105.2 1456.4,91.8 1446.0,82.8 1459.7,81.7" fill="url(#cream)"/>
-    </g>
-  </g>
-
   <g inkscape:groupmode="layer" inkscape:label="solo show:match.solo">
-    <rect inkscape:label="feed:a" x="24" y="140" width="928" height="522" rx="14"/>
-    <rect inkscape:label="feed:b" x="968" y="140" width="928" height="522" rx="14"/>
-    <path d="M38,136 H938 A18,18 0 0 1 956,154 V648 A18,18 0 0 1 938,666 H38 A18,18 0 0 1 20,648 V154 A18,18 0 0 1 38,136 Z" fill="none" stroke="url(#frameGrad)" stroke-width="8"/>
-    <path d="M982,136 H1882 A18,18 0 0 1 1900,154 V648 A18,18 0 0 1 1882,666 H982 A18,18 0 0 1 964,648 V154 A18,18 0 0 1 982,136 Z" fill="none" stroke="url(#frameGrad)" stroke-width="8"/>
+    <rect inkscape:label="feed:a" x="12" y="102" width="944" height="531" rx="14"/>
+    <rect inkscape:label="feed:b" x="964" y="102" width="944" height="531" rx="14"/>
+    <path d="M26,99 H942 A17,17 0 0 1 959,116 V619 A17,17 0 0 1 942,636 H26 A17,17 0 0 1 9,619 V116 A17,17 0 0 1 26,99 Z" fill="none" stroke="url(#frameA)" stroke-width="6"/>
+    <path d="M978,99 H1894 A17,17 0 0 1 1911,116 V619 A17,17 0 0 1 1894,636 H978 A17,17 0 0 1 961,619 V116 A17,17 0 0 1 978,99 Z" fill="none" stroke="url(#frameB)" stroke-width="6"/>
     <g inkscape:label="stats">
       <g inkscape:label="stats-a">
-        <g><path d="M44,690 H604 L584,800 H24 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M44,690 H604 L584,800 H24 Z" fill="url(#dots)" opacity=".45"/></g>
-        <text inkscape:label="{a.acc | acc} fit:290 #acc-a" x="74" y="764" style="font-family:Shader;font-size:50px;letter-spacing:0px;text-anchor:start;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-        <text inkscape:label="{a.score | int} fit:165" x="564" y="738" style="font-family:Shader;font-size:22px;letter-spacing:1px;text-anchor:end;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>1,234,567</tspan></text>
-        <text inkscape:label="#misses-a" x="564" y="774" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:end;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{a.misses} MISS</tspan></text>
-        <path inkscape:label="show:a.leading #lead-a" style="display:none" d="M24,806 H584 V812 H24 Z" fill="url(#cream)"/>
+        <path inkscape:label="glass" d="M16,650 H632 L608,1068 H16 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+        <circle cx="112" cy="748" r="68" fill="#1a0309"/>
+        <text inkscape:label="{a.name | first} hide:a.players.1.avatar" x="112" y="772" style="font-family:Shader;font-size:71px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:2.56;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+        <g clip-path="url(#avSoloA)"><image inkscape:label="img:a.players.1.avatar" x="44" y="680" width="136" height="136"/></g>
+        <circle cx="112" cy="748" r="69" fill="none" stroke="url(#cream)" stroke-width="3"/>
+        <text x="204" y="706" style="font-family:Geom Graphic;font-size:15px;letter-spacing:5px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>ACCURACY</tspan></text>
+        <text inkscape:label="{a.acc | acc} fit:390 #acc-a" x="200" y="790" style="font-family:Shader;font-size:80px;letter-spacing:0px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:2.88;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
+        <rect x="44" y="842" width="536" height="2" fill="url(#cream)" opacity=".35"/>
+        <text x="44" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>SCORE</tspan></text>
+        <text inkscape:label="{a.score | int} fit:250" x="44" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>1,234,567</tspan></text>
+        <text x="326" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>COMBO</tspan></text>
+        <text inkscape:label="{a.combo} fit:130" x="326" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>412</tspan></text>
+        <text x="488" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>MISSES</tspan></text>
+        <text inkscape:label="{a.misses} #misses-a" x="488" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>0</tspan></text>
+        <g inkscape:label="show:diff&gt;0 #lead-a" style="display:none">
+          <rect x="44" y="978" width="250" height="44" rx="6" fill="#f2ead8"/>
+          <text x="169" y="1008" style="font-family:Shader;font-size:18px;letter-spacing:2px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke"><tspan>IN THE LEAD</tspan></text>
+        </g>
       </g>
       <g inkscape:label="stats-b">
-        <g><path d="M1336,690 H1896 L1876,800 H1316 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1336,690 H1896 L1876,800 H1316 Z" fill="url(#dots)" opacity=".45"/></g>
-        <text inkscape:label="{b.acc | acc} fit:290 #acc-b" x="1866" y="764" style="font-family:Shader;font-size:50px;letter-spacing:0px;text-anchor:end;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-        <text inkscape:label="{b.score | int} fit:165" x="1376" y="738" style="font-family:Shader;font-size:22px;letter-spacing:1px;text-anchor:start;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>1,234,567</tspan></text>
-        <text inkscape:label="#misses-b" x="1376" y="774" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{b.misses} MISS</tspan></text>
-        <path inkscape:label="show:b.leading #lead-b" style="display:none" d="M1316,806 H1896 V812 H1316 Z" fill="url(#cream)"/>
+        <path inkscape:label="glass" d="M1288,650 H1904 V1068 H1312 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+        <circle cx="1808" cy="748" r="68" fill="#1a0309"/>
+        <text inkscape:label="{b.name | first} hide:b.players.1.avatar" x="1808" y="772" style="font-family:Shader;font-size:71px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:2.56;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+        <g clip-path="url(#avSoloB)"><image inkscape:label="img:b.players.1.avatar" x="1740" y="680" width="136" height="136"/></g>
+        <circle cx="1808" cy="748" r="69" fill="none" stroke="#2a0510" stroke-width="3"/>
+        <text x="1716" y="706" style="font-family:Geom Graphic;font-size:15px;letter-spacing:5px;text-anchor:end;fill:#2a0510;opacity:0.8"><tspan>ACCURACY</tspan></text>
+        <text inkscape:label="{b.acc | acc} fit:390 #acc-b" x="1720" y="790" style="font-family:Shader;font-size:80px;letter-spacing:0px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:2.88;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>97.43%</tspan></text>
+        <rect x="1340" y="842" width="536" height="2" fill="#2a0510" opacity=".35"/>
+        <text x="1876" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:end;fill:#2a0510;opacity:0.8"><tspan>SCORE</tspan></text>
+        <text inkscape:label="{b.score | int} fit:250" x="1876" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>1,234,567</tspan></text>
+        <text x="1594" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:end;fill:#2a0510;opacity:0.8"><tspan>COMBO</tspan></text>
+        <text inkscape:label="{b.combo} fit:130" x="1594" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>412</tspan></text>
+        <text x="1432" y="882" style="font-family:Geom Graphic;font-size:14px;letter-spacing:4px;text-anchor:end;fill:#2a0510;opacity:0.8"><tspan>MISSES</tspan></text>
+        <text inkscape:label="{b.misses} #misses-b" x="1432" y="930" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>0</tspan></text>
+        <g inkscape:label="show:diff&lt;0 #lead-b" style="display:none">
+          <rect x="1626" y="978" width="250" height="44" rx="6" fill="#5e0c23"/>
+          <text x="1751" y="1008" style="font-family:Shader;font-size:18px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke"><tspan>IN THE LEAD</tspan></text>
+        </g>
       </g>
+    </g>
+    <g inkscape:label="centre">
+      <path inkscape:label="glass" d="M648,650 H1272 L1296,1068 H624 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
       <g inkscape:label="tug">
-        <rect x="640" y="740" width="640" height="10" rx="5" fill="#12020a" stroke="#5e0c23" stroke-width="2"/>
-        <rect inkscape:label="bar:tug" x="640" y="740" width="640" height="10" rx="5" fill="url(#cream)"/>
-        <rect x="958" y="732" width="4" height="26" fill="#5e0c23"/>
+        <rect x="700" y="676" width="520" height="12" rx="6" fill="#f2ead8"/>
+        <rect inkscape:label="bar:tug" x="700" y="676" width="520" height="12" rx="6" fill="#b3233f"/>
+        <rect x="958" y="668" width="4" height="28" fill="url(#cream)"/>
       </g>
-    </g>
-    <g inkscape:label="song-info show:map">
-      <g><path d="M720,888 H1220 L1200,1036 H700 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M720,888 H1220 L1200,1036 H700 Z" fill="url(#dots)" opacity=".45"/></g>
-      <g clip-path="url(#coverClip)"><image inkscape:label="img:map.cover" x="736" y="902" width="120" height="120"/></g>
-      <rect x="736" y="902" width="120" height="120" rx="10" fill="none" stroke="url(#cream)" stroke-width="2"/>
-      <text inkscape:label="{map.name | upper} fit:320" x="874" y="934" style="font-family:Shader;font-size:24px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
-      <text inkscape:label="{map.artist} fit:320" x="874" y="962" style="font-family:Geom Graphic;font-size:18px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist</tspan></text>
-      <text x="874" y="990" style="font-family:Geom Graphic;font-size:18px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{map.difficulty} · {map.category}</tspan></text>
-      <rect x="874" y="1004" width="310" height="6" rx="3" fill="#12020a"/>
-      <rect inkscape:label="bar:map.progress" x="874" y="1004" width="310" height="6" rx="3" fill="url(#cream)"/>
-      <text inkscape:label="{map.time}" x="874" y="1028" style="font-family:Geom Graphic;font-size:14px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.7"><tspan>0:00</tspan></text>
-      <text inkscape:label="{map.length}" x="1184" y="1028" style="font-family:Geom Graphic;font-size:14px;letter-spacing:1px;text-anchor:end;fill:url(#cream);opacity:0.7"><tspan>3:35</tspan></text>
-    </g>
-    <g inkscape:label="result show:match.phase=finished|done" style="display:none">
-      <g><path d="M560,820 H1360 L1340,872 H540 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M560,820 H1360 L1340,872 H540 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="fit:760" x="950" y="856" style="font-family:Shader;font-size:30px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{last.winnerName | upper} TAKES MAP {last.index}</tspan></text>
+      <text inkscape:label="show:diff&gt;0 hide:match.phase=finished|done fit:560" x="960" y="730" style="font-family:Shader;font-size:18px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{a.name | upper} LEADS BY {diff | gap}</tspan></text>
+      <text inkscape:label="show:diff&lt;0 hide:match.phase=finished|done fit:560" x="960" y="730" style="font-family:Shader;font-size:18px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{b.name | upper} LEADS BY {diff | gap}</tspan></text>
+      <g inkscape:label="result show:match.phase=finished|done" style="display:none">
+        <text inkscape:label="fit:560" x="960" y="732" style="font-family:Shader;font-size:22px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.79;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{last.winnerName | upper} TAKES MAP {last.index}</tspan></text>
+      </g>
+      <g inkscape:label="song-info show:map">
+        <rect x="672" y="768" width="264" height="264" rx="12" fill="#12020a"/>
+        <g clip-path="url(#coverSolo)"><image inkscape:label="img:map.cover" x="672" y="768" width="264" height="264"/></g>
+        <rect x="672" y="768" width="264" height="264" rx="12" fill="none" stroke="url(#cream)" stroke-width="2"/>
+        <text inkscape:label="show:map.pickedBy fit:290" x="964" y="792" style="font-family:Geom Graphic;font-size:15px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>MAP {match.mapNumber} · PICKED BY {map.pickedByName | upper}</tspan></text>
+        <text inkscape:label="hide:map.pickedBy fit:290" x="964" y="792" style="font-family:Geom Graphic;font-size:15px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>MAP {match.mapNumber} · TIEBREAKER</tspan></text>
+        <text inkscape:label="{map.name | upper} fit:290" x="964" y="838" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
+        <text inkscape:label="{map.artist} fit:290" x="964" y="872" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
+        <text inkscape:label="show:map.mapper fit:290" x="964" y="902" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
+        <text inkscape:label="fit:290" x="964" y="934" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category}</tspan></text>
+        <text inkscape:label="show:map.bpm" x="964" y="964" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.bpm} BPM</tspan></text>
+        <rect x="964" y="992" width="290" height="8" rx="4" fill="#12020a"/>
+        <rect inkscape:label="bar:map.progress" x="964" y="992" width="290" height="8" rx="4" fill="url(#cream)"/>
+        <text inkscape:label="{map.time}" x="964" y="1024" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.75"><tspan>0:00</tspan></text>
+        <text inkscape:label="{map.length}" x="1254" y="1024" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:end;fill:url(#cream);opacity:0.75"><tspan>3:35</tspan></text>
+      </g>
     </g>
   </g>
 
   <g inkscape:groupmode="layer" inkscape:label="team hide:match.solo" style="display:none">
-    <rect inkscape:label="feed:a1" x="24" y="132" width="752" height="423" rx="14"/>
-    <path d="M38,128 H762 A18,18 0 0 1 780,146 V541 A18,18 0 0 1 762,559 H38 A18,18 0 0 1 20,541 V146 A18,18 0 0 1 38,128 Z" fill="none" stroke="url(#frameGradTeam)" stroke-width="8"/>
-    <rect inkscape:label="feed:a2" x="24" y="571" width="752" height="423" rx="14"/>
-    <path d="M38,567 H762 A18,18 0 0 1 780,585 V980 A18,18 0 0 1 762,998 H38 A18,18 0 0 1 20,980 V585 A18,18 0 0 1 38,567 Z" fill="none" stroke="url(#frameGradTeam)" stroke-width="8"/>
-    <rect inkscape:label="feed:b1" x="1144" y="132" width="752" height="423" rx="14"/>
-    <path d="M1158,128 H1882 A18,18 0 0 1 1900,146 V541 A18,18 0 0 1 1882,559 H1158 A18,18 0 0 1 1140,541 V146 A18,18 0 0 1 1158,128 Z" fill="none" stroke="url(#frameGradTeam)" stroke-width="8"/>
-    <rect inkscape:label="feed:b2" x="1144" y="571" width="752" height="423" rx="14"/>
-    <path d="M1158,567 H1882 A18,18 0 0 1 1900,585 V980 A18,18 0 0 1 1882,998 H1158 A18,18 0 0 1 1140,980 V585 A18,18 0 0 1 1158,567 Z" fill="none" stroke="url(#frameGradTeam)" stroke-width="8"/>
+    <rect inkscape:label="feed:a1" x="16" y="102" width="832" height="468" rx="14"/>
+    <path d="M30,99 H834 A17,17 0 0 1 851,116 V556 A17,17 0 0 1 834,573 H30 A17,17 0 0 1 13,556 V116 A17,17 0 0 1 30,99 Z" fill="none" stroke="url(#frameA)" stroke-width="6"/>
+    <rect inkscape:label="feed:a2" x="16" y="584" width="832" height="468" rx="14"/>
+    <path d="M30,581 H834 A17,17 0 0 1 851,598 V1038 A17,17 0 0 1 834,1055 H30 A17,17 0 0 1 13,1038 V598 A17,17 0 0 1 30,581 Z" fill="none" stroke="url(#frameA)" stroke-width="6"/>
+    <rect inkscape:label="feed:b1" x="1072" y="102" width="832" height="468" rx="14"/>
+    <path d="M1086,99 H1890 A17,17 0 0 1 1907,116 V556 A17,17 0 0 1 1890,573 H1086 A17,17 0 0 1 1069,556 V116 A17,17 0 0 1 1086,99 Z" fill="none" stroke="url(#frameB)" stroke-width="6"/>
+    <rect inkscape:label="feed:b2" x="1072" y="584" width="832" height="468" rx="14"/>
+    <path d="M1086,581 H1890 A17,17 0 0 1 1907,598 V1038 A17,17 0 0 1 1890,1055 H1086 A17,17 0 0 1 1069,1038 V598 A17,17 0 0 1 1086,581 Z" fill="none" stroke="url(#frameB)" stroke-width="6"/>
+    <!-- each player's numbers on the corner of their own video; the second copy sits on the second video (match.rules.yaml: repeat: a.players: dy) -->
     <g inkscape:label="repeat:a.players">
       <g inkscape:label="player-a">
-        <g><path d="M792,150 H1128 V320 H792 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M792,150 H1128 V320 H792 Z" fill="url(#dots)" opacity=".45"/></g>
-        <rect x="792" y="150" width="8" height="170" fill="url(#cream)"/>
-        <text inkscape:label="{item.name | upper} fit:300" x="960" y="190" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
-        <text inkscape:label="{item.acc | acc} fit:300" x="960" y="254" style="font-family:Shader;font-size:50px;letter-spacing:0px;text-anchor:middle;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-        <text x="960" y="296" style="font-family:Shader;font-size:18px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{item.score | int} · {item.misses} MISS</tspan></text>
+        <path d="M16,498 H612 L588,570 H30 A14,14 0 0 1 16,556 Z" fill="url(#chipMaroon)" stroke="#f2ead8" stroke-opacity=".35" stroke-width="1"/>
+        <circle cx="56" cy="534" r="25" fill="#1a0309"/>
+        <text inkscape:label="{item.name | first} hide:item.avatar" x="56" y="543" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+        <g clip-path="url(#avA)"><image inkscape:label="img:item.avatar" x="31" y="509" width="50" height="50"/></g>
+        <circle cx="56" cy="534" r="26" fill="none" stroke="url(#cream)" stroke-width="2"/>
+        <text inkscape:label="{item.name | upper} fit:240" x="94" y="529" style="font-family:Shader;font-size:21px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.76;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+        <text inkscape:label="fit:250" x="94" y="554" style="font-family:Geom Graphic;font-size:14px;letter-spacing:0.5px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>{item.score | int} · {item.combo}x · {item.misses} MISS</tspan></text>
+        <text inkscape:label="{item.acc | acc}" x="576" y="548" style="font-family:Shader;font-size:36px;letter-spacing:0px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
       </g>
     </g>
     <g inkscape:label="repeat:b.players">
       <g inkscape:label="player-b">
-        <g><path d="M792,352 H1128 V522 H792 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M792,352 H1128 V522 H792 Z" fill="url(#dots)" opacity=".45"/></g>
-        <rect x="1120" y="352" width="8" height="170" fill="url(#cream)"/>
-        <text inkscape:label="{item.name | upper} fit:300" x="960" y="392" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
-        <text inkscape:label="{item.acc | acc} fit:300" x="960" y="456" style="font-family:Shader;font-size:50px;letter-spacing:0px;text-anchor:middle;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-        <text x="960" y="498" style="font-family:Shader;font-size:18px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{item.score | int} · {item.misses} MISS</tspan></text>
+        <path d="M1308,498 H1904 V556 A14,14 0 0 1 1890,570 H1332 Z" fill="url(#chipCream)" stroke="#2a0510" stroke-opacity=".35" stroke-width="1"/>
+        <circle cx="1864" cy="534" r="25" fill="#1a0309"/>
+        <text inkscape:label="{item.name | first} hide:item.avatar" x="1864" y="543" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke"><tspan>A</tspan></text>
+        <g clip-path="url(#avB)"><image inkscape:label="img:item.avatar" x="1839" y="509" width="50" height="50"/></g>
+        <circle cx="1864" cy="534" r="26" fill="none" stroke="#2a0510" stroke-width="2"/>
+        <text inkscape:label="{item.name | upper} fit:240" x="1826" y="529" style="font-family:Shader;font-size:21px;letter-spacing:1px;text-anchor:end;fill:#2a0510;stroke:#2a0510;stroke-width:0.76;stroke-linejoin:miter;paint-order:stroke"><tspan>PLAYER</tspan></text>
+        <text inkscape:label="fit:250" x="1826" y="554" style="font-family:Geom Graphic;font-size:14px;letter-spacing:0.5px;text-anchor:end;fill:#2a0510;opacity:0.9"><tspan>{item.score | int} · {item.combo}x · {item.misses} MISS</tspan></text>
+        <text inkscape:label="{item.acc | acc}" x="1344" y="548" style="font-family:Shader;font-size:36px;letter-spacing:0px;text-anchor:start;fill:#2a0510;stroke:#2a0510;stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>97.43%</tspan></text>
       </g>
     </g>
 
-    <g inkscape:label="team-totals">
-      <g><path d="M24,1008 H700 L690,1074 H34 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M24,1008 H700 L690,1074 H34 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="{a.name | upper} fit:380" x="48" y="1052" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{a.name | upper}</tspan></text>
-      <text inkscape:label="{a.acc | acc} #acc-a-team" x="676" y="1056" style="font-family:Shader;font-size:34px;letter-spacing:1px;text-anchor:end;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-      <g><path d="M1220,1008 H1896 L1886,1074 H1230 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1220,1008 H1896 L1886,1074 H1230 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="{b.acc | acc} #acc-b-team" x="1244" y="1056" style="font-family:Shader;font-size:34px;letter-spacing:1px;text-anchor:start;fill:url(#cream);font-feature-settings:'tnum';stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
-      <text inkscape:label="{b.name | upper} fit:380" x="1872" y="1052" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{b.name | upper}</tspan></text>
-    </g>
     <g inkscape:label="song-team show:map">
-      <g><path d="M716,1004 H1204 L1196,1076 H724 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M716,1004 H1204 L1196,1076 H724 Z" fill="url(#dots)" opacity=".45"/></g>
-      <g clip-path="url(#coverClipTeam)"><image inkscape:label="img:map.cover" x="792" y="1008" width="62" height="62"/></g>
-      <text inkscape:label="{map.name | upper} fit:320" x="868" y="1034" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
-      <rect x="868" y="1048" width="300" height="5" rx="2" fill="#12020a"/>
-      <rect inkscape:label="bar:map.progress" x="868" y="1048" width="300" height="5" rx="2" fill="url(#cream)"/>
-      <text x="868" y="1068" style="font-family:Geom Graphic;font-size:13px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.75"><tspan>{map.difficulty} · {map.time} / {map.length}</tspan></text>
+      <path inkscape:label="glass" d="M872,102 H1048 A12,12 0 0 1 1060,114 V558 A12,12 0 0 1 1048,570 H872 A12,12 0 0 1 860,558 V114 A12,12 0 0 1 872,102 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text x="960" y="138" style="font-family:Shader;font-size:22px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.79;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MAP {match.mapNumber}</tspan></text>
+      <text inkscape:label="show:map.pickedBy fit:180" x="960" y="161" style="font-family:Geom Graphic;font-size:12px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>PICKED BY {map.pickedByName | upper}</tspan></text>
+      <text inkscape:label="hide:map.pickedBy" x="960" y="161" style="font-family:Geom Graphic;font-size:12px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>TIEBREAKER</tspan></text>
+      <rect x="872" y="176" width="176" height="176" rx="10" fill="#12020a"/>
+      <g clip-path="url(#coverTeam)"><image inkscape:label="img:map.cover" x="872" y="176" width="176" height="176"/></g>
+      <rect x="872" y="176" width="176" height="176" rx="10" fill="none" stroke="url(#cream)" stroke-width="2"/>
+      <text inkscape:label="{map.name | upper} fit:180" x="960" y="384" style="font-family:Shader;font-size:18px;letter-spacing:0.5px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
+      <text inkscape:label="{map.artist} fit:180" x="960" y="408" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
+      <text inkscape:label="show:map.mapper fit:180" x="960" y="432" style="font-family:Geom Graphic;font-size:13px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
+      <text inkscape:label="fit:180" x="960" y="462" style="font-family:Geom Graphic;font-size:14px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.9"><tspan>{map.difficulty}</tspan></text>
+      <text inkscape:label="show:map.category fit:180" x="960" y="484" style="font-family:Geom Graphic;font-size:13px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.8"><tspan>{map.category}</tspan></text>
+      <rect x="872" y="516" width="176" height="6" rx="3" fill="#12020a"/>
+      <rect inkscape:label="bar:map.progress" x="872" y="516" width="176" height="6" rx="3" fill="url(#cream)"/>
+      <text inkscape:label="{map.time}" x="872" y="546" style="font-family:Geom Graphic;font-size:13px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.75"><tspan>0:00</tspan></text>
+      <text inkscape:label="{map.length}" x="1048" y="546" style="font-family:Geom Graphic;font-size:13px;letter-spacing:1px;text-anchor:end;fill:url(#cream);opacity:0.75"><tspan>3:35</tspan></text>
     </g>
-    <g inkscape:label="result-team show:match.phase=finished|done" style="display:none">
-      <g><path d="M560,516 H1360 L1340,568 H540 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M560,516 H1360 L1340,568 H540 Z" fill="url(#dots)" opacity=".45"/></g>
-      <text inkscape:label="fit:760" x="950" y="552" style="font-family:Shader;font-size:30px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>{last.winnerName | upper} TAKES MAP {last.index}</tspan></text>
+    <g inkscape:label="totals">
+      <path inkscape:label="glass" d="M872,584 H1048 A12,12 0 0 1 1060,596 V1040 A12,12 0 0 1 1048,1052 H872 A12,12 0 0 1 860,1040 V596 A12,12 0 0 1 872,584 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text x="960" y="616" style="font-family:Geom Graphic;font-size:12px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>TEAM ACCURACY</tspan></text>
+      <rect x="872" y="630" width="176" height="52" rx="6" fill="url(#chipMaroon)" stroke="#f2ead8" stroke-opacity=".35" stroke-width="1"/>
+      <text inkscape:label="{a.acc | acc} #acc-a-team" x="960" y="667" style="font-family:Shader;font-size:27px;letter-spacing:0px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.97;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>97.43%</tspan></text>
+      <g inkscape:label="show:diff&gt;0" style="display:none">
+        <path d="M948,706 L960,690 L972,706 Z" fill="url(#cream)"/>
+        <text x="960" y="728" style="font-family:Shader;font-size:16px;letter-spacing:0px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.58;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>+{diff | gap}</tspan></text>
+      </g>
+      <g inkscape:label="show:diff&lt;0" style="display:none">
+        <text x="960" y="708" style="font-family:Shader;font-size:16px;letter-spacing:0px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.58;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>+{diff | gap}</tspan></text>
+        <path d="M948,716 L960,732 L972,716 Z" fill="url(#cream)"/>
+      </g>
+      <rect x="872" y="740" width="176" height="52" rx="6" fill="url(#chipCream)"/>
+      <text inkscape:label="{b.acc | acc} #acc-b-team" x="960" y="777" style="font-family:Shader;font-size:27px;letter-spacing:0px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.97;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'"><tspan>97.43%</tspan></text>
+      <g inkscape:label="tug">
+        <rect x="872" y="814" width="176" height="10" rx="5" fill="#f2ead8"/>
+        <rect inkscape:label="bar:tug" x="872" y="814" width="176" height="10" rx="5" fill="#b3233f"/>
+        <rect x="958" y="808" width="4" height="22" fill="url(#cream)"/>
+      </g>
+      <text x="960" y="866" style="font-family:Geom Graphic;font-size:12px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>TEAM SCORE</tspan></text>
+      <rect x="872" y="880" width="6" height="22" fill="#b3233f" stroke="url(#cream)" stroke-width="1"/>
+      <text inkscape:label="{a.score | int} fit:160" x="1048" y="899" style="font-family:Shader;font-size:19px;letter-spacing:0px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:0.68;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>1,234,567</tspan></text>
+      <rect x="872" y="912" width="6" height="22" fill="#f2ead8"/>
+      <text inkscape:label="{b.score | int} fit:160" x="1048" y="931" style="font-family:Shader;font-size:19px;letter-spacing:0px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:0.68;stroke-linejoin:miter;paint-order:stroke;font-feature-settings:'tnum'" filter="url(#textShadow)"><tspan>1,234,567</tspan></text>
+      <g inkscape:label="brand hide:match.phase=finished|done">
+        <path transform="translate(929 962) scale(0.13346)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
+      </g>
+      <g inkscape:label="result-team show:match.phase=finished|done" style="display:none">
+        <rect x="868" y="956" width="184" height="84" rx="8" fill="url(#cream)"/>
+        <text inkscape:label="{last.winnerName | upper} fit:172" x="960" y="990" style="font-family:Shader;font-size:18px;letter-spacing:0.5px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.65;stroke-linejoin:miter;paint-order:stroke"><tspan>TEAM</tspan></text>
+        <text x="960" y="1022" style="font-family:Shader;font-size:15px;letter-spacing:1px;text-anchor:middle;fill:#2a0510;stroke:#2a0510;stroke-width:0.54;stroke-linejoin:miter;paint-order:stroke"><tspan>TAKES MAP {last.index}</tspan></text>
+      </g>
     </g>
   </g>
 </svg>

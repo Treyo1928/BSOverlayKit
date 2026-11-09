@@ -25,6 +25,8 @@ interface PlannedMap {
   order: number; poolMapId: string; matchMapId: string; isTiebreaker: boolean; pickedByTeamId: string | null; map: PoolMap;
   lineups: Record<string, string[]>; scores: Record<string, Run[]>; goes: Record<string, Go[]>;
   scoresClosed: boolean; result: { winnerId: string | null; decided: boolean };
+  // a map run through TA: who asked for the start, and how far TA is ("loading" / "playing" / "finished" / "error")
+  start?: { requestedAt?: string | null; status?: { phase?: string | null; players?: { playerId: string; state: string }[] } | null } | null;
 }
 interface Team { id: string; name: string; color: string; players: { id: string; name: string; avatar: string | null }[] }
 interface Match {
@@ -201,6 +203,9 @@ export class BscsSource implements DataSource {
       if (picksLeft(prev) > 0 && picksLeft(m) <= 0) this.#event({ name: "picksDone" });
       for (const pm of m.plannedMaps) {
         const was = prev.plannedMaps.find((p) => p.matchMapId === pm.matchMapId);
+        // TA says every player is done with the song (finished, failed or gone), before the referee closes the map
+        const over = (p?: PlannedMap) => (p?.start?.status?.phase === "finished" ? p.start.requestedAt ?? "" : null);
+        if (!pm.scoresClosed && over(pm) !== null && over(pm) !== over(was)) this.#event({ name: "songEnd" });
         if (pm.scoresClosed && !was?.scoresClosed) {
           this.#finishedUntil = Date.now() + RESULT_HOLD_MS;
           clearTimeout(this.#holdTimer);
@@ -265,6 +270,7 @@ export class BscsSource implements DataSource {
       const other = lineupMap ? goOf(lineupMap, s === "a" ? "b" : "a") : null;
       return {
         ...blankSide(), name: team.name, initials: team.name.slice(0, 1), points: m.scoreboard[s],
+        avatar: perMap === 1 ? playersOf(s)[0]?.avatar ?? "" : "",
         players: playersOf(s), roster: team.players.map((p) => p.name),
         acc: go?.accEquivalent ?? null, score: (go?.runs ?? []).reduce((t, r) => t + (r.score || 0), 0),
         finished: !!go?.complete, leading: (go?.accEquivalent ?? 0) > (other?.accEquivalent ?? 0), winner: winner === s,
@@ -324,7 +330,10 @@ export class BscsSource implements DataSource {
       },
       a, b, diff,
       tug: 0.5 + Math.max(-1, Math.min(1, diff / 0.02)) / 2,
-      map: shown ? { ...mapData(shown.map), progress: shown.scoresClosed ? 1 : 0, time: fmtTime(0) } : null,
+      map: shown ? {
+        ...mapData(shown.map), progress: shown.scoresClosed ? 1 : 0, time: fmtTime(0),
+        pickedBy: sideOf(shown.pickedByTeamId), pickedByName: nameOf(sideOf(shown.pickedByTeamId)), tiebreaker: !!shown.isTiebreaker,
+      } : null,
       pool,
       picks: {
         next: nextSide && m.pending ? { type: m.pending.type === "PICK" ? "pick" : "ban", verb: m.pending.type === "PICK" ? "picking" : "banning", by: nextSide, byName: nameOf(nextSide) } : null,

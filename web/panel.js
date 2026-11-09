@@ -22,7 +22,7 @@ function connect() {
 }
 connect();
 
-let previewSet = false;
+let previewSet = false, upShown = "";
 function render() {
   const sh = S.show;
   $("#scenes").innerHTML = Object.entries(S.scenes).map(([id, label]) => `<button data-scene="${id}" class="${sh.scene === id ? "on" : ""}">${label[0].toUpperCase() + label.slice(1)}</button>`).join("");
@@ -52,6 +52,13 @@ function render() {
     fit();
   }
   renderPlaylist();
+  // "up next": what is on stream now, and team names to pick from (the followed match and its bracket)
+  const un = sh.upNext ?? {};
+  $("#upState").textContent = un.a && un.b ? `showing: ${un.a} vs ${un.b}${un.text ? ` · ${un.text}` : ""}` : un.text || un.a || un.b ? `showing: ${un.text || un.a || un.b}` : "hidden";
+  const br = S.live?.bracket;
+  const names = new Set([S.live?.a?.name, S.live?.b?.name, ...[...(br?.rounds ?? []), ...(br?.losers ?? [])].flatMap((r) => r.matches.flatMap((m) => [m.a, m.b]))].filter((n) => n && n !== "TBD"));
+  const opts = [...names].map((n) => `<option value="${esc(n)}">`).join("");
+  if ($("#teamNames").innerHTML !== opts) $("#teamNames").innerHTML = opts;
   $("#errors").innerHTML = S.errors.length ? `<div class="errors">${S.errors.map(esc).join("\n")}</div>` : "";
   if (editing()) return;
   $("#speed").value = /(\d+)× speed/.exec(S.source.status)?.[1] ?? 4;
@@ -63,6 +70,9 @@ function render() {
       <div><label>Handle</label><input data-c="${i}" data-k="handle" value="${esc(c.handle)}"></div></div>
     <label>Discord avatar (in Discord: right-click their picture → Copy Image Link)</label><input data-c="${i}" data-k="avatar" value="${esc(c.avatar)}" placeholder="https://cdn.discordapp.com/avatars/…">`).join("<hr style='border-color:#2a2a40'>");
   $("#header").value = sh.header ?? "";
+  const up = sh.upNext ?? {};
+  // only when it changed on the server: what you are typing stays until you press a button
+  if (JSON.stringify(up) !== upShown) { upShown = JSON.stringify(up); $("#upA").value = up.a ?? ""; $("#upB").value = up.b ?? ""; $("#upText").value = up.text ?? ""; }
   $("#brbTitle").value = sh.brb.title;
   $("#brbMsg").value = sh.brb.message;
   $("#ticker").value = sh.ticker.join("\n");
@@ -87,6 +97,8 @@ document.addEventListener("click", (e) => {
   if (t.dataset.scene) send("scene", { scene: t.dataset.scene });
   if (t.dataset.sim) send("source", { control: t.dataset.sim });
   if (t.dataset.brb) send("brb", { minutes: Number(t.dataset.brb) });
+  if (t.id === "upSet") send("upNext", { a: $("#upA").value, b: $("#upB").value, text: $("#upText").value });
+  if (t.id === "upClear") send("upNext", {});
   if (t.id === "copy") navigator.clipboard.writeText($("#obsUrl").value);
   if (t.id === "plAddBtn") { send("playlist", { op: "add", refs: $("#plAdd").value.split("\n") }); $("#plAdd").value = ""; }
   if (t.id === "plClear" && confirm("Remove every replay from the playlist?")) send("playlist", { op: "clear" });

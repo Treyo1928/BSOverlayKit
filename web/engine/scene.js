@@ -64,6 +64,10 @@ export class Scene {
     this.front = make(false);
     backHost.append(this.back);
     frontHost.append(this.front);
+    // glass shapes show this scene's background picture, blurred (the first picture in the back layer)
+    const bg = this.back.querySelector("image");
+    const bgSrc = bg?.getAttribute("href") ?? bg?.getAttribute("xlink:href");
+    this.env.glass = bgSrc ? { src: bgSrc, options: this.rules.glass ?? {} } : null;
     const ctxEnv = this.env;
     this.b = collect(this.back, ctxEnv);
     this.f = collect(this.front, ctxEnv);

@@ -6,10 +6,12 @@
   <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
   <defs>
     <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9cdb3"/><stop offset="1" stop-color="#d9c499"/></linearGradient>
-    <!-- the maroon swirl texture, stretched over each panel's box -->
-    <pattern id="swirl" patternContentUnits="objectBoundingBox" width="1" height="1">
-      <image href="panel-swirl.png" width="1" height="1" preserveAspectRatio="none"/>
-    </pattern>
+    <!-- frosted glass: a shape named "glass" shows the background blurred behind its own fill (docs/DESIGNING.md).
+         These are the tints: neutral, team A (maroon) and team B (cream), and the light edge. -->
+    <linearGradient id="glassTint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6e3d6" stop-opacity=".17"/><stop offset="1" stop-color="#3a0816" stop-opacity=".34"/></linearGradient>
+    <linearGradient id="glassMaroon" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a01c3c" stop-opacity=".74"/><stop offset="1" stop-color="#5e0c23" stop-opacity=".8"/></linearGradient>
+    <linearGradient id="glassCream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7f0df" stop-opacity=".9"/><stop offset="1" stop-color="#e4d6b6" stop-opacity=".86"/></linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3dc" stop-opacity=".6"/><stop offset="1" stop-color="#fff3dc" stop-opacity=".12"/></linearGradient>
     <!-- halftone dots laid over the panels -->
     <pattern id="dots" patternUnits="userSpaceOnUse" width="7" height="7">
       <circle cx="1.75" cy="1.75" r="1.35" fill="#000"/><circle cx="5.25" cy="5.25" r="1.35" fill="#000"/>
@@ -28,7 +30,7 @@
   <g inkscape:groupmode="layer" inkscape:label="header">
     <g inkscape:label="logo" transform="translate(71.1 44.1) scale(0.62)"><path inkscape:label="shield" fill="url(#cream)" fill-rule="evenodd" d="M3.87,3.87 L3.87,107.66 L62.87,140.78 L121.87,107.66 L121.87,3.87 L111.09,3.87 L111.09,101.32 L62.87,128.34 L14.66,101.32 L14.66,3.87 Z M21.26,3.87 L21.26,56.4 L81.52,90.41 L62.87,100.81 L42.57,89.52 L42.57,77.21 L21.26,65.28 L21.26,98.78 L62.87,122 L104.49,98.91 L104.49,81.27 L42.57,46.76 L42.57,38.26 L62.87,49.42 L82.41,38.64 L82.41,60.46 L104.49,72.77 L104.49,3.87 L62.87,26.97 Z"/><path inkscape:label="wordmark" fill="url(#cream)" fill-rule="evenodd" d="M389.62,23.85 L388.59,24.38 L388.24,25.12 L381.97,53.62 L382.62,54.18 L387.38,54.11 L387.99,53.62 L388.36,51.88 L389.12,51.19 L394.12,51.07 L394.82,51.38 L395.31,53.38 L396.12,54.05 L401.12,54.02 L401.66,53.38 L394.98,24.38 L394.38,23.91 Z M142.62,24.12 L142.21,24.88 L142.38,53.76 L143.62,54.18 L147.38,54.18 L148.21,53.62 L148.02,37.62 L148.38,36.59 L149.62,37.4 L151.12,40.68 L153.09,43.88 L153.62,44.07 L158.62,36.26 L159.02,37.12 L158.98,53.62 L159.62,54.15 L164.53,53.88 L164.71,24.38 L163.38,23.9 L158.62,24.27 L154.85,30.88 L153.38,32.4 L148.62,24.33 L147.38,23.9 Z M168.38,24.1 L168.06,53.38 L168.88,54.12 L173.38,54.15 L174.11,53.12 L174.1,24.62 L173.38,23.9 Z M181.12,24.05 L177.82,27.62 L177.95,38.62 L181.38,41.89 L188.94,42.12 L189.26,47.38 L188.38,48.18 L184.38,48.16 L183.39,47.62 L183.54,45.38 L182.82,44.38 L178.38,44.3 L177.71,45.62 L177.9,50.62 L181.38,54.08 L191.62,54.04 L195.12,50.38 L195,39.38 L191.42,36.12 L183.62,35.78 L183.3,30.62 L184.38,29.79 L188.62,29.82 L189.2,30.38 L189.11,32.62 L189.62,33.37 L194.38,33.71 L195.21,32.38 L195.06,27.38 L191.62,23.99 Z M202.12,24.08 L198.82,27.62 L198.97,38.62 L202.42,41.88 L210.02,42.12 L210.43,42.88 L210.45,47.38 L209.38,48.19 L205.38,48.15 L204.61,47.62 L204.75,45.38 L203.91,44.38 L199.38,44.29 L198.68,45.62 L198.9,50.62 L202.38,54.06 L212.62,54.06 L216.18,50.38 L216.05,39.38 L212.49,36.12 L204.92,35.88 L204.54,35.12 L204.52,30.62 L205.38,29.79 L209.62,29.79 L210.45,30.62 L210.24,32.62 L210.88,33.4 L215.38,33.71 L216.32,32.38 L216.11,27.38 L212.62,23.97 Z M220.12,24.08 L219.81,24.88 L219.82,53.38 L220.62,54.16 L224.88,54.12 L225.86,53.38 L225.84,24.62 L224.62,23.91 Z M232.62,24.06 L229.17,27.62 L229.22,38.12 L232.88,41.84 L240.68,42.12 L240.99,47.38 L240.38,48.14 L235.62,48.15 L235.04,47.62 L235.07,45.38 L234.62,44.32 L230.12,44.31 L229.08,45.38 L229.19,50.38 L232.88,54.04 L243.38,53.97 L246.85,50.38 L246.83,39.88 L243.12,36.18 L235.38,35.98 L235.03,35.38 L235,30.62 L235.62,29.83 L240.38,29.83 L240.95,30.38 L240.92,32.62 L241.38,33.61 L246.12,33.58 L246.95,32.62 L246.87,27.62 L243.38,24.05 Z M253.62,24.1 L250.28,27.62 L250.23,37.88 L254.12,41.88 L261.79,42.12 L262.03,47.38 L261.38,48.16 L256.62,48.13 L256.07,47.62 L256.1,45.38 L255.62,44.32 L251.12,44.33 L250.16,45.38 L250.3,50.38 L253.38,53.8 L254.38,54.13 L264.62,53.91 L267.93,50.38 L267.84,39.62 L264.38,36.24 L256.38,35.95 L256.02,30.62 L256.62,29.85 L261.38,29.81 L261.98,30.38 L262.38,33.52 L267.14,33.62 L267.99,32.62 L267.88,27.43 L264.38,24.04 Z M271.88,24.05 L271.27,24.88 L271.26,53.38 L272.38,54.15 L276.38,54.18 L277.29,53.12 L277.26,24.62 L276.38,23.9 Z M281.12,24.09 L280.84,53.38 L281.62,54.16 L285.62,54.16 L286.82,53.38 L286.8,42.38 L287.62,41.93 L294.62,41.9 L298.06,38.62 L298.25,27.88 L297.81,26.88 L294.62,23.95 Z M302.12,24.12 L301.91,53.38 L302.62,54.15 L307.12,54.11 L307.92,53.38 L307.9,42.38 L308.62,41.94 L315.62,41.91 L318.96,38.88 L319.49,37.38 L319.4,28.12 L318.62,26.51 L315.62,23.94 Z M323.38,23.96 L322.95,24.88 L322.96,53.38 L323.62,54.14 L328.38,54.12 L328.99,53.38 L328.97,24.62 L328.38,23.94 Z M347.12,24.03 L343.74,27.62 L343.83,38.38 L347.38,41.9 L354.88,42.11 L355.16,47.38 L354.38,48.19 L349.88,48.06 L349.25,47.62 L349.36,45.38 L348.78,44.38 L344.38,44.29 L343.56,45.62 L343.84,50.62 L347.38,54.1 L357.62,54.02 L361.07,50.38 L360.96,39.38 L357.38,36.14 L350.62,36.11 L349.38,35.71 L349.19,30.62 L350.38,29.78 L354.62,29.83 L355.15,30.62 L355.1,32.88 L355.62,33.49 L360.38,33.71 L361.09,32.62 L361.02,27.38 L357.62,24.01 Z M365.12,24.06 L364.76,24.62 L364.74,28.38 L365.12,29.62 L369.62,29.79 L370.48,30.62 L370.34,53.62 L371.38,54.16 L375.62,54.13 L376.37,53.38 L376.19,30.62 L377.38,29.78 L381.83,29.62 L382.09,24.38 L381.38,23.9 Z M401.62,24.04 L401.12,24.88 L401.38,29.34 L402.38,29.82 L406.38,29.78 L407.1,30.62 L407.06,53.62 L407.62,54.12 L412.62,54.06 L413,53.38 L412.97,30.38 L413.62,29.79 L417.38,29.84 L418.62,29.42 L418.83,24.38 L417.38,23.9 Z M422.62,24.1 L422.19,24.88 L422.25,53.62 L423.62,54.18 L437.62,54.11 L438.19,53.12 L438.17,49.38 L437.62,48.19 L429.38,48.18 L428.11,47.62 L428.19,42.38 L433.59,41.62 L433.89,37.62 L433.71,36.62 L433.12,36.18 L428.35,35.88 L428.06,30.62 L429.12,29.8 L437.62,29.78 L438.19,28.38 L438.11,24.38 L437.38,23.9 Z M287.23,29.88 L291.38,29.76 L292.59,30.38 L292.38,35.75 L287.62,36.11 L286.88,35.74 L286.66,30.62 Z M308.3,29.88 L312.38,29.76 L313.62,30.14 L313.62,35.74 L312.38,36.11 L308.07,35.88 L307.81,30.62 Z M391.3,38.38 L392.24,38.88 L393.51,44.38 L392.62,45.22 L390.62,45.27 L390.01,44.62 Z M143.38,62.86 L142.62,63.88 L142.66,125.62 L143.88,126.25 L175.62,126.12 L176.02,125.12 L176.02,114.88 L175.62,114.01 L155.88,113.97 L155.08,113.62 L155.06,101.12 L155.88,100.61 L165.38,100.7 L165.97,100.38 L166.54,99.38 L166.53,89.62 L165.38,88.29 L155.88,88.36 L155.12,87.98 L154.93,76.62 L155.06,75.38 L155.62,75.03 L175.62,74.95 L176,74.12 L175.88,63.15 L174.38,62.82 Z M191.38,62.85 L190.34,63.12 L183.18,70.62 L183.17,92.62 L190.08,99.88 L191.41,100.62 L206.38,100.58 L207.62,100.94 L207.95,101.62 L207.88,113.02 L207.62,113.66 L206.62,113.94 L196.38,113.93 L195.6,112.88 L195.73,106.62 L195.4,106.12 L183.88,105.93 L183.14,106.62 L183.19,118.38 L190.37,125.88 L191.38,126.2 L212.62,126.06 L220.01,118.62 L219.93,95.62 L212.38,88.39 L196.06,88.12 L195.49,87.38 L195.58,76.12 L195.82,75.38 L196.62,75.02 L207.38,75.17 L207.9,76.12 L207.81,82.38 L208.31,83.12 L219.38,83.2 L220.09,82.38 L220.02,70.38 L212.62,62.95 Z M228.38,62.84 L227.34,63.88 L227.32,125.38 L228.62,126.25 L238.88,126.2 L239.91,125.38 L239.82,101.38 L240.88,100.61 L256.38,100.63 L263.8,93.62 L264.14,92.12 L264.11,70.62 L263.37,69.38 L256.62,62.9 Z M279.62,62.84 L278.38,63.31 L276.38,65.27 L272.28,69.38 L271.69,70.62 L271.78,118.62 L274.38,121.73 L279.38,126.18 L300.62,126.15 L307.58,119.62 L308.25,118.12 L308.16,70.38 L303.62,65.34 L300.62,62.88 Z M316.62,62.82 L315.78,63.88 L315.88,125.7 L316.88,126.24 L326.38,126.24 L327.88,125.81 L327.89,101.62 L328.38,100.78 L330.12,100.58 L331.62,100.89 L331.97,101.38 L339.15,125.88 L340.62,126.24 L351.62,126.09 L351.92,125.38 L351.12,124.05 L344.92,101.12 L345.12,100.23 L351.88,93.8 L352.33,92.62 L352.34,70.88 L351.88,69.56 L345.62,63.25 L344.62,62.87 Z M360.38,62.87 L359.75,63.88 L360.08,74.88 L371.12,75.05 L371.92,75.62 L371.98,125.62 L372.88,126.24 L383.62,126.2 L384.24,125.12 L384.16,75.88 L384.38,75.34 L385.38,75.05 L395.38,75.07 L396.34,74.62 L396.53,63.62 L395.38,62.81 Z M411.62,62.87 L408.56,65.38 L403.92,70.38 L404.01,93.12 L410.38,99.76 L411.84,100.62 L427.62,100.71 L428.2,101.62 L428.14,113.12 L427.38,113.96 L416.62,113.9 L416.04,113.12 L416.07,106.62 L415.62,105.9 L404.38,105.87 L403.82,106.62 L403.93,118.62 L411.38,126.09 L432.62,126.18 L434.62,124.81 L439.82,119.62 L440.51,118.38 L440.65,96.38 L439.96,95.12 L433.94,89.12 L432.62,88.35 L416.38,88.18 L415.99,87.38 L416.04,75.88 L416.88,75.05 L427.62,75.07 L428.16,75.88 L428.38,82.98 L439.62,83.19 L440.65,82.38 L440.54,70.62 L439.82,69.38 L433.62,63.2 L432.62,62.86 Z M240.25,75.12 L251.12,75.03 L251.88,75.37 L252.03,87.38 L251.62,88.2 L240.88,88.35 L239.94,87.88 L239.76,76.62 Z M284.27,75.12 L295.12,75.04 L295.95,75.62 L296.01,112.38 L295.88,113.53 L295.38,113.92 L284.62,113.95 L283.94,113.38 L283.84,76.62 Z M328.29,75.12 L339.88,75.29 L340.09,87.12 L339.62,88.23 L329.12,88.35 L328.12,88 L327.9,76.12 Z"/></g>
     <g inkscape:label="title">
-      <g><path d="M560,52 H1360 L1342,124 H542 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M560,52 H1360 L1342,124 H542 Z" fill="url(#dots)" opacity=".45"/></g>
+      <path inkscape:label="glass" d="M560,52 H1360 L1342,124 H542 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
       <text inkscape:label="{bracket.name | upper} fit:620" x="951" y="98" style="font-family:Shader;font-size:34px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.4;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYOFFS</tspan></text>
     </g>
     <text inkscape:label="{header | upper} fit:700" x="951" y="160" style="font-family:Shader;font-size:18px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke;opacity:0.8" filter="url(#textShadow)"><tspan>MSU BEAT SABER</tspan></text>
@@ -42,7 +44,7 @@
     <text x="310" y="198" style="font-family:Shader;font-size:18px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{bracket.rounds.1.name | upper}</tspan></text>
     <g inkscape:label="repeat:bracket.rounds.1.matches">
       <g inkscape:label="match">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -64,7 +66,7 @@
     <text x="960" y="283" style="font-family:Shader;font-size:18px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{bracket.rounds.2.name | upper}</tspan></text>
     <g inkscape:label="repeat:bracket.rounds.2.matches">
       <g inkscape:label="match">
-        <g><path d="M760,305 H1160 V395 H760 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M760,305 H1160 V395 H760 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M760,305 H1160 V395 H760 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="757" y="302" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="772" y1="350" x2="1148" y2="350" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -86,7 +88,7 @@
     <text x="1610" y="453" style="font-family:Shader;font-size:18px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>{bracket.rounds.3.name | upper}</tspan></text>
     <g inkscape:label="repeat:bracket.rounds.3.matches">
       <g inkscape:label="match">
-        <g><path d="M1410,475 H1810 V565 H1410 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M1410,475 H1810 V565 H1410 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M1410,475 H1810 V565 H1410 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="1407" y="472" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="1422" y1="520" x2="1798" y2="520" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -111,12 +113,12 @@
     <path d="M510,307 H580 V437 H510 M580,372 H650 M1050,372 H1175 V695 H1050 M1175,565 H1300 M510,695 H650" fill="none" stroke="#5e0c23" stroke-width="4"/>
   </g>
   <g inkscape:groupmode="layer" inkscape:label="de-rounds show:bracket.double" style="display:none">
-    <text inkscape:label="WINNERS BRACKET fit:400" x="110" y="214" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:22px;text-anchor:start;opacity:1" filter="url(#textShadow)">WINNERS BRACKET</text>
-    <text inkscape:label="{bracket.winners.1.name | upper} fit:400" x="310" y="248" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:18px;text-anchor:middle;opacity:.85" filter="url(#textShadow)">{bracket.winners.1.name | upper}</text>
+    <text inkscape:label="WINNERS BRACKET fit:400" x="110" y="210" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:22px;text-anchor:start;opacity:1" filter="url(#textShadow)">WINNERS BRACKET</text>
+    <text inkscape:label="{bracket.winners.1.name | upper} fit:400" x="112" y="248" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start;opacity:.85" filter="url(#textShadow)">{bracket.winners.1.name | upper}</text>
     <g inkscape:label="repeat:bracket.winners.1.matches">
       <g inkscape:label="match">
         <g transform="translate(0 42)">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -136,11 +138,11 @@
         </g>
       </g>
     </g>
-    <text inkscape:label="{bracket.winners.2.name | upper} fit:400" x="850" y="313" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:18px;text-anchor:middle;opacity:.85" filter="url(#textShadow)">{bracket.winners.2.name | upper}</text>
+    <text inkscape:label="{bracket.winners.2.name | upper} fit:400" x="652" y="313" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start;opacity:.85" filter="url(#textShadow)">{bracket.winners.2.name | upper}</text>
     <g inkscape:label="repeat:bracket.winners.2.matches">
       <g inkscape:label="match">
         <g transform="translate(540 107)">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -160,12 +162,12 @@
         </g>
       </g>
     </g>
-    <text inkscape:label="LOSERS BRACKET fit:400" x="110" y="604" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:22px;text-anchor:start;opacity:1" filter="url(#textShadow)">LOSERS BRACKET</text>
-    <text inkscape:label="{bracket.losers.1.name | upper} fit:400" x="310" y="636" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:18px;text-anchor:middle;opacity:.85" filter="url(#textShadow)">{bracket.losers.1.name | upper}</text>
+    <text inkscape:label="LOSERS BRACKET fit:400" x="110" y="600" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:22px;text-anchor:start;opacity:1" filter="url(#textShadow)">LOSERS BRACKET</text>
+    <text inkscape:label="{bracket.losers.1.name | upper} fit:400" x="112" y="636" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start;opacity:.85" filter="url(#textShadow)">{bracket.losers.1.name | upper}</text>
     <g inkscape:label="repeat:bracket.losers.1.matches">
       <g inkscape:label="match">
         <g transform="translate(0 430)">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -185,11 +187,11 @@
         </g>
       </g>
     </g>
-    <text inkscape:label="{bracket.losers.2.name | upper} fit:400" x="850" y="636" style="font-family:Shader;letter-spacing:3px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:18px;text-anchor:middle;opacity:.85" filter="url(#textShadow)">{bracket.losers.2.name | upper}</text>
+    <text inkscape:label="{bracket.losers.2.name | upper} fit:400" x="652" y="636" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start;opacity:.85" filter="url(#textShadow)">{bracket.losers.2.name | upper}</text>
     <g inkscape:label="repeat:bracket.losers.2.matches">
       <g inkscape:label="match">
         <g transform="translate(540 430)">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">
@@ -213,7 +215,7 @@
     <g inkscape:label="repeat:bracket.final">
       <g inkscape:label="match">
         <g transform="translate(1190 300)">
-        <g><path d="M110,220 H510 V310 H110 Z" fill="url(#swirl)" stroke="#12020a" stroke-width="1.5"/><path d="M110,220 H510 V310 H110 Z" fill="url(#dots)" opacity=".45"/></g>
+        <path inkscape:label="glass" d="M110,220 H510 V310 H110 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <rect inkscape:label="show:item.current #current" x="107" y="217" width="406" height="96" fill="none" stroke="url(#cream)" stroke-width="4" style="display:none"/>
         <line x1="122" y1="265" x2="498" y2="265" stroke="#12020a" stroke-width="2"/>
         <g inkscape:label="row-a">

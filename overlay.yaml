@@ -13,14 +13,15 @@ scenes:
   - brb: { svg: msu/brb, label: "Be Right Back" }
   - casters: { svg: msu/casters, label: "Casters" }
   - picks: { svg: msu/picks, label: "Picks & Bans" }
+  - ready: { svg: msu/ready, label: "Getting Ready" }
   - match: { svg: msu/match, label: "Match" }
   - bracket: { svg: msu/bracket, label: "Bracket" }
   - final: { svg: msu/final, label: "Final" }
 
 # Side colours, used by color:a / color:b / color:item.winner in the designs.
 colors:
-  a: "#e8d9b0"
-  b: "#c23a5a"
+  a: "#b3233f"
+  b: "#f2ead8"
 
 crossfade: 450
 
@@ -37,9 +38,15 @@ sim:
   rosterA: [Erin, Trey, Mia, Will]
   rosterB: [Kaiden, Kadence, Alex, Wyatt]
 
+# Automatic scene switching (the panel's Auto-switch box). when: = only from these scenes; after: = wait first;
+# fade: = this switch's own crossfade.
 automation:
   - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket" }
+  # players are actually playing (not the organiser's start request, not "loading")
   - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket" }
-  - { on: songEnd, scene: picks, after: 12s, when: "match" }   # everyone finished (before the referee closes the map)
+  - { on: mapStart, scene: match, when: "ready", fade: 200ms }   # Getting Ready: a quick cut the moment they play
+  - { on: songEnd, scene: picks, after: 12s, when: "match" }     # everyone finished (before the referee closes the map)
   - { on: mapEnd, scene: picks, after: 10s, when: "match" }
-  - { on: matchEnd, scene: final, after: 12s }
+  # the match is decided: back to Picks & Bans, which shows the winner and the final score. Final is switched to by
+  # hand; to have it follow by itself add:  - { on: matchEnd, scene: final, after: 60s, when: "picks" }
+  - { on: matchEnd, scene: picks, after: 10s, when: "match" }

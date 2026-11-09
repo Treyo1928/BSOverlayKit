@@ -24,7 +24,7 @@ const dataAt = (p: string) => new URL(p, new URL(`${DATA}/`, ROOT));
 type Config = {
   title: string; colors: Record<string, string>; crossfade: number; source: string;
   scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string }>;
-  automation: { on: string; scene: string; after?: number | string; when?: string }[];
+  automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string }[];
   sim: SimOptions;
   bscompstats: BscsOptions;
   header: string;
@@ -71,12 +71,14 @@ const show: ShowState = await readJson("show.json", {
   ticker: ["Welcome to the stream!", "Be kind in chat ♥"],
   feeds: {},
   streamDelayMs: 0,
+  upNext: { a: "", b: "", text: "" },
 } as ShowState);
 // older show.json files: casters had pronouns and cam links (both dropped)
 const cleanCaster = (c: any) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? ""), handle: String(c?.handle ?? ""), avatar: String(c?.avatar ?? ""), speaking: false });
 show.casters = (show.casters ?? []).map(cleanCaster);
 show.castersFrom ??= "panel";
 show.header ??= config.header;
+show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
 show.viewer = Object.assign({ lockPitch: true, pitchLimit: 12, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -149,7 +151,13 @@ await source.start(
   (e) => setTimeout(() => onEvent(e), show.streamDelayMs),
 );
 
+let songEndAt = 0;                      // when songEnd last went out
 function onEvent(e: EventMsg) {
+  // songEnd can come from two places for the same song (the live feed, and the source seeing TA's "finished"): once
+  if (e.name === "songEnd") {
+    if (Date.now() - songEndAt < 20_000) return;
+    songEndAt = Date.now();
+  }
   broadcastOverlays({ type: "event", ...e });
   broadcastPanels({ type: "log", text: `${e.name}${e.item !== undefined ? ` #${e.item}` : ""}${e.side ? ` (${e.side})` : ""}` });
   if (!show.auto) return;
@@ -159,7 +167,7 @@ function onEvent(e: EventMsg) {
     setTimeout(() => {
       if (!show.auto) return;
       if (rule.when && !rule.when.split(/\s*,\s*/).includes(show.scene)) return;   // only from these scenes
-      setScene(rule.scene);
+      setScene(rule.scene, rule.fade === undefined ? undefined : typeof rule.fade === "number" ? rule.fade : parseDuration(rule.fade));
     }, ms);
   }
 }
@@ -167,8 +175,11 @@ const parseDuration = (s: string) => {
   const m = /^(\d+(?:\.\d+)?)\s*(ms|s|m)?$/.exec(String(s).trim());
   return m ? Number(m[1]) * ({ ms: 1, s: 1000, m: 60_000 }[m[2] ?? "ms"] ?? 1) : 0;
 };
-function setScene(scene: string) {
+// a rule's own crossfade (fade: 200ms) applies to its switch only
+let fade: { ms: number; until: number } | null = null;
+function setScene(scene: string, fadeMs?: number) {
   if (!config.scenes[scene]) return;
+  fade = fadeMs !== undefined && scene !== show.scene ? { ms: fadeMs, until: Date.now() + 1500 } : null;
   show.scene = scene;
   saveShow();
   dirty = true;
@@ -261,7 +272,8 @@ function replayMsg() {
 setInterval(() => playlist.tick(replayScenes.has(show.scene) && overlays.size > 0), 250);
 
 const stateMsg = () => ({
-  type: "state", data: withLive(data), show: { ...show, playlist: undefined }, colors: config.colors, crossfade: config.crossfade, designVersion,
+  type: "state", data: withLive(data), show: { ...show, playlist: undefined }, colors: config.colors,
+  crossfade: fade && Date.now() < fade.until ? fade.ms : config.crossfade, designVersion,
   replay: replayMsg(), now: Date.now(),
 });
 const panelMsg = async () => ({
@@ -291,14 +303,19 @@ const actions: Record<string, (a: any) => unknown> = {
   },
   // live gameplay from a TA bridge or tools/mock-ta (see LiveState in model.ts)
   live: (a) => {
+    const before = live;
     const was = live?.phase ?? null;
     live = a.phase ? { matchId: a.matchId, phase: a.phase, time: Number(a.time) || 0, duration: Number(a.duration) || 0, players: a.players, feeds: a.feeds, startedAt: Number(a.startedAt) || undefined } : null;
     const now = live?.phase ?? null;
     if (now !== was && now === "loading") { onEvent({ name: "mapLoad" }); songEnded = false; }
-    if (now !== was && now === "playing") onEvent({ name: "mapStart" });
-    // every player has finished the song (TA's scores are in; the referee still has to close the map)
-    const everyone = Object.values(live?.players ?? {}).flat() as { finished?: boolean }[];
-    if (now === "playing" && !songEnded && everyone.length && everyone.every((p) => p?.finished)) {
+    if (now !== was && now === "playing") { onEvent({ name: "mapStart" }); if (was !== "loading") songEnded = false; }
+    // The song is over (the referee still has to close the map): every player has reported a finish, or the live
+    // feed stopped at the end of the song. The second case matters: a player who quits, fails out or drops never
+    // reports "finished", and waiting for all of them meant the overlay sat on Match until the map was closed.
+    const everyone = (Object.values(live?.players ?? {}).flat() as ({ finished?: boolean } | null)[]).filter(Boolean);
+    const allDone = now === "playing" && everyone.length > 0 && everyone.every((p) => p?.finished);
+    const ranOut = was === "playing" && now === null && (before?.duration ?? 0) > 0 && (before?.time ?? 0) >= before!.duration! - 3;
+    if (!songEnded && (allDone || ranOut)) {
       songEnded = true;
       onEvent({ name: "songEnd" });
     }
@@ -322,6 +339,8 @@ const actions: Record<string, (a: any) => unknown> = {
     if (c) c.speaking = !!a.on;
   },
   header: (a) => { show.header = String(a.header ?? ""); },
+  // the Casters scene's "up next" block: two team names, or one line of text; all empty = hidden
+  upNext: (a) => { show.upNext = { a: String(a.a ?? "").trim(), b: String(a.b ?? "").trim(), text: String(a.text ?? "").trim() }; },
   viewer: (a) => {
     if (a.lockPitch !== undefined) show.viewer.lockPitch = !!a.lockPitch;
     if (a.pitchLimit !== undefined) show.viewer.pitchLimit = Math.max(0, Math.min(90, Number(a.pitchLimit) || 0));
