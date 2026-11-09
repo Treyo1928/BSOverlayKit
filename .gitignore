@@ -1,4 +1,3 @@
-data/secrets.json
-data/show.json
-data/old-woff2/
-data/test/
+# runtime state and secrets: never committed
+data/
+*.log
