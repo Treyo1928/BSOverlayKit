@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Results: the match summary. The row inside "repeat:results" is copied once per map played. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+  <defs>
+    <linearGradient id="accent" x1="0" x2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/></linearGradient>
+    <radialGradient id="glowA"><stop offset="0" stop-color="#ff3d6e" stop-opacity=".25"/><stop offset="1" stop-color="#ff3d6e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#2ea8ff" stop-opacity=".25"/><stop offset="1" stop-color="#2ea8ff" stop-opacity="0"/></radialGradient>
+    <clipPath id="rowCover"><rect x="282" y="452" width="66" height="66" rx="10"/></clipPath>
+  </defs>
+
+  <g inkscape:groupmode="layer" inkscape:label="back">
+    <rect width="1920" height="1080" fill="#07070f"/>
+    <ellipse cx="300" cy="300" rx="800" ry="600" fill="url(#glowA)"/>
+    <ellipse cx="1650" cy="850" rx="800" ry="600" fill="url(#glowB)"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="head">
+    <text x="960" y="150" style="font-family:Oxanium;font-weight:700;font-size:22px;letter-spacing:6px;text-anchor:middle;fill:#a9a9c2"><tspan>{match.label | upper}</tspan></text>
+    <text inkscape:label="fit:1500 show:match.winner #winner" x="960" y="246" style="font-family:Oxanium;font-weight:800;font-size:90px;text-anchor:middle;fill:#ffd84a"><tspan>{match.winnerName} wins!</tspan></text>
+    <text inkscape:label="hide:match.winner" x="960" y="246" style="display:none;font-family:Oxanium;font-weight:800;font-size:72px;text-anchor:middle;fill:#ffffff"><tspan>Match in progress</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="set">
+    <text inkscape:label="{a.name} fit:560 color:a" x="800" y="360" style="font-family:Oxanium;font-weight:800;font-size:52px;text-anchor:end;fill:#ff3d6e"><tspan>Player A</tspan></text>
+    <text inkscape:label="{a.points} #pa" x="900" y="372" style="font-family:Oxanium;font-weight:800;font-size:90px;text-anchor:middle;fill:#ffffff"><tspan>0</tspan></text>
+    <text x="960" y="362" style="font-family:Oxanium;font-weight:800;font-size:56px;text-anchor:middle;fill:#a9a9c2"><tspan>–</tspan></text>
+    <text inkscape:label="{b.points} #pb" x="1020" y="372" style="font-family:Oxanium;font-weight:800;font-size:90px;text-anchor:middle;fill:#ffffff"><tspan>0</tspan></text>
+    <text inkscape:label="{b.name} fit:560 color:b" x="1120" y="360" style="font-family:Oxanium;font-weight:800;font-size:52px;fill:#2ea8ff"><tspan>Player B</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="rows">
+    <g inkscape:label="repeat:results">
+      <g inkscape:label="row">
+        <rect x="270" y="440" width="1380" height="90" rx="12" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+        <g clip-path="url(#rowCover)"><image inkscape:label="img:item.map.cover" x="282" y="452" width="66" height="66"/></g>
+        <text inkscape:label="{item.map.name} fit:640" x="370" y="480" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>Song Name</tspan></text>
+        <text x="370" y="510" style="font-family:Inter;font-weight:600;font-size:17px;fill:#a9a9c2"><tspan>Map {item.index} · {item.map.difficulty} · {item.map.category}</tspan></text>
+        <rect inkscape:label="show:item.winner=a color:a" x="1100" y="450" width="250" height="70" rx="10" fill="#ff3d6e" fill-opacity=".35"/>
+        <rect inkscape:label="show:item.winner=b color:b" x="1380" y="450" width="250" height="70" rx="10" fill="#2ea8ff" fill-opacity=".35"/>
+        <text inkscape:label="{item.a.acc | acc}" x="1225" y="485" style="font-family:Oxanium;font-weight:800;font-size:30px;text-anchor:middle;fill:#ff3d6e"><tspan>98.00%</tspan></text>
+        <text inkscape:label="{item.a.score | int}" x="1225" y="510" style="font-family:Inter;font-weight:600;font-size:15px;text-anchor:middle;fill:#a9a9c2"><tspan>0</tspan></text>
+        <text inkscape:label="{item.b.acc | acc}" x="1505" y="485" style="font-family:Oxanium;font-weight:800;font-size:30px;text-anchor:middle;fill:#2ea8ff"><tspan>98.00%</tspan></text>
+        <text inkscape:label="{item.b.score | int}" x="1505" y="510" style="font-family:Inter;font-weight:600;font-size:15px;text-anchor:middle;fill:#a9a9c2"><tspan>0</tspan></text>
+      </g>
+    </g>
+    <text inkscape:label="hide:results" x="960" y="500" style="display:none;font-family:Oxanium;font-weight:700;font-size:30px;text-anchor:middle;fill:#a9a9c2"><tspan>No maps played yet</tspan></text>
+  </g>
+</svg>

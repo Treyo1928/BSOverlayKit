@@ -1,0 +1,23 @@
+# Rules for picks.svg (MSU)
+enter:
+  - { target: team-a, play: slideRight }
+  - { target: team-b, play: slideLeft }
+  - { target: title, play: popIn, delay: 150 }
+  - { target: card, play: slideUp, delay: 250 }
+
+on:
+  mapBan:
+    - { target: card, play: shake }
+  mapPick:
+    - { target: card, play: pulse }
+
+loop:
+  - { target: prompt-text, play: breathe }
+  - { target: now-glow, keyframes: [ { opacity: 1 }, { opacity: 0.35 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
+
+repeat:
+  pool: { dx: 256, wrap: 7, rowHeight: 380 }
+  picks.steps: { dx: 128 }
+
+fx:
+  dust: { amount: 0.6, clouds: 0.4 }

@@ -1,0 +1,35 @@
+# BSOverlayKit — overlay settings. Saved changes apply immediately (no restart).
+
+title: Saber Showdown Invitational
+
+# Scenes, in the order the panel shows them. A scene is design/<name>.svg (+ optional <name>.rules.yaml).
+# `vars` lets one design serve several scenes: focus.svg uses {big.name}; focus-a sets big = a.
+scenes:
+  - casters
+  - brb: { label: "BRB" }
+  - picks: { label: "Picks & Bans" }
+  - match
+  - focus-a: { svg: focus, label: "Focus A", vars: { big: a, small: b } }
+  - focus-b: { svg: focus, label: "Focus B", vars: { big: b, small: a } }
+  - results
+
+# Side colours, used by color:a / color:b / stroke:a … in the designs.
+colors:
+  a: "#ff3d6e"
+  b: "#2ea8ff"
+
+# Scene crossfade, in ms.
+crossfade: 450
+
+# Where match data comes from: sim (built-in simulator) or beatkhana (coming next).
+source: sim
+
+# Automatic scene switching (the panel's Auto toggle turns all of these on/off).
+#   on:    the match event
+#   after: wait this long first ("10s", "500ms", "1m")
+#   when:  only if the stream is currently on one of these scenes (comma-separated); omit = any
+automation:
+  - { on: matchStart, scene: picks }
+  - { on: mapStart, scene: match, when: "casters, brb, picks, results" }
+  - { on: mapEnd, scene: picks, after: 10s, when: "match, focus-a, focus-b" }
+  - { on: matchEnd, scene: results, after: 10s }

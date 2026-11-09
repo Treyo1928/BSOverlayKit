@@ -1,0 +1,18 @@
+# Rules for bracket.svg (MSU)
+enter:
+  - { target: title, play: slideDown }
+  - { target: match, play: fadeIn, delay: 200 }
+
+loop:
+  - { target: live, play: breathe }
+  - { target: current, keyframes: [ { opacity: 1 }, { opacity: 0.4 }, { opacity: 1 } ], duration: 1800, easing: ease-in-out }
+
+# spacing between the match boxes of each round
+repeat:
+  bracket.rounds.1.matches: { dy: 170 }
+  bracket.rounds.2.matches: { dy: 340 }
+  bracket.winners.1.matches: { dy: 130 }    # double elimination
+  bracket.final: { dy: 130 }                # a grand final reset goes under the first one
+
+fx:
+  dust: { amount: 0.6, clouds: 0.4 }

@@ -1,0 +1,21 @@
+# Rules for intermission.svg (MSU). Reference: docs/DESIGNING.md
+enter:
+  - { target: frame, play: fadeIn, duration: 700 }
+  - { target: logo, play: slideRight, delay: 150 }
+  - { target: heading, play: slideRight, delay: 300 }
+  - { target: nowplaying, play: slideUp, delay: 450 }
+
+# The particles: rectangles named fx:dust and fx:glitter in the back layer. Tweak them here.
+fx:
+  dust: { amount: 1 }
+  glitter: { amount: 1 }
+
+# The replay playlist: the "up next" card over the video between songs, and the now-playing block.
+on:
+  becomes:replay.switching:
+    - { target: upnext, keyframes: [ { opacity: 0 }, { opacity: 1 } ], duration: 450, easing: ease-out }
+    - { target: upnext-content, play: slideRight, delay: 150 }
+  becomes:replay.revealing:
+    - { target: upnext, to: { opacity: 0 }, duration: 650, easing: ease-in }
+  change:replay.song:
+    - { target: nowplaying, play: slideUp }

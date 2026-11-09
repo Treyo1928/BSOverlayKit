@@ -1,0 +1,18 @@
+# Rules for brb.svg
+repeat:
+  pool: { dx: 128 }
+
+enter:
+  - { target: brand, play: fadeIn }
+  - { target: title, play: slideUp, delay: 100 }
+  - { target: message, play: slideUp, delay: 200 }
+  - { target: count, play: popIn, delay: 350 }
+  - { target: next-1, play: slideUp, delay: 500 }
+  - { target: next-2, play: slideUp, delay: 600 }
+  - { target: covers, play: fadeIn, delay: 750 }
+
+loop:
+  - { target: blob-a, keyframes: [ { x: 0, y: 0, scale: 1 }, { x: 300, y: 200, scale: 1.2 } ], duration: 18000, alternate: true, easing: ease-in-out }
+  - { target: blob-b, keyframes: [ { x: 0, y: 0, scale: 1 }, { x: -260, y: -160, scale: 1.1 } ], duration: 22000, alternate: true, easing: ease-in-out }
+  - { target: blob-c, play: breathe, duration: 6000 }
+  - { target: cover, keyframes: [ { y: 0 }, { y: -10 } ], duration: 2000, alternate: true, easing: ease-in-out }

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Focus scene: one design for Focus A and Focus B. {big.*} / {small.*} / feed:big / color:big
+     follow the scene's vars in overlay.yaml (focus-a: big = a). The scoreboard keeps A left, B right.
+     Was: Match scene. Open in Inkscape: Layers & Objects (Ctrl+Shift+L) shows every layer's name.
+     Names in {braces} are live text, img:/bar:/show:/color: etc. are bindings — see docs/DESIGNING.md. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+  <defs>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/>
+    </linearGradient>
+    <radialGradient id="glowA"><stop offset="0" stop-color="#ff3d6e" stop-opacity=".22"/><stop offset="1" stop-color="#ff3d6e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#2ea8ff" stop-opacity=".22"/><stop offset="1" stop-color="#2ea8ff" stop-opacity="0"/></radialGradient>
+    <clipPath id="avatarClipA"><rect x="70" y="72" width="96" height="96" rx="16"/></clipPath>
+    <clipPath id="avatarClipB"><rect x="1754" y="72" width="96" height="96" rx="16"/></clipPath>
+    <clipPath id="coverClip"><rect x="1488" y="866" width="84" height="84" rx="10"/></clipPath>
+  </defs>
+
+  <!-- ============ BACK: drawn behind the player video ============ -->
+  <g inkscape:groupmode="layer" inkscape:label="back">
+    <rect width="1920" height="1080" fill="#07070f"/>
+    <ellipse cx="250" cy="150" rx="700" ry="550" fill="url(#glowA)"/>
+    <ellipse cx="1700" cy="950" rx="750" ry="600" fill="url(#glowB)"/>
+  </g>
+
+  <!-- ============ FRONT: everything here is drawn over the video ============ -->
+
+  <!-- ============ FRONT ============ -->
+  <g inkscape:groupmode="layer" inkscape:label="video">
+    <rect inkscape:label="feed:big" x="40" y="236" width="1408" height="792" rx="12"/>
+    <rect inkscape:label="feed:small" x="1468" y="236" width="412" height="232" rx="12"/>
+    <rect inkscape:label="frame-big stroke:big" x="40" y="236" width="1408" height="792" rx="12" fill="none" stroke="#ff3d6e" stroke-width="3"/>
+    <rect inkscape:label="frame-small stroke:small" x="1468" y="236" width="412" height="232" rx="12" fill="none" stroke="#2ea8ff" stroke-width="3"/>
+    <g inkscape:label="tag-big">
+      <rect inkscape:label="color:big" x="54" y="250" width="220" height="38" rx="6" fill="#ff3d6e"/>
+      <text inkscape:label="{big.name | upper} fit:196" x="68" y="277" style="font-family:Oxanium;font-weight:800;font-size:22px;letter-spacing:2px;fill:#ffffff"><tspan>PLAYER A</tspan></text>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="stats">
+    <g inkscape:label="stats-big">
+      <rect x="1468" y="482" width="412" height="214" rx="12" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+      <rect inkscape:label="color:big" x="1468" y="482" width="5" height="214" fill="#ffffff"/>
+      <text inkscape:label="{big.name | upper} fit:360 color:big" x="1490" y="512" style="font-family:Oxanium;font-weight:800;font-size:16px;letter-spacing:3px;fill:#ffffff"><tspan>PLAYER</tspan></text>
+      <text x="1490" y="540" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>COMBO</tspan></text>
+      <text inkscape:label="{big.combo}" x="1490" y="572" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>0</tspan></text>
+      <text x="1690" y="540" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>MISSES</tspan></text>
+      <text inkscape:label="{big.misses} #misses-big" x="1690" y="572" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>0</tspan></text>
+      <text x="1490" y="606" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>MAX COMBO</tspan></text>
+      <text inkscape:label="{big.maxCombo}" x="1490" y="638" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>0</tspan></text>
+      <text x="1690" y="606" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>SCORE</tspan></text>
+      <text inkscape:label="{big.score | int}" x="1690" y="638" style="font-family:Oxanium;font-weight:800;font-size:24px;fill:#ffffff"><tspan>0</tspan></text>
+      <rect x="1490" y="670" width="368" height="10" rx="5" fill="#ffffff" fill-opacity=".1"/>
+      <rect inkscape:label="bar:big.health" x="1490" y="670" width="368" height="10" rx="5" fill="#4cff9a"/>
+    </g>
+    <g inkscape:label="stats-small">
+      <rect x="1468" y="706" width="412" height="134" rx="12" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+      <rect inkscape:label="color:small" x="1468" y="706" width="5" height="134" fill="#ffffff"/>
+      <text inkscape:label="{small.name | upper} fit:360 color:small" x="1490" y="736" style="font-family:Oxanium;font-weight:800;font-size:16px;letter-spacing:3px;fill:#ffffff"><tspan>PLAYER</tspan></text>
+      <text x="1490" y="764" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>COMBO</tspan></text>
+      <text inkscape:label="{small.combo}" x="1490" y="796" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>0</tspan></text>
+      <text x="1690" y="764" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:3px;fill:#a9a9c2"><tspan>MISSES</tspan></text>
+      <text inkscape:label="{small.misses} #misses-small" x="1690" y="796" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>0</tspan></text>
+      <rect x="1490" y="814" width="368" height="10" rx="5" fill="#ffffff" fill-opacity=".1"/>
+      <rect inkscape:label="bar:small.health" x="1490" y="814" width="368" height="10" rx="5" fill="#4cff9a"/>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="song">
+    <rect x="1468" y="850" width="412" height="178" rx="12" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+    <g inkscape:label="song-info show:map">
+      <g clip-path="url(#coverClip)"><image inkscape:label="img:map.cover" x="1488" y="866" width="84" height="84"/></g>
+      <text inkscape:label="{map.name} fit:276" x="1588" y="898" style="font-family:Oxanium;font-weight:800;font-size:24px;fill:#ffffff"><tspan>Song Name</tspan></text>
+      <text inkscape:label="{map.artist} fit:276" x="1588" y="926" style="font-family:Inter;font-weight:600;font-size:16px;fill:#a9a9c2"><tspan>Artist</tspan></text>
+      <rect x="1488" y="974" width="372" height="8" rx="4" fill="#ffffff" fill-opacity=".1"/>
+      <rect inkscape:label="bar:map.progress" x="1488" y="974" width="372" height="8" rx="4" fill="url(#accent)"/>
+      <text inkscape:label="{map.time}" x="1488" y="1008" style="font-family:Oxanium;font-weight:700;font-size:18px;fill:#a9a9c2"><tspan>0:00</tspan></text>
+      <text inkscape:label="{map.length}" x="1860" y="1008" style="font-family:Oxanium;font-weight:700;font-size:18px;text-anchor:end;fill:#a9a9c2"><tspan>3:35</tspan></text>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="scoreboard">
+    <!-- side A -->
+    <rect x="40" y="30" width="770" height="180" rx="14" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+    <rect inkscape:label="color:a" x="40" y="30" width="8" height="180" fill="#ff3d6e"/>
+    <g inkscape:label="avatar-a">
+      <rect x="70" y="72" width="96" height="96" rx="16" fill="#3a1424" stroke="#ff3d6e" stroke-width="2"/>
+      <text inkscape:label="{a.initials} hide:a.avatar" x="118" y="134" style="font-family:Oxanium;font-weight:800;font-size:40px;text-anchor:middle;fill:#ffffff"><tspan>A</tspan></text>
+      <g clip-path="url(#avatarClipA)"><image inkscape:label="img:a.avatar" x="70" y="72" width="96" height="96"/></g>
+    </g>
+    <text inkscape:label="{a.name} fit:330" x="190" y="112" style="font-family:Oxanium;font-weight:800;font-size:44px;fill:#ffffff"><tspan>Player A</tspan></text>
+    <text inkscape:label="{a.country}" x="192" y="146" style="font-family:Inter;font-weight:600;font-size:18px;fill:#a9a9c2"><tspan>US</tspan></text>
+    <g inkscape:label="points-a">
+      <circle cx="200" cy="176" r="8" fill="none" stroke="#ff3d6e" stroke-width="3"/>
+      <circle cx="228" cy="176" r="8" fill="none" stroke="#ff3d6e" stroke-width="3"/>
+      <circle cx="256" cy="176" r="8" fill="none" stroke="#ff3d6e" stroke-width="3"/>
+      <circle inkscape:label="show:a.points>=1" cx="200" cy="176" r="8" fill="#ff3d6e"/>
+      <circle inkscape:label="show:a.points>=2" cx="228" cy="176" r="8" fill="#ff3d6e"/>
+      <circle inkscape:label="show:a.points>=3" cx="256" cy="176" r="8" fill="#ff3d6e"/>
+    </g>
+    <text inkscape:label="{a.acc | acc} #acc-a" x="785" y="126" style="font-family:Oxanium;font-weight:800;font-size:64px;text-anchor:end;fill:#ffffff"><tspan>98.76%</tspan></text>
+    <text inkscape:label="{a.score | int}" x="785" y="168" style="font-family:Oxanium;font-weight:700;font-size:26px;text-anchor:end;fill:#a9a9c2"><tspan>1,234,567</tspan></text>
+
+    <!-- center -->
+    <rect x="810" y="30" width="300" height="180" fill="#1c1c2e" fill-opacity=".95"/>
+    <text x="960" y="72" style="font-family:Oxanium;font-weight:700;font-size:16px;letter-spacing:4px;text-anchor:middle;fill:#a9a9c2"><tspan>MAP</tspan></text>
+    <text inkscape:label="{match.mapNumber}" x="1000" y="72" style="font-family:Oxanium;font-weight:700;font-size:16px;letter-spacing:4px;fill:#a9a9c2"><tspan>1</tspan></text>
+    <text inkscape:label="{a.points} #points-num-a" x="925" y="140" style="font-family:Oxanium;font-weight:800;font-size:58px;text-anchor:middle;fill:#ff3d6e"><tspan>0</tspan></text>
+    <text x="960" y="136" style="font-family:Oxanium;font-weight:800;font-size:40px;text-anchor:middle;fill:#a9a9c2"><tspan>–</tspan></text>
+    <text inkscape:label="{b.points} #points-num-b" x="995" y="140" style="font-family:Oxanium;font-weight:800;font-size:58px;text-anchor:middle;fill:#2ea8ff"><tspan>0</tspan></text>
+    <text inkscape:label="{match.label}" x="960" y="186" style="font-family:Inter;font-weight:600;font-size:16px;text-anchor:middle;fill:#a9a9c2"><tspan>Quarterfinal 1</tspan></text>
+
+    <!-- side B (mirrored) -->
+    <rect x="1110" y="30" width="770" height="180" rx="14" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+    <rect inkscape:label="color:b" x="1872" y="30" width="8" height="180" fill="#2ea8ff"/>
+    <g inkscape:label="avatar-b">
+      <rect x="1754" y="72" width="96" height="96" rx="16" fill="#12283a" stroke="#2ea8ff" stroke-width="2"/>
+      <text inkscape:label="{b.initials} hide:b.avatar" x="1802" y="134" style="font-family:Oxanium;font-weight:800;font-size:40px;text-anchor:middle;fill:#ffffff"><tspan>B</tspan></text>
+      <g clip-path="url(#avatarClipB)"><image inkscape:label="img:b.avatar" x="1754" y="72" width="96" height="96"/></g>
+    </g>
+    <text inkscape:label="{b.name} fit:330" x="1730" y="112" style="font-family:Oxanium;font-weight:800;font-size:44px;text-anchor:end;fill:#ffffff"><tspan>Player B</tspan></text>
+    <text inkscape:label="{b.country}" x="1728" y="146" style="font-family:Inter;font-weight:600;font-size:18px;text-anchor:end;fill:#a9a9c2"><tspan>DE</tspan></text>
+    <g inkscape:label="points-b">
+      <circle cx="1664" cy="176" r="8" fill="none" stroke="#2ea8ff" stroke-width="3"/>
+      <circle cx="1692" cy="176" r="8" fill="none" stroke="#2ea8ff" stroke-width="3"/>
+      <circle cx="1720" cy="176" r="8" fill="none" stroke="#2ea8ff" stroke-width="3"/>
+      <circle inkscape:label="show:b.points>=3" cx="1664" cy="176" r="8" fill="#2ea8ff"/>
+      <circle inkscape:label="show:b.points>=2" cx="1692" cy="176" r="8" fill="#2ea8ff"/>
+      <circle inkscape:label="show:b.points>=1" cx="1720" cy="176" r="8" fill="#2ea8ff"/>
+    </g>
+    <text inkscape:label="{b.acc | acc} #acc-b" x="1135" y="126" style="font-family:Oxanium;font-weight:800;font-size:64px;fill:#ffffff"><tspan>98.76%</tspan></text>
+    <text inkscape:label="{b.score | int}" x="1135" y="168" style="font-family:Oxanium;font-weight:700;font-size:26px;fill:#a9a9c2"><tspan>1,234,567</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="tug">
+    <rect inkscape:label="color:b" x="40" y="214" width="1840" height="12" rx="6" fill="#2ea8ff"/>
+    <rect inkscape:label="bar:tug color:a" x="40" y="214" width="1840" height="12" rx="6" fill="#ff3d6e"/>
+    <rect x="958" y="208" width="4" height="24" fill="#ffffff"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="status">
+    <g inkscape:label="loading show:match.phase=loading" style="display:none">
+      <rect x="544" y="597" width="400" height="70" rx="14" fill="#000000" fill-opacity=".85"/>
+      <text x="744" y="642" style="font-family:Oxanium;font-weight:800;font-size:26px;letter-spacing:4px;text-anchor:middle;fill:#ffffff"><tspan>LOADING MAP</tspan></text>
+    </g>
+    <g inkscape:label="result show:match.phase=finished|done" style="display:none">
+      <rect x="244" y="482" width="1000" height="300" rx="18" fill="#0a0a14" fill-opacity=".96" stroke="url(#accent)" stroke-width="3"/>
+      <text inkscape:label="show:match.phase=finished" x="744" y="542" style="font-family:Oxanium;font-weight:700;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:#a9a9c2"><tspan>MAP RESULT</tspan></text>
+      <text inkscape:label="show:match.phase=done" x="744" y="542" style="font-family:Oxanium;font-weight:700;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:#ffd84a"><tspan>MATCH WINNER</tspan></text>
+      <text inkscape:label="{last.winnerName | upper} fit:900 show:match.phase=finished" x="744" y="630" style="font-family:Oxanium;font-weight:800;font-size:72px;text-anchor:middle;fill:#ffffff"><tspan>PLAYER</tspan></text>
+      <text inkscape:label="{match.winnerName | upper} fit:900 show:match.phase=done" x="744" y="630" style="font-family:Oxanium;font-weight:800;font-size:72px;text-anchor:middle;fill:#ffd84a"><tspan>PLAYER</tspan></text>
+      <text inkscape:label="{last.a.acc | acc}" x="684" y="718" style="font-family:Oxanium;font-weight:800;font-size:44px;text-anchor:end;fill:#ff3d6e"><tspan>98.00%</tspan></text>
+      <text x="744" y="714" style="font-family:Oxanium;font-weight:700;font-size:26px;text-anchor:middle;fill:#a9a9c2"><tspan>vs</tspan></text>
+      <text inkscape:label="{last.b.acc | acc}" x="804" y="718" style="font-family:Oxanium;font-weight:800;font-size:44px;fill:#2ea8ff"><tspan>97.00%</tspan></text>
+      <text inkscape:label="{last.a.score | int}" x="684" y="752" style="font-family:Inter;font-weight:600;font-size:18px;text-anchor:end;fill:#a9a9c2"><tspan>0</tspan></text>
+      <text inkscape:label="{last.b.score | int}" x="804" y="752" style="font-family:Inter;font-weight:600;font-size:18px;fill:#a9a9c2"><tspan>0</tspan></text>
+    </g>
+  </g>
+</svg>

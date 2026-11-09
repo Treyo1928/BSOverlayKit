@@ -1,0 +1,15 @@
+# Rules for casters.svg
+enter:
+  - { target: topbar, play: slideDown }
+  - { target: frame-1, play: fadeIn, delay: 150 }
+  - { target: frame-2, play: fadeIn, delay: 250 }
+  - { target: plate-1, play: slideUp, delay: 300 }
+  - { target: plate-2, play: slideUp, delay: 400 }
+  - { target: upnext, play: slideUp, delay: 550 }
+
+loop:
+  - { target: live-dot, keyframes: [ { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
+  - { target: blob-a, keyframes: [ { x: 0, y: 0, scale: 1 }, { x: 260, y: 160, scale: 1.15 } ], duration: 18000, alternate: true, easing: ease-in-out }
+  - { target: blob-b, keyframes: [ { x: 0, y: 0, scale: 1 }, { x: -240, y: -140, scale: 1.1 } ], duration: 22000, alternate: true, easing: ease-in-out }
+  # the ticker text starts at the right edge and scrolls left
+  - { target: ticker-text, keyframes: [ { x: 0 }, { x: -4200 } ], duration: 45000, easing: linear }

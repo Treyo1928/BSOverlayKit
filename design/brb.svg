@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Be right back. {brb.endsAt | countdown} counts down to the time set in the panel. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+  <defs>
+    <linearGradient id="accent" x1="0" x2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/></linearGradient>
+    <radialGradient id="ba"><stop offset="0" stop-color="#ff3d6e" stop-opacity=".55"/><stop offset="1" stop-color="#ff3d6e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="bb"><stop offset="0" stop-color="#2ea8ff" stop-opacity=".55"/><stop offset="1" stop-color="#2ea8ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="bc"><stop offset="0" stop-color="#a35cff" stop-opacity=".35"/><stop offset="1" stop-color="#a35cff" stop-opacity="0"/></radialGradient>
+    <clipPath id="coverClip"><rect x="0" y="0" width="110" height="110" rx="12"/></clipPath>
+  </defs>
+
+  <g inkscape:groupmode="layer" inkscape:label="back">
+    <rect width="1920" height="1080" fill="#07070f"/>
+    <ellipse inkscape:label="blob-a" cx="250" cy="200" rx="700" ry="600" fill="url(#ba)"/>
+    <ellipse inkscape:label="blob-b" cx="1700" cy="900" rx="750" ry="650" fill="url(#bb)"/>
+    <ellipse inkscape:label="blob-c" cx="1000" cy="560" rx="520" ry="420" fill="url(#bc)"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="brand">
+    <image inkscape:label="logo" xlink:href="logo.svg" href="logo.svg" x="64" y="46" width="46" height="46"/>
+    <text inkscape:label="{tournament.name}" x="128" y="80" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>Tournament</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="center">
+    <text inkscape:label="{brb.title} fit:1500 #title" x="960" y="330" style="font-family:Oxanium;font-weight:800;font-size:120px;letter-spacing:4px;text-anchor:middle;fill:#ffffff"><tspan>Be Right Back</tspan></text>
+    <text inkscape:label="{brb.message} fit:1400 #message" x="960" y="392" style="font-family:Inter;font-weight:600;font-size:32px;text-anchor:middle;fill:#a9a9c2"><tspan>The next match starts soon</tspan></text>
+    <text inkscape:label="{brb.endsAt | countdown} #count" x="960" y="580" style="font-family:Oxanium;font-weight:800;font-size:150px;text-anchor:middle;fill:url(#accent)"><tspan>5:00</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="next">
+    <g inkscape:label="next-1 show:upNext.1">
+      <rect x="160" y="700" width="784" height="120" rx="16" fill="#0c0c16" fill-opacity=".88" stroke="#ffffff" stroke-opacity=".1"/>
+      <text x="196" y="740" style="font-family:Oxanium;font-weight:700;font-size:18px;letter-spacing:4px;fill:#a9a9c2"><tspan>UP NEXT · {upNext.1.label | upper}</tspan></text>
+      <text inkscape:label="fit:710" x="196" y="792" style="font-family:Oxanium;font-weight:800;font-size:40px;fill:#ffffff"><tspan>{upNext.1.a} vs {upNext.1.b}</tspan></text>
+    </g>
+    <g inkscape:label="next-2 show:upNext.2">
+      <rect x="976" y="700" width="784" height="120" rx="16" fill="#0c0c16" fill-opacity=".88" stroke="#ffffff" stroke-opacity=".1"/>
+      <text x="1012" y="740" style="font-family:Oxanium;font-weight:700;font-size:18px;letter-spacing:4px;fill:#a9a9c2"><tspan>LATER · {upNext.2.label | upper}</tspan></text>
+      <text inkscape:label="fit:710" x="1012" y="792" style="font-family:Oxanium;font-weight:800;font-size:40px;fill:#ffffff"><tspan>{upNext.2.a} vs {upNext.2.b}</tspan></text>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="covers">
+    <g inkscape:label="repeat:pool" transform="translate(527 885)">
+      <g inkscape:label="cover">
+        <g clip-path="url(#coverClip)"><image inkscape:label="img:item.cover" x="0" y="0" width="110" height="110"/></g>
+      </g>
+    </g>
+  </g>
+</svg>

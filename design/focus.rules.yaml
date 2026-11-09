@@ -1,0 +1,17 @@
+# Rules for focus.svg (used by the Focus A and Focus B scenes)
+enter:
+  - { target: scoreboard, from: { y: -90, opacity: 0 }, duration: 600 }
+  - { target: tug, from: { opacity: 0 }, delay: 250 }
+  - { target: tag-big, play: slideRight, delay: 300 }
+  - { target: stats-big, play: slideLeft, delay: 250 }
+  - { target: stats-small, play: slideLeft, delay: 350 }
+  - { target: song, play: slideUp, delay: 450 }
+on:
+  # big/small follow the scene's vars, so this works for both Focus A and Focus B
+  increase:big.misses:
+    - { target: misses-big, play: pulse }
+  increase:small.misses:
+    - { target: misses-small, play: pulse }
+  mapEnd:
+    - { target: result, play: popIn }
+tween: 250

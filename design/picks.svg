@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Picks & Bans. The card inside "repeat:pool" is drawn once and copied for every map in the pool.
+     Inside it, "state:item.state" shows exactly one of its "when:…" children. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+  <defs>
+    <linearGradient id="accent" x1="0" x2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy="1.1" r=".8"><stop offset="0" stop-color="#3b2470"/><stop offset="1" stop-color="#07070f"/></radialGradient>
+    <clipPath id="cardCover"><path d="M122 372 a12 12 0 0 1 12 -12 h200 a12 12 0 0 1 12 12 v212 h-224 z"/></clipPath>
+  </defs>
+
+  <g inkscape:groupmode="layer" inkscape:label="back">
+    <rect width="1920" height="1080" fill="url(#glow)"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="header">
+    <rect x="64" y="40" width="1792" height="72" rx="14" fill="#0c0c16" fill-opacity=".85" stroke="#ffffff" stroke-opacity=".1"/>
+    <rect x="88" y="53" width="46" height="46" rx="12" fill="url(#accent)"/>
+    <text inkscape:label="{tournament.short}" x="111" y="83" style="font-family:Oxanium;font-weight:800;font-size:18px;text-anchor:middle;fill:#ffffff"><tspan>SSI</tspan></text>
+    <text inkscape:label="{tournament.name}" x="152" y="87" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>Tournament</tspan></text>
+    <text inkscape:label="{match.label}" x="1832" y="85" style="font-family:Inter;font-weight:600;font-size:20px;text-anchor:end;fill:#a9a9c2"><tspan>Quarterfinal</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="versus">
+    <text inkscape:label="{a.name} fit:560 color:a" x="110" y="222" style="font-family:Oxanium;font-weight:800;font-size:60px;fill:#ff3d6e"><tspan>Player A</tspan></text>
+    <text inkscape:label="{b.name} fit:560 color:b" x="1810" y="222" style="font-family:Oxanium;font-weight:800;font-size:60px;text-anchor:end;fill:#2ea8ff"><tspan>Player B</tspan></text>
+    <text x="960" y="190" style="font-family:Oxanium;font-weight:800;font-size:30px;letter-spacing:6px;text-anchor:middle;fill:#ffffff"><tspan>MAP POOL</tspan></text>
+    <text x="960" y="222" style="font-family:Inter;font-weight:600;font-size:20px;text-anchor:middle;fill:#a9a9c2"><tspan>Best of {match.bestOf} · {a.points}–{b.points}</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="steps">
+    <g inkscape:label="repeat:picks.steps">
+      <g inkscape:label="step">
+        <rect x="560" y="262" width="118" height="36" rx="8" fill="#1c1c2e" stroke="#ffffff" stroke-opacity=".12"/>
+        <rect inkscape:label="show:item.current" x="560" y="262" width="118" height="36" rx="8" fill="#4a2f86"/>
+        <rect inkscape:label="color:item.by" x="566" y="294" width="106" height="3" rx="1.5" fill="#ffffff"/>
+        <text inkscape:label="hide:item.done fit:108" x="619" y="286" style="font-family:Oxanium;font-weight:700;font-size:14px;letter-spacing:1px;text-anchor:middle;fill:#ffffff"><tspan>{item.type | upper} {item.byName | upper}</tspan></text>
+        <text inkscape:label="show:item.done fit:108" x="619" y="286" style="display:none;font-family:Oxanium;font-weight:700;font-size:14px;letter-spacing:1px;text-anchor:middle;fill:#ffffff;fill-opacity:.4"><tspan>{item.type | upper} {item.byName | upper}</tspan></text>
+      </g>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="cards">
+    <g inkscape:label="repeat:pool">
+      <g inkscape:label="card">
+        <rect x="122" y="360" width="224" height="540" rx="12" fill="#0c0c16" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+        <g clip-path="url(#cardCover)"><image inkscape:label="img:item.cover" x="122" y="360" width="224" height="224"/></g>
+        <text inkscape:label="{item.name} fit:196" x="136" y="616" style="font-family:Oxanium;font-weight:800;font-size:22px;fill:#ffffff"><tspan>Song Name</tspan></text>
+        <text inkscape:label="{item.artist} fit:196" x="136" y="642" style="font-family:Inter;font-weight:600;font-size:15px;fill:#a9a9c2"><tspan>Artist</tspan></text>
+        <text inkscape:label="fit:196" x="136" y="662" style="font-family:Inter;font-size:14px;fill:#a9a9c2"><tspan>mapped by {item.mapper}</tspan></text>
+        <rect x="136" y="680" width="70" height="24" rx="5" fill="#8f48db"/>
+        <text inkscape:label="{item.difficulty}" x="171" y="697" style="font-family:Oxanium;font-weight:700;font-size:13px;text-anchor:middle;fill:#ffffff"><tspan>Expert+</tspan></text>
+        <text inkscape:label="{item.category}" x="214" y="697" style="font-family:Oxanium;font-weight:700;font-size:13px;letter-spacing:1px;fill:#a9a9c2"><tspan>Tech</tspan></text>
+        <text x="136" y="730" style="font-family:Inter;font-weight:600;font-size:13px;fill:#a9a9c2"><tspan>{item.bpm} BPM · {item.nps} NPS · {item.length}</tspan></text>
+
+        <g inkscape:label="state:item.state">
+          <g inkscape:label="when:available">
+            <rect x="122" y="826" width="224" height="74" rx="0" fill="#000000" fill-opacity=".4"/>
+            <text x="234" y="870" style="font-family:Oxanium;font-weight:800;font-size:18px;letter-spacing:3px;text-anchor:middle;fill:#ffffff;fill-opacity:.5"><tspan>AVAILABLE</tspan></text>
+          </g>
+          <g inkscape:label="when:banned" style="display:none">
+            <rect x="122" y="360" width="224" height="540" rx="12" fill="#07070f" fill-opacity=".68"/>
+            <text inkscape:label="ban-x" x="234" y="540" style="font-family:Oxanium;font-weight:800;font-size:170px;text-anchor:middle;fill:#ff2d55"><tspan>✕</tspan></text>
+            <rect x="122" y="826" width="224" height="74" fill="#6d1024"/>
+            <text x="234" y="860" style="font-family:Oxanium;font-weight:800;font-size:19px;letter-spacing:3px;text-anchor:middle;fill:#ffffff"><tspan>BANNED</tspan></text>
+            <text x="234" y="884" style="font-family:Inter;font-weight:600;font-size:14px;text-anchor:middle;fill:#ffffff;fill-opacity:.8"><tspan>by {item.byName}</tspan></text>
+          </g>
+          <g inkscape:label="when:picked|current|played" style="display:none">
+            <rect inkscape:label="stroke:item.by" x="122" y="360" width="224" height="540" rx="12" fill="none" stroke="#ffffff" stroke-width="4"/>
+            <rect inkscape:label="color:item.by" x="122" y="826" width="224" height="74" fill="#ffffff"/>
+            <text inkscape:label="show:item.state=picked" x="234" y="860" style="font-family:Oxanium;font-weight:800;font-size:19px;letter-spacing:3px;text-anchor:middle;fill:#ffffff"><tspan>PICKED</tspan></text>
+            <text inkscape:label="show:item.state=current" x="234" y="860" style="font-family:Oxanium;font-weight:800;font-size:19px;letter-spacing:3px;text-anchor:middle;fill:#ffffff"><tspan>NOW PLAYING</tspan></text>
+            <text inkscape:label="show:item.state=played" x="234" y="860" style="font-family:Oxanium;font-weight:800;font-size:19px;letter-spacing:3px;text-anchor:middle;fill:#ffffff"><tspan>PLAYED</tspan></text>
+            <text x="234" y="884" style="font-family:Inter;font-weight:600;font-size:14px;text-anchor:middle;fill:#ffffff;fill-opacity:.85"><tspan>by {item.byName}</tspan></text>
+            <rect x="132" y="370" width="74" height="28" rx="7" fill="#000000" fill-opacity=".7"/>
+            <text x="169" y="390" style="font-family:Oxanium;font-weight:800;font-size:15px;text-anchor:middle;fill:#ffffff"><tspan>MAP {item.order}</tspan></text>
+          </g>
+          <g inkscape:label="when:tiebreaker" style="display:none">
+            <rect x="122" y="360" width="224" height="540" rx="12" fill="none" stroke="#ffd84a" stroke-width="4"/>
+            <rect x="122" y="826" width="224" height="74" fill="#ffd84a"/>
+            <text x="234" y="860" style="font-family:Oxanium;font-weight:800;font-size:19px;letter-spacing:3px;text-anchor:middle;fill:#201800"><tspan>TIEBREAKER</tspan></text>
+            <text x="234" y="884" style="font-family:Inter;font-weight:600;font-size:14px;text-anchor:middle;fill:#201800"><tspan>if it goes the distance</tspan></text>
+          </g>
+        </g>
+        <g inkscape:label="won show:item.winner" style="display:none">
+          <rect inkscape:label="color:item.winner" x="232" y="370" width="104" height="28" rx="7" fill="#ffffff"/>
+          <text x="284" y="389" style="font-family:Oxanium;font-weight:800;font-size:13px;text-anchor:middle;fill:#ffffff"><tspan>WON · {item.winnerName | upper}</tspan></text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="prompt">
+    <text inkscape:label="prompt show:picks.next" x="960" y="970" style="font-family:Oxanium;font-weight:700;font-size:34px;text-anchor:middle;fill:#ffffff"><tspan>{picks.next.byName} is {picks.next.verb}…</tspan></text>
+    <text inkscape:label="show:picks.done hide:match.winner" x="960" y="970" style="display:none;font-family:Oxanium;font-weight:700;font-size:34px;text-anchor:middle;fill:#ffffff"><tspan>Picks locked · first to {match.need} wins</tspan></text>
+    <text inkscape:label="show:match.winner" x="960" y="970" style="display:none;font-family:Oxanium;font-weight:700;font-size:34px;text-anchor:middle;fill:#ffd84a"><tspan>{match.winnerName} wins the match</tspan></text>
+  </g>
+</svg>

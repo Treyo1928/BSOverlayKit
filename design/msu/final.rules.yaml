@@ -1,0 +1,11 @@
+# Rules for final.svg (MSU)
+enter:
+  - { target: title, play: slideDown }
+  - { target: team-a, play: slideRight, delay: 250 }
+  - { target: team-b, play: slideLeft, delay: 250 }
+  - { target: score, play: popIn, delay: 450 }
+  - { target: winner, play: fadeIn, delay: 700 }
+  - { target: thanks, play: slideUp, delay: 500 }
+
+fx:
+  dust: { amount: 0.45, clouds: 0 }

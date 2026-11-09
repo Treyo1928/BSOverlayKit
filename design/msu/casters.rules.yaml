@@ -1,0 +1,18 @@
+# Rules for casters.svg (MSU)
+enter:
+  - { target: caster-1, play: popIn }
+  - { target: caster-2, play: popIn, delay: 100 }
+  - { target: caster-3, play: popIn, delay: 200 }
+  - { target: caster-4, play: popIn, delay: 300 }
+  - { target: team-a, play: slideRight, delay: 300 }
+  - { target: team-b, play: slideLeft, delay: 300 }
+
+on:
+  change:caster.length:          # someone joined or left the voice channel
+    - { target: caster-1, play: popIn }
+    - { target: caster-2, play: popIn, delay: 80 }
+    - { target: caster-3, play: popIn, delay: 160 }
+    - { target: caster-4, play: popIn, delay: 240 }
+
+fx:
+  dust: { amount: 0.8 }

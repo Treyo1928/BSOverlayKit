@@ -1,0 +1,45 @@
+# BSOverlayKit — MSU Esports overlay. Saved changes apply immediately (no restart).
+# The generic starter scenes are in overlay.starter.yaml:  OVERLAY=overlay.starter.yaml ./run.sh
+
+title: MSU Esports Beat Saber
+
+# The event text in the Match scene's top bar (the panel can change it during the show).
+header: MSU Beat Saber · Winter Session
+
+# Scenes, in the order the panel shows them. svg: is the file in design/ without .svg.
+scenes:
+  - starting: { svg: msu/starting, label: "Starting Soon" }
+  - intermission: { svg: msu/intermission, label: "Intermission" }
+  - brb: { svg: msu/brb, label: "Be Right Back" }
+  - casters: { svg: msu/casters, label: "Casters" }
+  - picks: { svg: msu/picks, label: "Picks & Bans" }
+  - match: { svg: msu/match, label: "Match" }
+  - bracket: { svg: msu/bracket, label: "Bracket" }
+  - final: { svg: msu/final, label: "Final" }
+
+# Side colours, used by color:a / color:b / color:item.winner in the designs.
+colors:
+  a: "#e8d9b0"
+  b: "#c23a5a"
+
+crossfade: 450
+
+source: sim
+
+# What the simulator calls things, so previews look like our event.
+sim:
+  tournament: MSU Esports Beat Saber
+  short: MSU
+  round: Quarterfinal 1
+  a: MSU Maroon
+  b: MSU White
+  players: 2                     # players per map: 1 = a 1v1, 2 = duos
+  rosterA: [Erin, Trey, Mia, Will]
+  rosterB: [Kaiden, Kadence, Alex, Wyatt]
+
+automation:
+  - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket" }
+  - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket" }
+  - { on: songEnd, scene: picks, after: 12s, when: "match" }   # everyone finished (before the referee closes the map)
+  - { on: mapEnd, scene: picks, after: 10s, when: "match" }
+  - { on: matchEnd, scene: final, after: 12s }

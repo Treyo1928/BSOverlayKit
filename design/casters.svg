@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Casters. the boxes are places for caster pictures. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+     xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+     width="1920" height="1080" viewBox="0 0 1920 1080">
+  <sodipodi:namedview pagecolor="#303030" inkscape:pagecheckerboard="true" inkscape:document-units="px"/>
+  <defs>
+    <linearGradient id="accent" x1="0" x2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/></linearGradient>
+    <radialGradient id="camPh" cx=".5" cy=".4" r=".7"><stop offset="0" stop-color="#2a2a4a"/><stop offset="1" stop-color="#0b0b16"/></radialGradient>
+    <radialGradient id="glowA"><stop offset="0" stop-color="#ff3d6e" stop-opacity=".2"/><stop offset="1" stop-color="#ff3d6e" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glowB"><stop offset="0" stop-color="#2ea8ff" stop-opacity=".2"/><stop offset="1" stop-color="#2ea8ff" stop-opacity="0"/></radialGradient>
+  </defs>
+
+  <g inkscape:groupmode="layer" inkscape:label="back">
+    <rect width="1920" height="1080" fill="#07070f"/>
+    <ellipse inkscape:label="blob-a" cx="200" cy="120" rx="760" ry="560" fill="url(#glowA)"/>
+    <ellipse inkscape:label="blob-b" cx="1750" cy="980" rx="800" ry="600" fill="url(#glowB)"/>
+    <!-- placeholders, visible only where no cam link is set (the cam video covers them) -->
+    <rect x="96" y="176" width="820" height="461" rx="16" fill="url(#camPh)"/>
+    <rect x="1004" y="176" width="820" height="461" rx="16" fill="url(#camPh)"/>
+    <text x="506" y="415" style="font-family:Oxanium;font-weight:700;font-size:18px;letter-spacing:4px;text-anchor:middle;fill:#ffffff;fill-opacity:.25"><tspan>CAM 1</tspan></text>
+    <text x="1414" y="415" style="font-family:Oxanium;font-weight:700;font-size:18px;letter-spacing:4px;text-anchor:middle;fill:#ffffff;fill-opacity:.25"><tspan>CAM 2</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="topbar">
+    <rect x="64" y="40" width="1792" height="72" rx="14" fill="#0c0c16" fill-opacity=".85" stroke="#ffffff" stroke-opacity=".1"/>
+    <rect x="88" y="53" width="46" height="46" rx="12" fill="url(#accent)"/>
+    <text inkscape:label="{tournament.short}" x="111" y="83" style="font-family:Oxanium;font-weight:800;font-size:18px;text-anchor:middle;fill:#ffffff"><tspan>SSI</tspan></text>
+    <text inkscape:label="{tournament.name}" x="152" y="87" style="font-family:Oxanium;font-weight:800;font-size:28px;fill:#ffffff"><tspan>Tournament</tspan></text>
+    <circle inkscape:label="live-dot" cx="1752" cy="76" r="6" fill="#ff2d55"/>
+    <text x="1770" y="83" style="font-family:Oxanium;font-weight:700;font-size:18px;letter-spacing:4px;fill:#ffffff"><tspan>LIVE</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="cams">
+    <rect inkscape:label="cam-1" x="96" y="176" width="820" height="461" rx="16"/>
+    <rect inkscape:label="cam-2" x="1004" y="176" width="820" height="461" rx="16"/>
+    <rect inkscape:label="frame-1" x="96" y="176" width="820" height="461" rx="16" fill="none" stroke="url(#accent)" stroke-width="3"/>
+    <rect inkscape:label="frame-2" x="1004" y="176" width="820" height="461" rx="16" fill="none" stroke="url(#accent)" stroke-width="3"/>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="plates">
+    <g inkscape:label="plate-1">
+      <rect x="96" y="660" width="820" height="92" rx="14" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+      <text x="124" y="692" style="font-family:Oxanium;font-weight:700;font-size:14px;letter-spacing:3px;fill:#c9a8ff"><tspan>CASTER</tspan></text>
+      <text inkscape:label="{caster.1.name} fit:420" x="124" y="732" style="font-family:Oxanium;font-weight:800;font-size:36px;fill:#ffffff"><tspan>Caster One</tspan></text>
+      <text inkscape:label="{caster.1.handle} fit:220" x="890" y="716" style="font-family:Inter;font-weight:600;font-size:22px;text-anchor:end;fill:#a9a9c2"><tspan>@handle</tspan></text>
+    </g>
+    <g inkscape:label="plate-2">
+      <rect x="1004" y="660" width="820" height="92" rx="14" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+      <text x="1032" y="692" style="font-family:Oxanium;font-weight:700;font-size:14px;letter-spacing:3px;fill:#c9a8ff"><tspan>CASTER</tspan></text>
+      <text inkscape:label="{caster.2.name} fit:420" x="1032" y="732" style="font-family:Oxanium;font-weight:800;font-size:36px;fill:#ffffff"><tspan>Caster Two</tspan></text>
+      <text inkscape:label="{caster.2.handle} fit:220" x="1798" y="716" style="font-family:Inter;font-weight:600;font-size:22px;text-anchor:end;fill:#a9a9c2"><tspan>@handle</tspan></text>
+    </g>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="upnext">
+    <rect x="96" y="800" width="1728" height="150" rx="16" fill="#0c0c16" fill-opacity=".9" stroke="#ffffff" stroke-opacity=".1"/>
+    <text x="136" y="884" style="font-family:Oxanium;font-weight:700;font-size:20px;letter-spacing:5px;fill:#a9a9c2"><tspan>UP NEXT</tspan></text>
+    <text inkscape:label="{a.name} fit:520 color:a" x="890" y="896" style="font-family:Oxanium;font-weight:800;font-size:52px;text-anchor:end;fill:#ff3d6e"><tspan>Player A</tspan></text>
+    <text x="960" y="890" style="font-family:Oxanium;font-weight:800;font-size:28px;text-anchor:middle;fill:#a9a9c2"><tspan>VS</tspan></text>
+    <text inkscape:label="{b.name} fit:520 color:b" x="1030" y="896" style="font-family:Oxanium;font-weight:800;font-size:52px;fill:#2ea8ff"><tspan>Player B</tspan></text>
+    <text inkscape:label="{match.label}" x="1790" y="866" style="font-family:Inter;font-weight:800;font-size:22px;text-anchor:end;fill:#ffffff"><tspan>Quarterfinal 1</tspan></text>
+    <text x="1790" y="900" style="font-family:Inter;font-weight:600;font-size:20px;text-anchor:end;fill:#a9a9c2"><tspan>Best of {match.bestOf} · {a.points}–{b.points}</tspan></text>
+  </g>
+
+  <g inkscape:groupmode="layer" inkscape:label="ticker">
+    <rect x="0" y="1026" width="1920" height="54" fill="#08080f" fill-opacity=".92"/>
+    <rect x="0" y="1026" width="1920" height="2" fill="url(#accent)"/>
+    <text inkscape:label="{ticker} #ticker-text" x="1920" y="1061" style="font-family:Inter;font-weight:600;font-size:22px;fill:#ffffff"><tspan>Ticker text</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 465 539.5" width="465" height="539.5">
+  <!-- MSU Esports shield ("M/S" mark). Vector RECONSTRUCTION traced from the official
+       MSU Esports YouTube avatar (1024px) - not an official source file. See SOURCES.md. -->
+  <defs>
+    <linearGradient id="msuGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d9cdb3"/>
+      <stop offset="1" stop-color="#d9c499"/>
+    </linearGradient>
+  </defs>
+  <path id="shield" fill="url(#msuGold)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/>
+</svg>

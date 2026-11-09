@@ -1,0 +1,41 @@
+# Rules for match.svg (MSU). Two layouts: 'solo' for 1v1s, 'team' for 2 players a side (match.solo decides).
+enter:
+  - { target: wing-left, from: { y: -60 }, duration: 500 }
+  - { target: wing-right, from: { y: -60 }, duration: 500 }
+  - { target: team-a, play: slideRight, delay: 200 }
+  - { target: team-b, play: slideLeft, delay: 200 }
+  - { target: score, play: popIn, delay: 300 }
+  - { target: stats, play: slideUp, delay: 300 }
+  - { target: player-a, play: slideRight, delay: 300 }
+  - { target: player-b, play: slideLeft, delay: 300 }
+  - { target: song-info, play: slideUp, delay: 400 }
+  - { target: song-team, play: slideUp, delay: 400 }
+
+on:
+  increase:a.points:
+    - { target: points-a, play: popIn }
+  increase:b.points:
+    - { target: points-b, play: popIn }
+  increase:a.misses:
+    - { target: misses-a, play: pulse }
+  increase:b.misses:
+    - { target: misses-b, play: pulse }
+  becomes:a.leading:
+    - { target: acc-a, play: pulse }
+  becomes:b.leading:
+    - { target: acc-b, play: pulse }
+  mapStart:
+    - { target: song-info, play: slideUp }
+  mapEnd:
+    - { target: result, play: popIn }
+    - { target: result-team, play: popIn }
+
+repeat:
+  maps: { dx: 112 }          # MAP 1 / MAP 2 / ... / TB tabs
+  a.players: { dy: 439 }     # team layout: the second player's plate sits by the second video
+  b.players: { dy: 439 }
+
+fx:
+  dust: { amount: 0.5, clouds: 0.3 }
+
+tween: 250

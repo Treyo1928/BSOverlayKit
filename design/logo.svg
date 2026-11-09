@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Placeholder logo: replace this file with your own (SVG or PNG; update the link if the name changes). -->
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3d6e"/><stop offset=".5" stop-color="#a35cff"/><stop offset="1" stop-color="#2ea8ff"/></linearGradient></defs>
+  <rect width="256" height="256" rx="64" fill="url(#g)"/>
+  <path d="M70 70 L150 70 L186 128 L150 186 L70 186 L106 128 Z" fill="#fff" fill-opacity=".92"/>
+</svg>

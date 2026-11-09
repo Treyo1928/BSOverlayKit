@@ -1,0 +1,26 @@
+# Rules for picks.svg
+
+# Copies of repeated groups: how far apart (pixels). Without this they're laid out in a row automatically.
+repeat:
+  pool: { dx: 242 }
+  picks.steps: { dx: 128 }
+
+enter:
+  - { target: header, play: slideDown }
+  - { target: versus, from: { y: 30, opacity: 0 }, delay: 120 }
+  - { target: steps, play: fadeIn, delay: 250 }
+  - { target: card, from: { y: 60, opacity: 0 }, delay: 300 }   # every card at once…
+  - { target: prompt, play: fadeIn, delay: 700 }
+
+on:
+  # an event about one map (mapBan/mapPick) targets the card of THAT map
+  mapBan:
+    - { target: card, play: shake }
+    - { target: ban-x, play: stamp }
+  mapPick:
+    - { target: card, play: popIn }
+  picksDone:
+    - { target: prompt, play: pulse }
+
+loop:
+  - { target: prompt, play: breathe }

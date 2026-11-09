@@ -1,0 +1,632 @@
+// The OBS page. Loads the scene SVGs, keeps them bound to live data, switches scenes, plays rules.
+import { Scene } from "/engine/scene.js";
+
+const params = new URLSearchParams(location.search);
+const key = params.get("key");
+const debug = params.has("debug");
+const mute = params.has("mute");     // the panel's preview: no sound (OBS plays it), drawn small
+const silent = mute || params.has("silent");   // no sound at full quality (testing)
+// how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
+let previewScale = 1;
+if (params.has("bg")) document.body.classList.add("preview-bg");
+
+let scenes = {}, active = null, state = null, designVersion = null, loading = null;
+const $ = (s) => document.querySelector(s);
+
+function showError(msg) {
+  console.error(msg);
+  if (!debug) return;                 // never put errors on the real stream
+  const d = $("#debug");
+  d.textContent = msg;
+  d.style.display = msg ? "block" : "none";
+}
+
+// ---------------------------------------------------------------- fonts from design/fonts
+async function loadFonts(urls) {
+  for (const url of urls) {
+    const file = decodeURIComponent(url.split("/").pop()).replace(/\.\w+$/, "");
+    // "Oxanium.ttf" -> family Oxanium (all weights, variable font); "Oxanium-Bold.ttf" -> Oxanium 700
+    const [family, style = ""] = file.split("-");
+    const weights = { hairline: 100, thin: 100, extralight: 200, light: 300, regular: 400, medium: 500, semibold: 600, bold: 700, extrabold: 800, black: 900 };
+    const w = weights[style.toLowerCase().replace("italic", "")] ?? (/^\d{3}$/.test(style) ? style : "100 900");
+    try {
+      const face = new FontFace(family, `url("${encodeURI(url)}")`,   // quoted + encoded: file names have spaces
+        { weight: String(w), style: /italic/i.test(style) ? "italic" : "normal" });
+      document.fonts.add(await face.load());
+    } catch (e) { showError(`font ${file}: ${e.message}`); }
+  }
+}
+
+// ---------------------------------------------------------------- scenes
+async function loadDesign() {
+  const d = await fetch("/api/design").then((r) => r.json());
+  await loadFonts(d.fonts);
+  const next = {};
+  const errors = [];
+  for (const [id, def] of Object.entries(d.scenes)) {
+    if (def.error) errors.push(def.error);
+    const s = new Scene(id, def, { colors: state?.colors ?? {} });
+    try { await s.load($("#back"), $("#front")); next[id] = s; }
+    catch (e) { errors.push(e.message); s.destroy(); }
+  }
+  for (const s of Object.values(scenes)) s.destroy();
+  scenes = next;
+  active = null;
+  showError(errors.join("\n"));
+  if (state) apply(state, true);
+}
+
+// the server's clock (all overlays follow the same replay clock, even on another PC)
+let clockOffset = 0;
+const serverNow = () => Date.now() + clockOffset;
+const REVEAL_MS = 700;               // the "up next" card's exit, after the song starts
+
+/** The replay playlist for the scenes: `replay.song`, `replay.player`, `replay.switching` (the "up next" card) … */
+function replayCtx(r) {
+  if (!r) return {};
+  const now = serverNow();
+  const i = r.info ?? {};
+  const pos = r.pausedAt ?? (r.startAt == null ? 0 : Math.max(0, (now - r.startAt) / 1000));
+  const dur = r.duration || i.duration || 0;
+  return {
+    ...i,
+    song: i.song || (i.source === "scoresaber" ? "ScoreSaber replay" : "Replay"),
+    loaded: !!r.info,
+    switching: r.startAt == null || now < r.startAt + REVEAL_MS,
+    revealing: r.startAt != null && now >= r.startAt && now < r.startAt + REVEAL_MS,
+    time: fmt(Math.min(pos, dur || pos)), length: dur ? fmt(dur) : "", progress: dur ? Math.min(1, pos / dur) : 0,
+    next: r.next ?? {}, index: r.index, count: r.count, mode: r.mode,
+    // ready-made lines, so a design needn't juggle empty values
+    byline: [i.artist, i.mapper && `mapped by ${i.mapper}`].filter(Boolean).join(" · "),
+    diffline: [i.difficulty, i.stars ? `★ ${i.stars.toFixed(2)}` : ""].filter(Boolean).join(" · "),
+  };
+}
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+function ctxFrom(st) {
+  const d = st.data ?? {};
+  const show = st.show ?? {};
+  return {
+    ...d,
+    replay: replayCtx(st.replay),
+    caster: show.casters ?? [],
+    header: show.header || d.tournament?.round || "",
+    brb: show.brb ?? {},
+    ticker: (show.ticker ?? []).join("     ◆     "),
+    show,
+    colors: st.colors ?? {},
+  };
+}
+
+function apply(st, fresh = false) {
+  document.documentElement.style.setProperty("--fade", `${st.crossfade ?? 400}ms`);
+  const ctx = ctxFrom(st);
+  for (const s of Object.values(scenes)) {
+    s.env.colors = st.colors ?? {};
+    s.env.fadeMs = st.crossfade ?? 400;
+    s.update(ctx);
+  }
+  switchTo(st.show?.scene, fresh);
+  updateFeeds(st);
+}
+
+function switchTo(id, fresh) {
+  if (!scenes[id] || (active === id && !fresh)) return;
+  const was = active;
+  active = id;
+  for (const [sid, s] of Object.entries(scenes)) s.setVisible(sid === id);
+  scenes[id].enter();
+  scenes[id].startLoops();
+  if (was !== id && state) assignViewers();
+}
+
+// &fps on the URL: the frame rate in the corner: this page's, then each replay on screen (frames each viewer draws)
+let pageFps = 0;
+if (params.has("fps") || params.has("report")) {
+  const el = document.createElement("div");
+  el.style.cssText = "position:absolute;right:12px;bottom:12px;z-index:10;font:700 28px monospace;color:#0f0;background:#000c;padding:4px 10px";
+  if (params.has("fps")) document.body.append(el);
+  let n = 0, t0 = performance.now();
+  const tick = (now) => {
+    n++;
+    if (now - t0 >= 1000) {
+      pageFps = Math.round(n * 1000 / (now - t0));
+      const shown = pool.filter((f) => f.shown && f.fps != null).map((f) => f.fps);
+      const got = pictureMode ? Object.values(pics).filter((p) => p.el.classList.contains("shown")).map((p) => { const r = p.n ?? 0; p.n = 0; return r; }) : [];
+      el.textContent = `${pageFps} fps` + (got.length ? ` · pictures ${got.join(" ")}` : shown.length ? ` · replays ${shown.join(" ")}` : "");
+      n = 0; t0 = now;
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+// &report=<url>: every 5 s, POST the frame rates there (comparing browsers on one PC)
+if (params.get("report")) {
+  setInterval(() => {
+    const body = { ua: navigator.userAgent, scene: active, pageFps, heap: performance.memory?.usedJSHeapSize ?? null,
+      viewers: pool.map((f) => ({ i: f.i + 1, hole: f.hole, shown: f.shown, ready: f.el.classList.contains("ready"), fps: f.fps ?? null,
+        size: f.size ?? null, box: f.shown ? [Math.round(f.el.offsetWidth), Math.round(f.el.offsetHeight)] : null,
+        v: f.v ? { t: Math.round(f.v.time * 10) / 10, playing: f.v.playing } : null })) };
+    fetch(params.get("report"), { method: "POST", body: JSON.stringify(body) }).catch(() => {});
+  }, 5000);
+}
+
+// countdowns tick even without new data
+setInterval(() => { if (state && active) scenes[active]?.update(ctxFrom(state)); }, 250);
+
+// ---------------------------------------------------------------- video feeds (persistent iframes)
+// A hole shows: a link set in the panel, else what the data provides (TA live / mock replays in the viewer), else
+// for feed:main the replay playlist. Iframes stay loaded across scenes; their sound fades in when the hole is on
+// stream and out when it leaves (replay viewers only: they listen for msu:… messages, see chroviewer's
+// broadcast-bridge.ts). A hole with a clock (the playlist, live replays) is kept on the server's clock: every overlay
+// page seeks its viewer to the same moment, so OBS and the panel preview match.
+// A fixed pool of replay viewers, made once and never unloaded. Making a new viewer page per replay (and throwing the
+// old one away) leaked: every page brings its own WebGL context, decoders and caches, and a removed page is only
+// freed when the browser gets round to it. Instead each viewer keeps its page for the whole show, moves to whichever
+// hole needs it, and loads the next replay inside the same page (msu:load, chroviewer's broadcast-bridge.ts). A viewer
+// that already shows the replay a hole wants just moves there; spare viewers preload what other scenes will show (a
+// match's players while the map loads), so scene changes don't show loading. A hole shows a dark panel until its
+// replay is in. Links that aren't replay-viewer links (typed into the panel) get a plain iframe of their own.
+// Multiview (&multiview, opt-in): the viewers are tiles of ONE ChroViewer page (?multiview=N) covering the screen,
+// drawn by one renderer into their holes: one browser process and WebGL context instead of N (chroviewer's
+// multiview-shell.tsx). Every message carries the tile it is for; the page draws only the tiles listed in msu:tiles.
+// Cheaper on light maps (Chromium, 4 replays: 60 fps each, ~25 % less CPU and memory), but every tile's per-frame
+// work then shares ONE thread: on a heavy map (Spin Eternally: one replay alone ~35-60 fps) 4 tiles got 12-15 fps
+// each, where 4 separate pages (in parallel, on 4 cores) got 60/35/60/58. Firefox is slower at it too (out-of-
+// process WebGL: 37-41 vs 56-59). So separate pages are the default; &separate is accepted for older links.
+const MULTI = params.has("multiview");
+// Multiview keeps a 5th tile so the playlist replay has its own: otherwise the last match player loads into the one
+// that was playing Intermission as Match comes on (a dark box for a few seconds). A waiting tile isn't drawn, so it
+// costs little there; a 5th page of its own costs about 1 GB, so separate pages stay at 4. &viewers=N overrides.
+const POOL = Math.max(1, Number(params.get("viewers")) || (MULTI ? 5 : 4));
+let multi = null;                                      // { el, ifr, origin }
+const pool = [];                                       // viewers: { i, el, ifr, origin, alive, hole, link, token, v, … }
+const plain = {};                                      // hole -> { el, ifr, src } for non-replay links
+let loadToken = 0;
+const VOLUME = { main: 1, a: 0.6, a1: 0.6 };           // song volume per hole while it is on stream; others silent
+const FADE_MS = 1200;
+// Re-seek a viewer that is this far off the clock. The copy you hear (OBS) is only corrected when it is clearly off,
+// and rarely: every seek is an audible skip. A muted copy (the panel preview) can be kept tighter.
+const DRIFT = { heard: { s: 1.5, wait: 10_000 }, muted: { s: 0.4, wait: 2000 } };
+if (debug) window.msuFeeds = {};                       // hole id -> its viewer, for checking sync from the console
+// The panel preview doesn't run replay viewers of its own while an on-air overlay is open: that one sends small
+// pictures of its replays (PICTURES per second, through the overlay server) and the preview shows them. Two full
+// sets of viewers on one PC halved the frame rate of both. The panel's "Preview replays" setting can turn it off.
+const PICTURES = { fps: 12, width: 480 };
+let sendPictures = false;                              // on air: the server picked this page to send them
+let pictureMode = false;                               // preview: they're coming, so show them instead of viewers
+const pics = {};                                       // preview: hole id -> { el, img, url, link }
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+/**
+ * Each viewer on its own local address (127.0.0.2, .3, …: all this PC). Browsers run every frame of one site in one
+ * process, so viewers on 127.0.0.1 shared a single CPU core; on separate addresses they run in parallel, and each gets
+ * its own WebGL context allowance. Only for a viewer on 127.0.0.1 (start.sh serves it on 127.0.0.1-6).
+ */
+function viewerOrigin(src, i) {
+  const u = new URL(src);
+  if (u.hostname === "127.0.0.1" && !params.has("nospread")) u.hostname = `127.0.0.${2 + (i % 5)}`;
+  return u.origin;
+}
+/** A replay-viewer link → what to load ({ scoreIdBL } / { scoreId } / { replayUrl }), or null for other links. */
+function replayLink(src) {
+  try {
+    const q = new URL(src).searchParams;
+    if (q.get("scoreIdBL")) return { scoreIdBL: q.get("scoreIdBL") };
+    if (q.get("scoreId")) return { scoreId: q.get("scoreId") };
+    if (q.get("replayUrl")) return { replayUrl: q.get("replayUrl") };
+  } catch {}
+  return null;
+}
+const linkKey = (l) => (l ? l.scoreIdBL ?? l.scoreId ?? l.replayUrl ?? "" : "");
+
+function feedSrc(id, st) {
+  const name = id.slice(5);
+  const http = (v) => (/^https?:\/\//.test(v ?? "") ? v : "");
+  if (http(st.show?.feeds?.[name])) return { src: st.show.feeds[name], clock: null, replayId: null };
+  if (http(st.data?.feeds?.[name])) {
+    const at = st.data.feedsStartAt;
+    return { src: st.data.feeds[name], clock: at ? { startAt: at, pausedAt: null } : null, replayId: null };
+  }
+  if (name === "main" && st.replay?.url) {
+    return { src: st.replay.url, clock: { startAt: st.replay.startAt, pausedAt: st.replay.pausedAt }, replayId: st.replay.id };
+  }
+  return { src: "", clock: null, replayId: null };
+}
+
+// a viewer page's link: muted, and already at the panel's quality (changing it after load rebuilds the 3D scene)
+function viewerUrl(origin, extra = {}) {
+  const cam = state?.show?.viewer ?? {};
+  const settings = { masterVolume: 0, graphicsQuality: cam.quality ?? "medium", screenDisplacementEffects: cam.distortion ?? true };
+  return `${origin}/?${new URLSearchParams({ ...extra, hideUI: "true", settings: JSON.stringify(settings) })}`;
+}
+function multiview(src) {
+  if (multi) return multi;
+  const el = document.createElement("div");
+  el.className = "feed multiview shown";
+  Object.assign(el.style, { left: "0", top: "0", width: "100%", height: "100%", background: "transparent", zIndex: "1" });
+  const ifr = document.createElement("iframe");
+  ifr.allow = "autoplay; encrypted-media";
+  ifr.style.background = "transparent";
+  const origin = viewerOrigin(src, 0);
+  ifr.src = viewerUrl(origin, { multiview: String(POOL) });
+  el.append(ifr);
+  $("#feeds").append(el);
+  return (multi = { el, ifr, origin });
+}
+function newViewer(src) {
+  const i = pool.length;
+  const el = document.createElement("div");
+  el.className = "feed viewer";
+  let ifr, origin;
+  if (MULTI) ({ ifr, origin } = multiview(src));       // a tile: the hole's dark panel is all of it here
+  else {
+    ifr = document.createElement("iframe");
+    ifr.allow = "autoplay; encrypted-media";
+    origin = viewerOrigin(src, i);
+    ifr.src = viewerUrl(origin);
+    el.append(ifr);
+  }
+  $("#feeds").append(el);
+  if (multi) $("#feeds").append(multi.el);             // the tiles' page stays above the holes' dark panels
+  const f = { i, tile: String(i), el, ifr, origin, alive: false, hole: null, name: "", link: "", want: null, token: 0, v: null, clock: null, replayId: null,
+    vol: 0, target: 0, sent: -1, shown: false, busyUntil: 0, camSent: "", reported: false, loadSentAt: 0 };
+  pool.push(f);
+  return f;
+}
+/** Point a viewer at a replay (loads it inside its page once the page is up; nothing to do if it already has it). */
+function load(f, link) {
+  const key = linkKey(link);
+  if (f.link === key) return;
+  f.link = key;
+  f.want = link;
+  f.token = ++loadToken;
+  f.v = null; f.reported = false; f.camSent = ""; f.vol = 0; f.sent = -1;
+  f.el.classList.remove("ready");
+  sendLoad(f);
+}
+function sendLoad(f) {
+  if (!f.alive || !f.want) return;
+  f.loadSentAt = performance.now();
+  tell(f, { type: "msu:load", token: f.token, ...f.want });
+}
+
+/** Holes → viewers: keep what's right, move viewers that already have a wanted replay, load the rest, preload spares. */
+let wanted = {};                                       // hole id -> { src, link, clock, replayId }
+function updateFeeds(st) {
+  const ids = new Set(Object.values(scenes).flatMap((s) => s.feeds.map((f) => f.id)));
+  wanted = {};
+  for (const id of ids) {
+    const w = feedSrc(id, st);
+    if (w.src) wanted[id] = { ...w, link: replayLink(w.src) };
+  }
+  // links that aren't replays: a plain iframe per hole, as before
+  for (const id of ids) {
+    const src = wanted[id] && !wanted[id].link ? wanted[id].src : "";
+    let p = plain[id];
+    if (!src) { if (p) { p.el.remove(); delete plain[id]; } continue; }
+    if (!p) {
+      const el = document.createElement("div");
+      el.className = "feed";
+      $("#feeds").append(el);
+      p = plain[id] = { el, ifr: null, src: "" };
+    }
+    if (p.src !== src) {
+      p.src = src;
+      p.ifr?.remove();
+      p.ifr = document.createElement("iframe");
+      p.ifr.allow = "autoplay; encrypted-media";
+      p.ifr.src = src;
+      p.el.append(p.ifr);
+    }
+  }
+  assignViewers();
+}
+function visibleHoles() {
+  const s = scenes[active];
+  return new Map((s?.feeds ?? []).filter((f) => shownInScene(f.el) && wanted[f.id]?.link).map((f) => [f.id, f.el.getBoundingClientRect()]));
+}
+function assignViewers() {
+  const visible = visibleHoles();
+  if (pictureMode) {                                   // preview: pictures in the holes, every viewer idle
+    for (const f of pool) { f.hole = null; f.name = ""; f.clock = null; f.replayId = null; }
+    layoutFeeds(visible);
+    return;
+  }
+  const taken = new Set();
+  const bind = (f, id) => {
+    const w = wanted[id];
+    taken.add(f);
+    f.hole = id; f.name = id.slice(5); f.clock = w.clock; f.replayId = w.replayId;
+    load(f, w.link);
+  };
+  const need = [...visible.keys()];
+  // what other scenes will show: a match's players first, the playlist's paused replay last
+  const later = Object.keys(wanted).filter((id) => wanted[id].link && !visible.has(id))
+    .sort((x, y) => (x === "feed:main") - (y === "feed:main"));
+  // 1. viewers already on a visible hole with the right replay stay; 2. a viewer that has the replay moves to it
+  for (const id of need) {
+    const f = pool.find((x) => !taken.has(x) && x.hole === id && x.link === linkKey(wanted[id].link))
+      ?? pool.find((x) => !taken.has(x) && x.link === linkKey(wanted[id].link));
+    if (f) bind(f, id);
+  }
+  // 3. the rest load into a spare viewer: one nobody wants, else any free one; make more only if every one is in use
+  const free = () => pool.find((x) => !taken.has(x) && !Object.values(wanted).some((w) => linkKey(w.link) === x.link))
+    ?? pool.find((x) => !taken.has(x));
+  for (const id of need) {
+    if ([...taken].some((x) => x.hole === id)) continue;
+    const f = free() ?? (pool.length < POOL || pool.length < need.length ? newViewer(wanted[id].src) : null);
+    if (f) bind(f, id);
+  }
+  // 4. spare viewers preload the holes of other scenes (already loaded ones keep theirs)
+  for (const id of later) {
+    if (pool.some((x) => x.link === linkKey(wanted[id].link) && !taken.has(x))) {
+      const f = pool.find((x) => x.link === linkKey(wanted[id].link) && !taken.has(x));
+      bind(f, id);
+      continue;
+    }
+    const f = free() ?? (pool.length < POOL ? newViewer(wanted[id].src) : null);
+    if (f) bind(f, id);
+  }
+  for (const f of pool) if (!taken.has(f)) { f.hole = null; f.name = ""; f.clock = null; f.replayId = null; }
+  layoutFeeds(visible);
+}
+
+const tell = (f, msg) => { try { f.ifr?.contentWindow?.postMessage(MULTI ? { ...msg, tile: f.tile } : msg, f.origin); } catch {} };
+/** Multiview: where each tile goes (shown holes whose replay is in), in the tiles page's own pixels. */
+let tilesSent = "";
+function sendTiles() {
+  if (!multi) return;
+  const at = multi.el.getBoundingClientRect();
+  const tiles = pool.filter((f) => f.shown && f.el.classList.contains("ready")).map((f) => {
+    const b = f.el.getBoundingClientRect();
+    return { tile: f.tile, x: b.left - at.left, y: b.top - at.top, width: b.width, height: b.height };
+  });
+  const key = JSON.stringify(tiles);
+  if (key === tilesSent) return;
+  tilesSent = key;
+  try { multi.ifr.contentWindow?.postMessage({ type: "msu:tiles", tiles }, multi.origin); } catch {}
+}
+/** The browser took a viewer's WebGL context (too many open): reload its page; it gets its replay again. */
+function revive(f) {
+  const now = performance.now();
+  if (MULTI) {                                         // one page holds every tile: reload it once
+    if (now - (multi?.revivedAt ?? -1e9) < 5000) return;
+    multi.revivedAt = now;
+    showError("the replay viewers' page lost its WebGL context; reloading it");
+    for (const x of pool) { x.alive = false; x.v = null; x.camSent = ""; x.sent = -1; x.el.classList.remove("ready"); }
+    tilesSent = "";
+    multi.ifr.src = viewerUrl(multi.origin, { multiview: String(POOL) });
+    return;
+  }
+  if (now - (f.revivedAt ?? -1e9) < 5000) return;
+  f.revivedAt = now;
+  showError(`viewer ${f.i + 1}: the browser dropped its WebGL context; reloading it`);
+  f.alive = false; f.v = null; f.camSent = ""; f.sent = -1;
+  f.el.classList.remove("ready");
+  f.ifr.src = viewerUrl(f.origin);
+}
+const report = (m) => ws?.readyState === 1 && ws.send(JSON.stringify({ type: "viewer", ...m }));
+
+/** Keep a viewer on its clock: waiting before the start, paused while off stream, re-seeked if it drifts. */
+function syncToClock(f) {
+  const v = f.v, c = f.clock, now = performance.now();
+  if (!v?.loaded || !(v.duration > 0) || now < f.busyUntil) return;
+  const want = c.pausedAt ?? (c.startAt == null ? null : (serverNow() - c.startAt) / 1000);
+  const at = v.time + (v.playing ? (now - v.at) / 1000 : 0);
+  const cmd = (msg, wait = 400) => { tell(f, msg); f.busyUntil = now + wait; };
+  const drift = silent || !(VOLUME[f.name] > 0) ? DRIFT.muted : DRIFT.heard;
+  if (want === null || want < 0) {                    // not started yet (the "up next" card is up)
+    if (v.playing) cmd({ type: "msu:pause" });
+    else if (v.time > 0.2) cmd({ type: "msu:seek", time: 0 });
+  } else if (want >= v.duration) {
+    // over: let it finish
+  } else if (c.pausedAt != null || !f.shown) {         // off stream: pause once the music has faded out
+    if (v.playing && f.vol === 0) cmd({ type: "msu:pause" });
+    else if (!v.playing && Math.abs(v.time - want) > 0.3) cmd({ type: "msu:seek", time: want });
+  } else if (!v.playing) {                             // starting (or resuming): from exactly the right moment
+    if (Math.abs(v.time - want) > 0.3) tell(f, { type: "msu:seek", time: want });
+    cmd({ type: "msu:play" }, 1500);
+  } else if (Math.abs(at - want) > drift.s) {
+    cmd({ type: "msu:seek", time: want + 0.1 }, drift.wait);
+  }
+}
+
+// fade each viewer's sound toward its target (on stream: its hole's volume, else 0), and keep clocks
+setInterval(() => {
+  for (const f of pool) {
+    if (!f.alive) continue;
+    if (f.want && !f.v && performance.now() - f.loadSentAt > 20_000) sendLoad(f);   // a load that never answered
+    const full = silent ? 0 : VOLUME[f.name] ?? 0;
+    f.target = f.shown ? full : 0;
+    const step = (50 / FADE_MS) * Math.max(VOLUME[f.name] ?? 0, 0.01);
+    f.vol = f.vol < f.target ? Math.min(f.target, f.vol + step) : Math.max(f.target, f.vol - step);
+    if (Math.abs(f.vol - f.sent) > 0.004 || (f.sent !== 0 && f.vol === 0)) {
+      f.sent = f.vol;
+      tell(f, { type: "msu:settings", settings: { masterVolume: f.vol } });
+    }
+    // the replay viewer settings from the panel (up/down look lock, resolution, frame cap), sent again after a reload.
+    // The panel's small preview (&mute) draws at the size it is shown and 30 fps, leaving the PC's power to OBS.
+    const cam = state?.show?.viewer;
+    if (cam) {
+      // drawn for the chosen output (1080p by default), not the screen's pixels: this page is always 1920×1080, so
+      // on a 4K screen at 150 % (or zoomed) the viewers would otherwise draw 1.5× as many pixels per side
+      const output = cam.output ?? 1080;
+      const forOutput = output > 0 ? output / 1080 / Math.min(devicePixelRatio || 1, 2) : 1;
+      const full = Math.max(0.25, Math.min(2, Math.round(forOutput * (cam.renderScale ?? 1) * 100) / 100));
+      const scale = mute ? Math.min(full, Math.max(0.25, Math.round(previewScale * 1.15 * 20) / 20)) : full;
+      const fps = mute ? Math.min(cam.maxFps ?? 60, 30) : cam.maxFps ?? 60;
+      const quality = cam.quality ?? "medium", distortion = cam.distortion ?? true;
+      const camKey = `${cam.lockPitch}|${cam.pitchLimit}|${scale}|${fps}|${quality}|${distortion}`;
+      // sent again every few seconds too: a viewer that missed them (busy loading, or reused for another hole) ran
+      // at its own 120 fps cap instead of 60, and pulled the shared multiview loop up with it
+      if (f.camSent !== camKey || performance.now() - (f.camAt ?? 0) > 3000) {
+        f.camSent = camKey;
+        f.camAt = performance.now();
+        tell(f, { type: "msu:settings", settings: { replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchLimit: Number(cam.pitchLimit) || 0, renderScale: scale,
+          graphicsQuality: quality, screenDisplacementEffects: !!distortion } });
+        tell(f, { type: "msu:frameRate", fps });
+      }
+    }
+    const pf = sendPictures && f.shown ? PICTURES.fps : 0;
+    if (f.picSent !== pf) { f.picSent = pf; tell(f, { type: "msu:pictures", ...PICTURES, fps: pf }); }
+    if (f.clock) syncToClock(f);
+    else if (f.v?.loaded) {                            // no clock (a typed-in link): play on stream, pause off it
+      if (!f.shown && f.vol === 0 && f.v.playing && performance.now() > f.busyUntil) { tell(f, { type: "msu:pause" }); f.busyUntil = performance.now() + 600; }
+      if (f.shown && !f.v.playing && performance.now() > f.busyUntil) { tell(f, { type: "msu:play" }); f.busyUntil = performance.now() + 600; }
+    }
+  }
+}, 50);
+window.addEventListener("message", (e) => {
+  if (e.source === window.parent && e.origin === location.origin && e.data?.type === "msu:previewScale") {
+    previewScale = Math.max(0.1, Math.min(1, Number(e.data.scale) || 1));
+    return;
+  }
+  if (!e.data || typeof e.data !== "object") return;
+  const f = MULTI
+    ? (multi && e.source === multi.ifr.contentWindow ? pool.find((x) => x.tile === String(e.data.tile)) : null)
+    : pool.find((x) => x.ifr.contentWindow === e.source);
+  if (!f) return;
+  if (e.data.type === "msu:state") {
+    const d = e.data;
+    if (!f.alive) {                                    // the page is up: give it its replay
+      f.alive = true;
+      f.sent = -1; f.camSent = ""; f.picSent = -1;
+      if (f.want) { f.loadSentAt = 0; sendLoad(f); }
+    }
+    if (Number(d.token) !== f.token) return;           // still showing an earlier replay
+    f.v = { time: Number(d.time) || 0, playing: !!d.playing, duration: Number(d.duration) || 0, loaded: !!d.loaded, at: performance.now() };
+    const ready = f.v.loaded && f.v.duration > 0;
+    f.el.classList.toggle("ready", ready);
+    if (MULTI) sendTiles();
+    if (f.replayId && ready && !f.reported) {
+      f.reported = true;
+      report({ id: f.replayId, ready: true, duration: f.v.duration });
+    }
+  }
+  if (e.data.type === "msu:ended" && f.replayId && f.v) report({ id: f.replayId, ended: true });
+  if (e.data.type === "msu:contextLost") revive(f);
+  if (e.data.type === "msu:fps") { f.fps = Number(e.data.fps) || 0; f.size = e.data.size ?? null; }
+  if (e.data.type === "msu:audio") { f.audioBlocked = !!e.data.blocked; soundBanner(); }
+  // on air: a picture of this viewer's replay → the server → the previews ([name length][hole id][JPEG])
+  if (e.data.type === "msu:picture" && e.data.blob instanceof Blob && sendPictures && f.shown && f.hole
+      && Number(e.data.token) === f.token && f.el.classList.contains("ready") && ws?.readyState === 1 && ws.bufferedAmount < 1_000_000) {
+    const id = enc.encode(f.hole);
+    ws.send(new Blob([new Uint8Array([id.length]), id, e.data.blob]));
+  }
+});
+/**
+ * A browser window (not OBS, which always allows it) may hold the replays' music back until someone clicks the page:
+ * autoplay rules. Then a banner says so, and a click anywhere tells every viewer to start it. Hitsounds start later
+ * than the music, after a click, which is why they could be heard while the music wasn't.
+ */
+const banner = document.createElement("div");
+banner.textContent = "🔇 Click anywhere to turn on the replay music";
+banner.style.cssText = "position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:20;display:none;" +
+  "font:700 26px sans-serif;color:#fff;background:#000d;padding:8px 18px;border-radius:10px;cursor:pointer";
+document.body.append(banner);
+function soundBanner() {
+  const held = !silent && pool.some((f) => f.audioBlocked && f.shown && (VOLUME[f.name] ?? 0) > 0);
+  banner.style.display = held ? "block" : "none";
+}
+const unlockAll = () => { for (const f of pool) if (f.alive) tell(f, { type: "msu:unlock" }); };
+for (const type of ["pointerdown", "keydown"]) addEventListener(type, unlockAll, true);
+/** Preview: a picture from the on-air overlay, into its hole. */
+function showPicture(buf) {
+  const bytes = new Uint8Array(buf);
+  const p = pics[dec.decode(bytes.subarray(1, 1 + bytes[0]))];
+  if (!p) return;
+  const url = URL.createObjectURL(new Blob([bytes.subarray(1 + bytes[0])], { type: "image/jpeg" }));
+  const img = new Image();
+  img.onload = () => {
+    p.img.replaceWith(img);
+    p.img = img;
+    if (p.url) URL.revokeObjectURL(p.url);
+    p.url = url;
+    p.el.classList.add("ready");
+    p.n = (p.n ?? 0) + 1;
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url;
+}
+/** A hole inside a layer that show:/hide:/when: has hidden gets no video (one scene can hold a 1v1 and a duos layout). */
+function shownInScene(el) {
+  for (let n = el; n && !n.classList?.contains("scene-svg"); n = n.parentNode) {
+    if (n.style?.visibility === "hidden" || n.style?.display === "none") return false;
+  }
+  return true;
+}
+function layoutFeeds(visible = visibleHoles()) {
+  const box = (el, b) => Object.assign(el.style, { left: `${b.left}px`, top: `${b.top}px`, width: `${b.width}px`, height: `${b.height}px` });
+  for (const f of pool) {
+    const b = f.hole ? visible.get(f.hole) : null;
+    f.shown = !!b;
+    f.el.classList.toggle("shown", f.shown);
+    if (b) box(f.el, b);
+  }
+  soundBanner();
+  if (MULTI) sendTiles();
+  const s = scenes[active];
+  const plainBoxes = new Map((s?.feeds ?? []).filter((f) => shownInScene(f.el)).map((f) => [f.id, f.el.getBoundingClientRect()]));
+  for (const [id, p] of Object.entries(plain)) {
+    const b = plainBoxes.get(id);
+    p.el.classList.toggle("shown", !!b);
+    if (b) box(p.el, b);
+  }
+  for (const [id, b] of pictureMode ? visible : []) {
+    let p = pics[id];
+    if (!p) {
+      const el = document.createElement("div");
+      el.className = "feed viewer picture";
+      const img = new Image();
+      el.append(img);
+      $("#feeds").append(el);
+      p = pics[id] = { el, img, url: "", link: "" };
+    }
+    const link = linkKey(wanted[id]?.link);
+    if (p.link !== link) { p.link = link; p.el.classList.remove("ready"); }   // another replay: dark until it comes
+    box(p.el, b);
+  }
+  for (const [id, p] of Object.entries(pics)) p.el.classList.toggle("shown", pictureMode && visible.has(id));
+  if (debug) window.msuFeeds = Object.fromEntries(pool.filter((f) => f.hole).map((f) => [f.hole, f]));
+}
+
+// ---------------------------------------------------------------- connection
+let ws = null;
+function connect() {
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?key=${encodeURIComponent(key ?? "")}${mute ? "&role=preview" : ""}`);
+  ws.binaryType = "arraybuffer";
+  ws.onopen = () => document.body.classList.remove("offline");
+  ws.onclose = () => {
+    document.body.classList.add("offline");
+    sendPictures = false;
+    setTimeout(connect, 1000);
+  };
+  ws.onmessage = async (e) => {
+    if (e.data instanceof ArrayBuffer) return showPicture(e.data);
+    const m = JSON.parse(e.data);
+    if (m.type === "pictures") {
+      if (!mute) sendPictures = !!m.send;
+      else if (pictureMode !== !!m.from) { pictureMode = !!m.from; if (state) assignViewers(); }
+      return;
+    }
+    if (m.type === "state") {
+      if (m.now) clockOffset = m.now - Date.now();
+      state = m;
+      if (designVersion !== m.designVersion) {
+        designVersion = m.designVersion;
+        loading = loadDesign();
+      }
+      await loading;
+      try { apply(m); } catch (err) { showError(`render: ${err.message}`); }
+    }
+    if (m.type === "design") { designVersion = m.version; loading = loadDesign(); }
+    if (m.type === "event") {
+      try { scenes[active]?.event(m); } catch (err) { showError(`event ${m.name}: ${err.message}`); }
+    }
+  };
+}
+connect();
+
+// OBS: replay the entrance when this source is shown again
+window.addEventListener("obsSourceVisibleChanged", (e) => { if (e.detail.visible && active) scenes[active].enter(); });

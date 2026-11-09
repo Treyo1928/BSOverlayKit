@@ -1,0 +1,9 @@
+# Rules for results.svg
+repeat:
+  results: { dy: 104 }      # rows stacked downward, 104 px apart
+
+enter:
+  - { target: head, play: slideDown }
+  - { target: winner, play: popIn, delay: 250 }
+  - { target: set, play: slideUp, delay: 350 }
+  - { target: row, play: slideUp, delay: 500 }

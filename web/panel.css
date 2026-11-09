@@ -1,0 +1,51 @@
+:root { color-scheme: dark; --line: #2a2a40; --muted: #a9a9c2; --accent: #a35cff; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, sans-serif; background: #0d0d16; color: #eee; }
+body.login { display: grid; place-items: center; min-height: 100vh; }
+body.login .card { width: 320px; display: grid; gap: 10px; }
+h1 { margin: 0; font-size: 18px; }
+header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #12121f; border-bottom: 1px solid var(--line); }
+header .spacer { flex: 1; }
+main { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(480px, 1.3fr); gap: 16px; padding: 16px; align-items: start; }
+.col { display: grid; gap: 16px; }
+.card { background: #161626; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.card h2 .spacer { flex: 1; }
+.scenes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.scenes button { padding: 16px 6px; font-size: 14px; }
+button { background: #2c2c48; color: #eee; border: 1px solid #3c3c60; padding: 7px 12px; border-radius: 6px; cursor: pointer; font: 600 13px system-ui, sans-serif; }
+button:hover { background: #3a3a5e; }
+button.on { background: #5b3d8f; border-color: var(--accent); }
+.row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; } .row > * { flex: 1; min-width: 0; } .row > .shrink { flex: none; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+label { display: block; margin: 8px 0 3px; color: var(--muted); font-size: 12px; }
+input, textarea { width: 100%; background: #0d0d16; border: 1px solid #333350; color: #eee; padding: 7px 9px; border-radius: 6px; font: inherit; }
+input[type="checkbox"] { width: auto; }
+textarea { min-height: 64px; resize: vertical; }
+.preview { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.preview iframe { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.err { color: #ff8a9a; }
+.errors { background: #3a1018; border: 1px solid #7a1f2b; border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; font: 12px ui-monospace, monospace; }
+.log { max-height: 180px; overflow: auto; font: 12px ui-monospace, monospace; color: #cfcfe6; background: #0006; padding: 8px; border-radius: 6px; }
+.pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; background: #333; }
+.pill.ok { background: #1d6b3d; } .pill.bad { background: #7a1f2b; }
+select { width: 100%; background: #0d0d16; border: 1px solid #333350; color: #eee; padding: 7px 9px; border-radius: 6px; font: inherit; }
+.muted { color: var(--muted); font-size: 12px; letter-spacing: 0; text-transform: none; }
+.pl-now { display: flex; gap: 12px; align-items: center; min-height: 64px; }
+.pl-now img, .pl-item img { width: 64px; height: 64px; border-radius: 6px; object-fit: cover; background: #0d0d16; flex: none; }
+.pl-now .t { flex: 1; min-width: 0; }
+.pl-now b { font-size: 15px; }
+.pl-bar { height: 4px; background: #0d0d16; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+.pl-bar i { display: block; height: 100%; background: var(--accent); width: 0; }
+.pl-list { margin-top: 10px; max-height: 360px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+.pl-item { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.pl-item:last-child { border-bottom: 0; }
+.pl-item img { width: 40px; height: 40px; }
+.pl-item.on { background: #2a1f45; }
+.pl-item .n { width: 22px; color: var(--muted); text-align: right; flex: none; }
+.pl-item .t { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.pl-item .t small { color: var(--muted); }
+.pl-item button { padding: 4px 8px; }
+.pl-empty { padding: 14px; color: var(--muted); text-align: center; }
+code { background: #0008; padding: 1px 5px; border-radius: 4px; }

@@ -1,0 +1,48 @@
+# Rules for match.svg. Targets are layer names from Inkscape (Layers & Objects panel).
+# Full reference: docs/DESIGNING.md
+
+# Plays every time this scene comes on stream.
+enter:
+  - { target: scoreboard, from: { y: -90, opacity: 0 }, duration: 600 }
+  - { target: tug,        from: { opacity: 0 }, delay: 250 }
+  - { target: tag-a,      play: slideRight, delay: 350 }
+  - { target: tag-b,      play: slideLeft,  delay: 350 }
+  - { target: stats-a,    from: { x: -80, opacity: 0 }, delay: 300 }
+  - { target: stats-b,    from: { x: 80, opacity: 0 },  delay: 300 }
+  - { target: song,       from: { y: 80, opacity: 0 },  delay: 450 }
+
+# Reactions. Keys are match events (mapStart, mapEnd, …) or data changes (increase:/decrease:/change:/becomes:).
+on:
+  increase:a.misses:
+    - { target: misses-a, play: pulse }
+  increase:b.misses:
+    - { target: misses-b, play: pulse }
+  increase:a.points:
+    - { target: points-num-a, play: popIn }
+    - { target: points-a, play: pulse, delay: 150 }
+  increase:b.points:
+    - { target: points-num-b, play: popIn }
+    - { target: points-b, play: pulse, delay: 150 }
+  becomes:a.leading:
+    - { target: acc-a, play: pulse }
+  becomes:b.leading:
+    - { target: acc-b, play: pulse }
+  mapStart:
+    - { target: song-info, play: slideUp }
+  mapEnd:
+    - { target: result, play: popIn }
+  matchEnd:
+    - { target: result, play: winnerPop }
+
+# Your own animations, usable as `play: name` anywhere above.
+animations:
+  winnerPop:
+    keyframes:
+      - { scale: 0.5, opacity: 0, rotate: -4 }
+      - { scale: 1.08, opacity: 1, rotate: 1, offset: 0.65 }
+      - { scale: 1, opacity: 1, rotate: 0 }
+    duration: 700
+    easing: ease-out
+
+# How long numbers take to count to a new value (ms). 0 = jump.
+tween: 250
