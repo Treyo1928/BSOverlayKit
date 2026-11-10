@@ -10,6 +10,11 @@ header: MSU Beat Saber · Winter Session
 # Leave out to show each replay with the scores its player recorded it with.
 hsv: msu/MSU-HSV.json
 
+# How far behind the players their live replays are shown during a TA match. This is the buffer: replay data that
+# arrives late (a busy game, wifi on a Quest) is ridden out instead of freezing the picture and cutting the music.
+# Lower = closer to live, more freezes. The four players are on the same beat whatever this is.
+liveDelay: 2500ms
+
 # Scenes, in the order the panel shows them. svg: is the file in design/ without .svg.
 scenes:
   - starting: { svg: msu/starting, label: "Starting Soon" }

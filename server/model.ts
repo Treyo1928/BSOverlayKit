@@ -215,7 +215,14 @@ export interface ShowState {
   staged?: StagedShow | null;
   // every replay viewer: hold the up/down look near level (degrees); resolution (1 = full) and frame cap, which a
   // stream PC drawing replays on the CPU (OBS on Linux + NVIDIA) needs lower
-  viewer: { lockPitch: boolean; pitchLimit: number; renderScale: number; maxFps: number;
+  viewer: { lockPitch: boolean;
+    /** how far the replay camera may look up and down from level, in degrees (they need not be the same) */
+    pitchUp: number; pitchDown: number;
+    /** (older show.json files: one limit for both) */
+    pitchLimit?: number;
+    /** showing a limit: every viewer's camera sits at the "up" or "down" limit until `until` (epoch ms); never saved */
+    pitchHold?: { dir: "up" | "down"; until: number } | null;
+    renderScale: number; maxFps: number;
     /** the panel preview's replays: "program" = pictures of the on-air overlay's own (light), "live" = its own viewers */
     preview: "program" | "live";
     /** the resolution replays are drawn for, whatever screen or window the overlay is on: an output height (720,

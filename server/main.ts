@@ -28,6 +28,8 @@ const dataAt = (p: string) => new URL(p, new URL(`${DATA}/`, ROOT));
 type Config = {
   title: string; colors: Record<string, string>; crossfade: number; source: string;
   scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string }>;
+  /** how far behind the players the live (TA) replays are shown, in ms: the buffer that rides out late data */
+  liveDelay: number;
   automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string }[];
   sim: SimOptions;
   bscompstats: BscsOptions;
@@ -45,7 +47,8 @@ async function loadConfig() {
       if (typeof s === "string") scenes[s] = { svg: s };
       else for (const [k, v] of Object.entries(s)) scenes[k] = { svg: (v as any).svg ?? k, vars: (v as any).vars, label: (v as any).label };
     }
-    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? "") };
+    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? ""),
+      liveDelay: Math.max(300, Math.min(15_000, raw.liveDelay === undefined ? 2500 : typeof raw.liveDelay === "number" ? raw.liveDelay : parseDuration(String(raw.liveDelay)))) };
     // the start script points a test stack somewhere else without editing this file
     const e = (k: string) => Deno.env.get(k) || undefined;
     config.source = e("KIT_SOURCE") ?? config.source;
@@ -54,7 +57,7 @@ async function loadConfig() {
   } catch (e) {
     configError = `${CONFIG_FILE}: ${(e as Error).message}`;
     console.error(configError);
-    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], sim: {}, bscompstats: {}, header: "", hsv: "" };
+    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], sim: {}, bscompstats: {}, header: "", hsv: "", liveDelay: 2500 };
   }
 }
 await loadConfig();
@@ -86,7 +89,10 @@ show.castersFrom ??= "panel";
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
-show.viewer = Object.assign({ lockPitch: true, pitchLimit: 12, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+// one limit for both directions (older show.json files) becomes the two; a hold never outlives a restart
+if (show.viewer.pitchLimit !== undefined) { show.viewer.pitchUp = show.viewer.pitchDown = show.viewer.pitchLimit; delete show.viewer.pitchLimit; }
+show.viewer.pitchHold = null;
 show.staging = !!show.staging;
 show.staged ??= null;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -160,6 +166,7 @@ await source.start(
   (l) => setTimeout(() => setLive(l), 0),
 );
 
+let pitchHoldTimer: ReturnType<typeof setTimeout> | undefined;   // ends a "show the up/down limit" hold
 let songEndAt = 0;                      // when songEnd last went out
 let pendingSwitches: ReturnType<typeof setTimeout>[] = [];   // automation rules waiting out their `after:`
 function onEvent(e: EventMsg) {
@@ -186,10 +193,10 @@ function onEvent(e: EventMsg) {
     pendingSwitches.push(timer);
   }
 }
-const parseDuration = (s: string) => {
+function parseDuration(s: string) {
   const m = /^(\d+(?:\.\d+)?)\s*(ms|s|m)?$/.exec(String(s).trim());
   return m ? Number(m[1]) * ({ ms: 1, s: 1000, m: 60_000 }[m[2] ?? "ms"] ?? 1) : 0;
-};
+}
 // a rule's own crossfade (fade: 200ms) applies to its switch only
 let fade: { ms: number; until: number } | null = null;
 function setScene(scene: string, fadeMs?: number) {
@@ -297,7 +304,7 @@ function withTaFeeds(d: OverlayData | null): OverlayData | null {
   if (!d?.taLive) return d;
   const relay = TA_RELAY || d.taLive.relay;
   const feeds = Object.fromEntries(Object.entries(d.taLive.players).map(([hole, id]) =>
-    [hole, `${VIEWER}/?${new URLSearchParams({ taLive: `/ta-live/${relay}/u/${id}`, hideUI: "true" })}`]));
+    [hole, `${VIEWER}/?${new URLSearchParams({ taLive: `/ta-live/${relay}/u/${id}`, taDelay: String(config.liveDelay), hideUI: "true" })}`]));
   return { ...d, feeds: { ...feeds, ...(d.feeds ?? {}) } };
 }
 function withLive(d: OverlayData | null): OverlayData | null {
@@ -446,7 +453,18 @@ const actions: Record<string, (a: any) => unknown> = {
   upNext: (a) => { target.upNext = { a: String(a.a ?? "").trim(), b: String(a.b ?? "").trim(), text: String(a.text ?? "").trim() }; },
   viewer: (a) => {
     if (a.lockPitch !== undefined) show.viewer.lockPitch = !!a.lockPitch;
-    if (a.pitchLimit !== undefined) show.viewer.pitchLimit = Math.max(0, Math.min(90, Number(a.pitchLimit) || 0));
+    const deg = (x: unknown) => Math.max(0, Math.min(90, Number(x) || 0));
+    if (a.pitchUp !== undefined) show.viewer.pitchUp = deg(a.pitchUp);
+    if (a.pitchDown !== undefined) show.viewer.pitchDown = deg(a.pitchDown);
+    if (a.pitchLimit !== undefined) show.viewer.pitchUp = show.viewer.pitchDown = deg(a.pitchLimit);   // older tools
+    // show a limit: every replay camera sits at it for a few seconds (at most 30), then follows the players again
+    if (a.pitchHold !== undefined) {
+      const dir = a.pitchHold === "up" || a.pitchHold === "down" ? a.pitchHold : null;
+      const ms = Math.max(1000, Math.min(30_000, Number(a.holdMs) || 5000));
+      clearTimeout(pitchHoldTimer);
+      show.viewer.pitchHold = dir ? { dir, until: Date.now() + ms } : null;
+      if (dir) pitchHoldTimer = setTimeout(() => { show.viewer.pitchHold = null; dirty = true; }, ms);
+    }
     if (a.renderScale !== undefined) show.viewer.renderScale = Math.max(0.25, Math.min(1, Number(a.renderScale) || 1));
     if (a.maxFps !== undefined) show.viewer.maxFps = Math.max(10, Math.min(120, Number(a.maxFps) || 60));
     if (a.preview !== undefined) show.viewer.preview = a.preview === "live" ? "live" : "program";

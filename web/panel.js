@@ -109,7 +109,10 @@ function render() {
   $("#feedB").value = sh.feeds.b ?? "";
   $("#delay").value = sh.streamDelayMs;
   $("#lockPitch").checked = !!sh.viewer?.lockPitch;
-  $("#pitchLimit").value = sh.viewer?.pitchLimit ?? 12;
+  for (const id of ["pitchUp", "pitchDown"]) if (document.activeElement?.id !== id) $("#" + id).value = sh.viewer?.[id] ?? 12;
+  const hold = sh.viewer?.pitchHold;
+  $("#holdState").textContent = hold && hold.until > Date.now() + clockOffset ? `showing the ${hold.dir} limit…` : "";
+  $("#holdUp").disabled = $("#holdDown").disabled = !sh.viewer?.lockPitch;
   $("#renderScale").value = String(sh.viewer?.renderScale ?? 1);
   $("#maxFps").value = String(sh.viewer?.maxFps ?? 60);
   $("#previewMode").value = sh.viewer?.preview ?? "program";
@@ -132,6 +135,7 @@ document.addEventListener("click", (e) => {
   if (t.id === "upSet") send("upNext", { a: $("#upA").value, b: $("#upB").value, text: $("#upText").value });
   if (t.id === "upClear") send("upNext", {});
   if (t.id === "copy") navigator.clipboard.writeText($("#obsUrl").value);
+  if (t.id === "holdUp" || t.id === "holdDown") send("viewer", { pitchHold: t.id === "holdUp" ? "up" : "down", holdMs: 5000 });
   if (t.id === "plAddBtn") { send("playlist", { op: "add", refs: $("#plAdd").value.split("\n") }); $("#plAdd").value = ""; }
   if (t.id === "plClear" && confirm("Remove every replay from the playlist?")) send("playlist", { op: "clear" });
   const op = t.dataset.pl;
@@ -164,7 +168,10 @@ document.addEventListener("change", (e) => {
   if (el.id === "ticker") send("ticker", { ticker: el.value.split("\n") });
   if (el.id === "feedA" || el.id === "feedB") send("feeds", { feeds: { ...S.show.feeds, a: $("#feedA").value.trim(), b: $("#feedB").value.trim() } });
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
-  if (el.id === "lockPitch" || el.id === "pitchLimit") send("viewer", { lockPitch: $("#lockPitch").checked, pitchLimit: Number($("#pitchLimit").value) });
+  if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
+  // a changed limit is shown straight away: the cameras sit at it for a few seconds
+  if (el.id === "pitchUp") send("viewer", { pitchUp: Number(el.value), pitchHold: "up", holdMs: 4000 });
+  if (el.id === "pitchDown") send("viewer", { pitchDown: Number(el.value), pitchHold: "down", holdMs: 4000 });
   if (el.id === "previewMode") send("viewer", { preview: el.value });
   if (el.id === "quality") send("viewer", { quality: el.value });
   if (el.id === "distortion") send("viewer", { distortion: el.checked });

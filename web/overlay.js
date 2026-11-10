@@ -146,7 +146,8 @@ if (params.has("fps") || params.has("report")) {
       pageFps = Math.round(n * 1000 / (now - t0));
       const shown = pool.filter((f) => f.shown && f.fps != null).map((f) => f.fps);
       const got = pictureMode ? Object.values(pics).filter((p) => p.el.classList.contains("shown")).map((p) => { const r = p.n ?? 0; p.n = 0; return r; }) : [];
-      el.textContent = `${pageFps} fps` + (got.length ? ` · pictures ${got.join(" ")}` : shown.length ? ` · replays ${shown.join(" ")}` : "");
+      el.textContent = `${pageFps} fps` + (got.length ? ` · pictures ${got.join(" ")}` : shown.length ? ` · replays ${shown.join(" ")}` : "")
+        + (liveFreezes ? ` · live freezes ${liveFreezes}` : "");
       n = 0; t0 = now;
     }
     requestAnimationFrame(tick);
@@ -225,7 +226,7 @@ function viewerOrigin(src, i) {
 function replayLink(src) {
   try {
     const q = new URL(src).searchParams;
-    if (q.get("taLive")) return { taLive: q.get("taLive") };      // a player's TA live replay (see "live replays" below)
+    if (q.get("taLive")) return { taLive: q.get("taLive"), ...(Number(q.get("taDelay")) > 0 ? { taDelay: Number(q.get("taDelay")) } : {}) };      // a player's TA live replay (see "live replays" below)
     if (q.get("scoreIdBL")) return { scoreIdBL: q.get("scoreIdBL") };
     if (q.get("scoreId")) return { scoreId: q.get("scoreId") };
     if (q.get("replayUrl")) return { replayUrl: q.get("replayUrl") };
@@ -489,13 +490,16 @@ setInterval(() => {
       const scale = mute ? Math.min(full, Math.max(0.25, Math.round(previewScale * 1.15 * 20) / 20)) : full;
       const fps = mute ? Math.min(cam.maxFps ?? 60, 30) : cam.maxFps ?? 60;
       const quality = cam.quality ?? "medium", distortion = cam.distortion ?? true;
-      const camKey = `${cam.lockPitch}|${cam.pitchLimit}|${scale}|${fps}|${quality}|${distortion}|${hsvProfile.key}`;
+      // "show a limit" from the panel: the camera sits at the up or down limit while it lasts
+      const hold = cam.pitchHold && cam.pitchHold.until > serverNow() ? (cam.pitchHold.dir === "up" ? 1 : -1) : 0;
+      const camKey = `${cam.lockPitch}|${cam.pitchUp}|${cam.pitchDown}|${hold}|${scale}|${fps}|${quality}|${distortion}|${hsvProfile.key}`;
       // sent again every few seconds too: a viewer that missed them (busy loading, or reused for another hole) ran
       // at its own 120 fps cap instead of 60, and pulled the shared multiview loop up with it
       if (f.camSent !== camKey || performance.now() - (f.camAt ?? 0) > 3000) {
         f.camSent = camKey;
         f.camAt = performance.now();
-        tell(f, { type: "msu:settings", settings: { replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchLimit: Number(cam.pitchLimit) || 0, renderScale: scale,
+        tell(f, { type: "msu:settings", settings: { replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchUp: Number(cam.pitchUp) || 0, replayCameraPitchDown: Number(cam.pitchDown) || 0,
+          replayCameraPitchHold: cam.lockPitch ? hold : 0, renderScale: scale,
           graphicsQuality: quality, screenDisplacementEffects: !!distortion,
           // our own hit-score look (overlay.yaml `hsv:`) instead of whatever each replay was recorded with
           ...(hsvProfile.text ? { overrideHsvProfile: true, preferReplayHsvProfile: false, hsvProfile: hsvProfile.text } : {}) } });
@@ -542,6 +546,9 @@ window.addEventListener("message", (e) => {
     }
   }
   if (e.data.type === "msu:live" && f.isLive) {
+    // a live viewer that was playing and ran out of replay data freezes its picture (and cuts its music) until more
+    // arrives: counted, for the &debug corner. Many of these = raise liveDelay in overlay.yaml
+    if (f.live?.status === "watching" && e.data.status === "buffering") liveFreezes++;
     f.live = e.data;
     f.el.classList.toggle("ready", liveReady(f));
     if (MULTI) sendTiles();
@@ -565,6 +572,7 @@ window.addEventListener("message", (e) => {
 // until there is a picture. What we add: the map fetched ahead (msu:preload), and all viewers of a match on the same
 // beat (msu:liveSync): players start a song a few tens of ms apart, so once every viewer is watching, the latest
 // song start among them is sent to all, once per song.
+let liveFreezes = 0;                                   // times a live viewer ran dry since this page opened
 const liveReady = (f) => ["buffering", "watching", "paused", "ended"].includes(f.live?.status);
 let liveSynced = "";
 function liveSync() {
