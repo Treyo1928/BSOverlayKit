@@ -8,9 +8,13 @@
 // The API key is never in overlay.yaml (that file gets shared): set BSCS_KEY in the environment, or "bscsKey" in
 // data/secrets.json. A read-only key is enough; the overlay only reads.
 //
-// Live play (accuracy while a map is being played) is not in BSCompStats; that comes from TA later. Until then a
-// map is "waiting" until its scores are in, then the scores show as the map's result.
-import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side } from "../model.ts";
+// TA-mode matches (the site's worker runs them through TournamentAssistant, BSCompStats docs/api.md "TA mode"): each
+// planned map's `start.status.phase` says how far TA is (waiting / loading / ready / playing / finished), and while a
+// song plays the same events stream sends `event: live` with every player's score about 4 times a second. This source
+// turns both into the overlay's live state (phase loading/playing, numbers per side and lineup slot), and names each
+// lineup player's TA live-replay stream for the video holes (`taLive`). Matches that are not in TA mode have no live
+// play: a map is "waiting" until its scores are in, then the scores show as the map's result.
+import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side } from "../model.ts";
 
 export interface BscsOptions { url?: string; tournament?: string; match?: string }
 
@@ -26,11 +30,18 @@ interface PlannedMap {
   lineups: Record<string, string[]>; scores: Record<string, Run[]>; goes: Record<string, Go[]>;
   scoresClosed: boolean; result: { winnerId: string | null; decided: boolean };
   // a map run through TA: who asked for the start, and how far TA is ("loading" / "playing" / "finished" / "error")
-  start?: { requestedAt?: string | null; status?: { phase?: string | null; players?: { playerId: string; state: string }[] } | null } | null;
+  start?: { requestedAt?: string | null; playRequestedAt?: string | null;
+    status?: { phase?: string | null; startedAt?: string | number | null; players?: { playerId: string; state: string; score?: number; accuracy?: number }[] } | null } | null;
 }
-interface Team { id: string; name: string; color: string; players: { id: string; name: string; avatar: string | null }[] }
+interface Team { id: string; name: string; color: string; players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null }[] }
+/** `event: live` of the match events stream: every lineup player's numbers while a song plays. */
+interface LiveEvent {
+  matchId: string; matchMapId: string; phase: "playing" | "over"; startedAt: number; at: number;
+  players: { playerId: string; teamId: string; slot: number; platformId: string; score: number; accuracy: number | null; combo: number; misses: number; songPosition: number; finished: boolean }[];
+}
 interface Match {
   id: string; name: string; state: "PICKBAN" | "PLAYING" | "COMPLETE";
+  taMode?: boolean; ta?: { host: string; port: number; liveUrl?: string } | null;
   tournament: { name: string; slug: string };
   format: { playersPerMap: number; tiebreaker: string; pickBanSequence: { actor: "COIN_WINNER" | "COIN_LOSER"; action: "PICK" | "BAN" }[] };
   teamA: Team; teamB: Team; coinFlipWinnerId: string | null; winnerId: string | null;
@@ -67,6 +78,10 @@ export class BscsSource implements DataSource {
   #finishedUntil = 0;
   #auto = true;          // no match picked in the panel: follow the newest unfinished one
   #holdTimer?: ReturnType<typeof setTimeout>;
+  #live: (l: LiveState | null) => void = () => {};
+  #lastLive: LiveEvent | null = null;     // the newest numbers of the song being played
+  #liveOn = false;                        // this source has a live state out (so it must also take it back)
+  #platformIds = new Map<string, string>();   // playerId -> TA platform id, as seen in live events
 
   constructor(opts: BscsOptions, key: string, private onFollow: (matchId: string) => void = () => {}) {
     this.#url = (opts.url ?? "http://127.0.0.1:3100").replace(/\/+$/, "");
@@ -76,9 +91,10 @@ export class BscsSource implements DataSource {
     this.#key = key;
   }
 
-  async start(emit: (d: OverlayData) => void, event: (e: EventMsg) => void) {
+  async start(emit: (d: OverlayData) => void, event: (e: EventMsg) => void, live?: (l: LiveState | null) => void) {
     this.#emit = emit;
     this.#event = event;
+    if (live) this.#live = live;
     if (!this.#key) this.#status = "no API key: set BSCS_KEY or bscsKey in data/secrets.json";
     await this.#refreshLists();
     this.#timer = setInterval(() => this.#refreshLists(), 5_000);
@@ -138,6 +154,8 @@ export class BscsSource implements DataSource {
     this.#abort?.abort();
     this.#matchId = id;
     this.#match = this.#prev = null;
+    this.#lastLive = null;
+    this.#sendLive();
     this.#push();
     if (!id || !this.#key) return;
     const abort = this.#abort = new AbortController();
@@ -174,6 +192,7 @@ export class BscsSource implements DataSource {
               const ev = /^event: *(.*)$/m.exec(block)?.[1]?.trim();
               const data = block.split("\n").filter((l) => l.startsWith("data:")).map((l) => l.slice(5).trimStart()).join("\n");
               if (ev === "match" && data) this.#onMatch(JSON.parse(data).match ?? JSON.parse(data));
+              if (ev === "live" && data) this.#onLive(JSON.parse(data));
             }
           }
           throw new Error("stream ended");
@@ -216,7 +235,54 @@ export class BscsSource implements DataSource {
       if (m.state === "COMPLETE" && prev.state !== "COMPLETE") this.#event({ name: "matchEnd", side: sideOf(m.winnerId) });
     }
     this.#prev = m;
+    this.#sendLive();
     this.#push();
+  }
+
+  // ---------------------------------------------------------------- live play (TA mode)
+  #onLive(l: LiveEvent) {
+    if (!this.#match || l.matchId !== this.#match.id) return;
+    for (const p of l.players ?? []) if (p.platformId) this.#platformIds.set(p.playerId, p.platformId);
+    this.#lastLive = l;
+    this.#sendLive();
+  }
+
+  /** The overlay's live state, from the next map's TA status and the newest live numbers; null = nothing live. */
+  #liveState(): LiveState | null {
+    const m = this.#match;
+    if (!m?.taMode) return null;
+    const pm = m.plannedMaps.find((p) => !p.scoresClosed);
+    const phase = pm?.start?.requestedAt ? pm.start.status?.phase : null;
+    if (!pm || !phase) return null;
+    const l = this.#lastLive?.matchMapId === pm.matchMapId ? this.#lastLive : null;
+    const sides = (f: (playerId: string) => Partial<PlayerData>) => ({
+      a: (pm.lineups[m.teamA.id] ?? []).map(f), b: (pm.lineups[m.teamB.id] ?? []).map(f),
+    });
+    const duration = Number(pm.map.duration) || 0;
+    if (phase === "waiting" || phase === "loading" || phase === "ready") {
+      return { matchId: m.id, phase: "loading", load: phase, time: 0, duration, players: sides(() => ({ acc: null, score: 0, combo: 0, misses: 0, finished: false })) };
+    }
+    if (phase !== "playing" || l?.phase === "over") return null;      // finished, error; or the song just ended
+    const status = pm.start!.status!;
+    const startedAt = l?.startedAt ?? (status.startedAt ? new Date(status.startedAt).getTime() : 0);
+    return {
+      matchId: m.id, phase: "playing", duration, startedAt: startedAt || undefined,
+      time: l ? Math.max(0, ...l.players.map((p) => p.songPosition || 0)) : startedAt ? Math.max(0, (Date.now() - startedAt) / 1000) : 0,
+      players: sides((id) => {
+        const p = l?.players.find((x) => x.playerId === id);
+        if (p) return { acc: p.accuracy, score: p.score, combo: p.combo, misses: p.misses, finished: !!p.finished };
+        // before the first numbers (or a player the feed doesn't have): what the status knows
+        const s = status.players?.find((x) => x.playerId === id);
+        const done = s?.state === "finished" || s?.state === "failed" || s?.state === "quit";
+        return { acc: done ? s?.accuracy ?? null : null, score: s?.score ?? 0, combo: 0, misses: 0, finished: !!done };
+      }),
+    };
+  }
+  #sendLive() {
+    const l = this.#liveState();
+    if (!l && !this.#liveOn) return;       // nothing of ours is out: leave a live state set by a tool alone
+    this.#liveOn = !!l;
+    this.#live(l);
   }
 
   // ---------------------------------------------------------------- the data contract
@@ -325,7 +391,7 @@ export class BscsSource implements DataSource {
       tournament: { name: m.tournament.name, short: "", round: m.name },
       match: {
         label: m.name, bestOf: slots, need, phase,
-        mapNumber: Math.min(slots, m.plannedMaps.filter((p) => p.scoresClosed).length + (current ? 1 : 0)) || 1,
+        mapNumber: Math.min(slots, m.plannedMaps.filter((p) => p.scoresClosed).length + (current ? 1 : 0)) || 1, load: "",
         winner, winnerName: nameOf(winner), maps: mapSlots, playersPerMap: perMap, solo: perMap === 1,
       },
       a, b, diff,
@@ -344,13 +410,27 @@ export class BscsSource implements DataSource {
       last: results.at(-1) ?? null,
       upNext: this.#matches.filter((x) => x.state === "PICKBAN" && x.id !== m.id).slice(0, 3).map((x) => ({ label: x.label, a: "", b: "" })),
       bracket: this.#bracket,
+      taLive: m.taMode && m.ta && current ? { relay: `${m.ta.host}:${m.ta.port}`, players: this.#taPlayers(m, current, perMap) } : null,
     });
+  }
+
+  /** Video hole -> TA platform id, for the players in the next map's lineups ("a"/"b" in a 1v1, else "a1", "a2", …). */
+  #taPlayers(m: Match, pm: PlannedMap, perMap: number): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [side, team] of [["a", m.teamA], ["b", m.teamB]] as const) {
+      (pm.lineups[team.id] ?? []).forEach((id, i) => {
+        const p = team.players.find((x) => x.id === id);
+        const platformId = this.#platformIds.get(id) ?? p?.taPlatformId ?? p?.beatLeaderId ?? "";
+        if (platformId) out[perMap === 1 ? side : `${side}${i + 1}`] = String(platformId);
+      });
+    }
+    return out;
   }
 
   #empty(): OverlayData {
     return {
       tournament: { name: "", short: "", round: "" },
-      match: { label: "", bestOf: 0, need: 0, phase: "idle", mapNumber: 1, winner: null, winnerName: "", maps: [], playersPerMap: 1, solo: true },
+      match: { label: "", bestOf: 0, need: 0, phase: "idle", mapNumber: 1, load: "", winner: null, winnerName: "", maps: [], playersPerMap: 1, solo: true },
       a: blankSide(), b: blankSide(), diff: 0, tug: 0.5, map: null, pool: [],
       picks: { next: null, done: false, steps: [] }, results: [], last: null, upNext: [], bracket: this.#bracket,
     };

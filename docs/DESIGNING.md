@@ -118,6 +118,7 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `tournament.name`, `tournament.short`, `tournament.round` | tournament info |
 | `match.label`, `match.bestOf`, `match.need` | "Quarterfinal 1", 5, 3 (maps needed to win) |
 | `match.phase` | `idle` → `picks` → `waiting` → `loading` → `playing` → `finished` (map done) → … → `done` |
+| `match.load` | while `match.phase` is `loading` (a TA match): `waiting` (a player hasn't joined TA yet), `loading` (their games are fetching the map) or `ready` (everyone has it, the song can be started). Empty otherwise. `state:match.load` in `msu/ready.svg` |
 | `match.mapNumber` | number of the current/next map |
 | `match.maps` (list) | one per map of the best-of, for "MAP 1 / MAP 2 / MAP 3" tabs: `number`, `label` ("MAP 2", or "TB" for the tiebreaker), `tiebreaker`, `state` (`played` `current` `upcoming` `unneeded`), `name`, `winner`, `winnerName` |
 | `match.winner`, `match.winnerName` | `a`/`b` and the name, once decided |
@@ -285,7 +286,8 @@ automation:
 
 `on:` an event from §6, `scene:` where to go, `when:` only if one of these scenes is on, `after:` wait first,
 `fade:` this switch's own crossfade instead of the `crossfade:` setting. The panel's **Auto-switch** box turns all of
-them on or off.
+them on or off. Rules always act on what is on air, never on what is staged in the panel's Staging mode (README,
+*Staging*); to look at a design with staged values, add `&staged=1` to the overlay link.
 
 How the MSU show runs with these: the overlay never leaves a scene because the organiser *asked* for a map to start
 or because the map is loading; `mapStart` only comes once the players are really playing. So switch to **Getting

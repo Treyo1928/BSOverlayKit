@@ -1,7 +1,12 @@
 // Caster / producer panel.
 const $ = (s) => document.querySelector(s);
 let S = null, ws, reqId = 0;
-const send = (action, args = {}) => ws?.readyState === 1 && ws.send(JSON.stringify({ ...args, action, reqId: ++reqId }));
+// With staging on, the scene buttons and text cards edit the staged copy ("Next"); { air: true } forces on air.
+const STAGEABLE = new Set(["scene", "header", "upNext", "brb", "casters", "castersFrom", "ticker"]);
+const send = (action, { air, ...args } = {}) => ws?.readyState === 1 && ws.send(JSON.stringify({ ...args, action, reqId: ++reqId,
+  ...(S?.staging && !air && STAGEABLE.has(action) ? { staged: true } : {}) }));
+/** The side the cards edit: the staged show while staging, else what is on air. */
+const cur = () => (S.staging && S.staged ? S.staged : S.show);
 const editing = () => /INPUT|TEXTAREA/.test(document.activeElement?.tagName) && document.activeElement.type !== "checkbox";
 
 function connect() {
@@ -22,11 +27,28 @@ function connect() {
 }
 connect();
 
-let previewSet = false, upShown = "";
+let previewSet = false, upShown = "", airList = "";
 function render() {
-  const sh = S.show;
-  $("#scenes").innerHTML = Object.entries(S.scenes).map(([id, label]) => `<button data-scene="${id}" class="${sh.scene === id ? "on" : ""}">${label[0].toUpperCase() + label.slice(1)}</button>`).join("");
-  $("#auto").checked = sh.auto;
+  const sh = cur(), air = S.show;
+  const cap = (label) => label[0].toUpperCase() + label.slice(1);
+  $("#scenes").innerHTML = Object.entries(S.scenes).map(([id, label]) => `<button data-scene="${id}" class="${sh.scene === id ? "on" : ""} ${air.scene === id ? "air" : ""}">${cap(label)}</button>`).join("");
+  // staging: which mode, and whether anything is waiting to go live
+  document.body.classList.toggle("staging", !!S.staging);
+  $("#staging").checked = !!S.staging;
+  $("#stageBar").style.display = $("#nextCard").style.display = $("#airNow").style.display = S.staging ? "" : "none";
+  $("#stageBar").classList.toggle("dirty", !!S.stagedDiffers);
+  $("#stageWhat").textContent = S.stagedDiffers
+    ? `● Changes waiting: Next is ${cap(S.scenes[sh.scene] ?? sh.scene)}, on air is ${cap(S.scenes[air.scene] ?? air.scene)}${S.airMoved ? " (the on-air scene has changed since you started staging)" : ""}`
+    : "Scene buttons and the text cards below edit Next, not what is on air. Nothing is waiting: Next is the same as on air.";
+  for (const id of ["take", "take2", "discard", "discard2"]) $(`#${id}`).disabled = !S.stagedDiffers;
+  $("#airName").textContent = cap(S.scenes[air.scene] ?? air.scene);
+  $("#nextName").textContent = cap(S.scenes[sh.scene] ?? sh.scene);
+  $("#nextState").textContent = S.stagedDiffers ? "changes waiting" : "same as on air";
+  // the emergency list keeps what you picked until the on-air scene itself changes (a redraw must not reset it
+  // between choosing a scene and pressing the button)
+  const airOpts = Object.entries(S.scenes).map(([id, label]) => `<option value="${id}">${esc(cap(label))}</option>`).join("");
+  if (airList !== airOpts + air.scene) { airList = airOpts + air.scene; $("#airScene").innerHTML = airOpts; $("#airScene").value = air.scene; }
+  $("#auto").checked = air.auto;
   $("#src").textContent = S.source.status;
   $("#simCard").style.display = S.source.name === "sim" ? "" : "none";
   $("#bscsCard").style.display = S.source.name === "bscompstats" ? "" : "none";
@@ -48,13 +70,20 @@ function render() {
       $("#pv").contentWindow?.postMessage({ type: "msu:previewScale", scale }, location.origin);
     };
     $("#pv").addEventListener("load", fit);
+    $("#pvNext").addEventListener("load", fit);
     new ResizeObserver(fit).observe($(".preview"));
     fit();
   }
+  // the Next preview only exists while staging (it is a second overlay page, without replay viewers)
+  const wantNext = S.staging ? `${S.overlayUrl}&debug&bg&staged=1` : "about:blank";
+  if ($("#pvNext").dataset.src !== wantNext) { $("#pvNext").dataset.src = wantNext; $("#pvNext").src = wantNext; }
+  const scaleNext = $("#nextCard .preview").clientWidth / 1920;
+  if (scaleNext) $("#pvNext").style.transform = `scale(${scaleNext})`;
   renderPlaylist();
   // "up next": what is on stream now, and team names to pick from (the followed match and its bracket)
   const un = sh.upNext ?? {};
-  $("#upState").textContent = un.a && un.b ? `showing: ${un.a} vs ${un.b}${un.text ? ` · ${un.text}` : ""}` : un.text || un.a || un.b ? `showing: ${un.text || un.a || un.b}` : "hidden";
+  const upText = (u = {}) => (u.a && u.b ? `${u.a} vs ${u.b}${u.text ? ` · ${u.text}` : ""}` : u.text || u.a || u.b || "hidden");
+  $("#upState").textContent = S.staging ? `next: ${upText(un)} · on air: ${upText(air.upNext)}` : un.a || un.b || un.text ? `showing: ${upText(un)}` : "hidden";
   const br = S.live?.bracket;
   const names = new Set([S.live?.a?.name, S.live?.b?.name, ...[...(br?.rounds ?? []), ...(br?.losers ?? [])].flatMap((r) => r.matches.flatMap((m) => [m.a, m.b]))].filter((n) => n && n !== "TBD"));
   const opts = [...names].map((n) => `<option value="${esc(n)}">`).join("");
@@ -95,6 +124,9 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.dataset.scene) send("scene", { scene: t.dataset.scene });
+  if (t.id === "take" || t.id === "take2") send("take");
+  if (t.id === "discard" || t.id === "discard2") send("discardStaged");
+  if (t.id === "airCut") send("scene", { scene: $("#airScene").value, air: true });
   if (t.dataset.sim) send("source", { control: t.dataset.sim });
   if (t.dataset.brb) send("brb", { minutes: Number(t.dataset.brb) });
   if (t.id === "upSet") send("upNext", { a: $("#upA").value, b: $("#upB").value, text: $("#upText").value });
@@ -112,9 +144,13 @@ document.addEventListener("click", (e) => {
 document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.id === "auto") send("auto", { on: el.checked });
+  if (el.id === "staging") {
+    if (!el.checked && S.stagedDiffers && !confirm("Turn staging off? The changes waiting in Next are thrown away.")) { el.checked = true; return; }
+    send("staging", { on: el.checked });
+  }
   if (el.id === "speed") send("source", { control: "speed", value: Number(el.value) });
   if (el.dataset.c !== undefined) {
-    const casters = structuredClone(S.show.casters);
+    const casters = structuredClone(cur().casters);
     casters[Number(el.dataset.c)][el.dataset.k] = el.value;
     send("casters", { casters });
   }

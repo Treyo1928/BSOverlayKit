@@ -4,7 +4,10 @@ import { Scene } from "/engine/scene.js";
 const params = new URLSearchParams(location.search);
 const key = params.get("key");
 const debug = params.has("debug");
-const mute = params.has("mute");     // the panel's preview: no sound (OBS plays it), drawn small
+// &staged: a preview of the STAGED state (the panel's "Next" side): the staged scene and texts instead of what is on
+// air. It never runs replay viewers: its video holes show pictures of the on-air replays, or stay dark.
+const staged = params.has("staged");
+const mute = params.has("mute") || staged;   // the panel's preview: no sound (OBS plays it), drawn small
 const silent = mute || params.has("silent");   // no sound at full quality (testing)
 // how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
 let previewScale = 1;
@@ -200,7 +203,7 @@ if (debug) window.msuFeeds = {};                       // hole id -> its viewer,
 // sets of viewers on one PC halved the frame rate of both. The panel's "Preview replays" setting can turn it off.
 const PICTURES = { fps: 12, width: 480 };
 let sendPictures = false;                              // on air: the server picked this page to send them
-let pictureMode = false;                               // preview: they're coming, so show them instead of viewers
+let pictureMode = staged;                              // preview: they're coming, so show them instead of viewers
 const pics = {};                                       // preview: hole id -> { el, img, url, link }
 const enc = new TextEncoder(), dec = new TextDecoder();
 
@@ -218,13 +221,14 @@ function viewerOrigin(src, i) {
 function replayLink(src) {
   try {
     const q = new URL(src).searchParams;
+    if (q.get("taLive")) return { taLive: q.get("taLive") };      // a player's TA live replay (see "live replays" below)
     if (q.get("scoreIdBL")) return { scoreIdBL: q.get("scoreIdBL") };
     if (q.get("scoreId")) return { scoreId: q.get("scoreId") };
     if (q.get("replayUrl")) return { replayUrl: q.get("replayUrl") };
   } catch {}
   return null;
 }
-const linkKey = (l) => (l ? l.scoreIdBL ?? l.scoreId ?? l.replayUrl ?? "" : "");
+const linkKey = (l) => (l ? l.taLive ?? l.scoreIdBL ?? l.scoreId ?? l.replayUrl ?? "" : "");
 
 function feedSrc(id, st) {
   const name = id.slice(5);
@@ -238,6 +242,16 @@ function feedSrc(id, st) {
     return { src: st.replay.url, clock: { startAt: st.replay.startAt, pausedAt: st.replay.pausedAt }, replayId: st.replay.id };
   }
   return { src: "", clock: null, replayId: null };
+}
+
+// The HitScoreVisualizer config every replay viewer uses for its flying hit scores: the file overlay.yaml names
+// with `hsv:` (inside design/), read again whenever the designs change. Empty: each replay keeps its own.
+const hsvProfile = { key: "", text: "" };
+async function loadHsv(path, version) {
+  const key = path ? `${path}@${version}` : "";
+  if (key === hsvProfile.key) return;
+  hsvProfile.key = key;
+  hsvProfile.text = path ? await fetch(`/design/${path}?v=${version}`).then((r) => (r.ok ? r.text() : "")).catch(() => "") : "";
 }
 
 // a viewer page's link: muted, and already at the panel's quality (changing it after load rebuilds the 3D scene)
@@ -288,6 +302,7 @@ function load(f, link) {
   f.want = link;
   f.token = ++loadToken;
   f.v = null; f.reported = false; f.camSent = ""; f.vol = 0; f.sent = -1;
+  f.isLive = !!link.taLive; f.live = null; f.preloaded = "";
   f.el.classList.remove("ready");
   sendLoad(f);
 }
@@ -305,6 +320,7 @@ function updateFeeds(st) {
   for (const id of ids) {
     const w = feedSrc(id, st);
     if (w.src) wanted[id] = { ...w, link: replayLink(w.src) };
+    if (wanted[id]?.link?.taLive) wanted[id].clock = null;        // live: the viewer follows the player, not our clock
   }
   // links that aren't replays: a plain iframe per hole, as before
   for (const id of ids) {
@@ -346,9 +362,15 @@ function assignViewers() {
     f.hole = id; f.name = id.slice(5); f.clock = w.clock; f.replayId = w.replayId;
     load(f, w.link);
   };
-  const need = [...visible.keys()];
+  // Live replays (TA): a viewer follows a player's stream by itself. Only the on-air page runs them; a preview that
+  // draws its own replays leaves those holes dark (previews normally show pictures of the on-air ones anyway).
+  const mine = (id) => !(mute && wanted[id].link.taLive);
+  const need = [...visible.keys()].filter(mine);
+  // A live match keeps one viewer more: its players' viewers must already be connected and waiting when the song
+  // starts, while the playlist's replay still plays on Getting Ready.
+  const poolMax = POOL + (Object.values(wanted).some((w) => w.link?.taLive) ? 1 : 0);
   // what other scenes will show: a match's players first, the playlist's paused replay last
-  const later = Object.keys(wanted).filter((id) => wanted[id].link && !visible.has(id))
+  const later = Object.keys(wanted).filter((id) => wanted[id].link && !visible.has(id) && mine(id))
     .sort((x, y) => (x === "feed:main") - (y === "feed:main"));
   // 1. viewers already on a visible hole with the right replay stay; 2. a viewer that has the replay moves to it
   for (const id of need) {
@@ -361,7 +383,7 @@ function assignViewers() {
     ?? pool.find((x) => !taken.has(x));
   for (const id of need) {
     if ([...taken].some((x) => x.hole === id)) continue;
-    const f = free() ?? (pool.length < POOL || pool.length < need.length ? newViewer(wanted[id].src) : null);
+    const f = free() ?? (pool.length < poolMax || pool.length < need.length ? newViewer(wanted[id].src) : null);
     if (f) bind(f, id);
   }
   // 4. spare viewers preload the holes of other scenes (already loaded ones keep theirs)
@@ -371,7 +393,7 @@ function assignViewers() {
       bind(f, id);
       continue;
     }
-    const f = free() ?? (pool.length < POOL ? newViewer(wanted[id].src) : null);
+    const f = free() ?? (pool.length < poolMax ? newViewer(wanted[id].src) : null);
     if (f) bind(f, id);
   }
   for (const f of pool) if (!taken.has(f)) { f.hole = null; f.name = ""; f.clock = null; f.replayId = null; }
@@ -463,20 +485,25 @@ setInterval(() => {
       const scale = mute ? Math.min(full, Math.max(0.25, Math.round(previewScale * 1.15 * 20) / 20)) : full;
       const fps = mute ? Math.min(cam.maxFps ?? 60, 30) : cam.maxFps ?? 60;
       const quality = cam.quality ?? "medium", distortion = cam.distortion ?? true;
-      const camKey = `${cam.lockPitch}|${cam.pitchLimit}|${scale}|${fps}|${quality}|${distortion}`;
+      const camKey = `${cam.lockPitch}|${cam.pitchLimit}|${scale}|${fps}|${quality}|${distortion}|${hsvProfile.key}`;
       // sent again every few seconds too: a viewer that missed them (busy loading, or reused for another hole) ran
       // at its own 120 fps cap instead of 60, and pulled the shared multiview loop up with it
       if (f.camSent !== camKey || performance.now() - (f.camAt ?? 0) > 3000) {
         f.camSent = camKey;
         f.camAt = performance.now();
         tell(f, { type: "msu:settings", settings: { replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchLimit: Number(cam.pitchLimit) || 0, renderScale: scale,
-          graphicsQuality: quality, screenDisplacementEffects: !!distortion } });
+          graphicsQuality: quality, screenDisplacementEffects: !!distortion,
+          // our own hit-score look (overlay.yaml `hsv:`) instead of whatever each replay was recorded with
+          ...(hsvProfile.text ? { overrideHsvProfile: true, preferReplayHsvProfile: false, hsvProfile: hsvProfile.text } : {}) } });
         tell(f, { type: "msu:frameRate", fps });
       }
     }
     const pf = sendPictures && f.shown ? PICTURES.fps : 0;
     if (f.picSent !== pf) { f.picSent = pf; tell(f, { type: "msu:pictures", ...PICTURES, fps: pf }); }
-    if (f.clock) syncToClock(f);
+    if (f.isLive) {                                    // never paused, played or seeked by us
+      const hash = state?.data?.map?.hash ?? "";       // the map the players are about to load: fetch it ahead
+      if (hash && f.preloaded !== hash) { f.preloaded = hash; tell(f, { type: "msu:preload", mapHash: hash }); }
+    } else if (f.clock) syncToClock(f);
     else if (f.v?.loaded) {                            // no clock (a typed-in link): play on stream, pause off it
       if (!f.shown && f.vol === 0 && f.v.playing && performance.now() > f.busyUntil) { tell(f, { type: "msu:pause" }); f.busyUntil = performance.now() + 600; }
       if (f.shown && !f.v.playing && performance.now() > f.busyUntil) { tell(f, { type: "msu:play" }); f.busyUntil = performance.now() + 600; }
@@ -502,13 +529,19 @@ window.addEventListener("message", (e) => {
     }
     if (Number(d.token) !== f.token) return;           // still showing an earlier replay
     f.v = { time: Number(d.time) || 0, playing: !!d.playing, duration: Number(d.duration) || 0, loaded: !!d.loaded, at: performance.now() };
-    const ready = f.v.loaded && f.v.duration > 0;
+    const ready = f.isLive ? liveReady(f) : f.v.loaded && f.v.duration > 0;
     f.el.classList.toggle("ready", ready);
     if (MULTI) sendTiles();
     if (f.replayId && ready && !f.reported) {
       f.reported = true;
       report({ id: f.replayId, ready: true, duration: f.v.duration });
     }
+  }
+  if (e.data.type === "msu:live" && f.isLive) {
+    f.live = e.data;
+    f.el.classList.toggle("ready", liveReady(f));
+    if (MULTI) sendTiles();
+    liveSync();
   }
   if (e.data.type === "msu:ended" && f.replayId && f.v) report({ id: f.replayId, ended: true });
   if (e.data.type === "msu:contextLost") revive(f);
@@ -521,6 +554,25 @@ window.addEventListener("message", (e) => {
     ws.send(new Blob([new Uint8Array([id.length]), id, e.data.blob]));
   }
 });
+// ---------------------------------------------------------------- live replays (TA)
+// A hole whose link has ?taLive=… is a viewer following that player's live replay from the TA server (chroviewer's
+// broadcast-bridge.ts). It needs no play/seek from us: it waits until the player starts a song, plays a little behind
+// them, holds the last frame afterwards and plays the next song on the same connection. The hole stays a dark panel
+// until there is a picture. What we add: the map fetched ahead (msu:preload), and all viewers of a match on the same
+// beat (msu:liveSync): players start a song a few tens of ms apart, so once every viewer is watching, the latest
+// song start among them is sent to all, once per song.
+const liveReady = (f) => ["buffering", "watching", "paused", "ended"].includes(f.live?.status);
+let liveSynced = "";
+function liveSync() {
+  const fs = pool.filter((f) => f.isLive && f.hole);
+  if (!fs.length || !fs.every((f) => f.live?.status === "watching" && f.live.streamId != null && Number(f.live.songStartServerMs) > 0)) return;
+  const song = fs.map((f) => `${f.i}:${f.live.streamId}`).join("|");
+  if (song === liveSynced) return;
+  liveSynced = song;
+  const songStartServerMs = Math.max(...fs.map((f) => Number(f.live.songStartServerMs)));
+  for (const f of fs) tell(f, { type: "msu:liveSync", songStartServerMs });
+}
+
 /**
  * A browser window (not OBS, which always allows it) may hold the replays' music back until someone clicks the page:
  * autoplay rules. Then a banner says so, and a click anywhere tells every viewer to start it. Hitsounds start later
@@ -600,7 +652,7 @@ function layoutFeeds(visible = visibleHoles()) {
 // ---------------------------------------------------------------- connection
 let ws = null;
 function connect() {
-  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?key=${encodeURIComponent(key ?? "")}${mute ? "&role=preview" : ""}`);
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?key=${encodeURIComponent(key ?? "")}${mute ? "&role=preview" : ""}${staged ? "&staged=1" : ""}`);
   ws.binaryType = "arraybuffer";
   ws.onopen = () => document.body.classList.remove("offline");
   ws.onclose = () => {
@@ -613,10 +665,11 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === "pictures") {
       if (!mute) sendPictures = !!m.send;
-      else if (pictureMode !== !!m.from) { pictureMode = !!m.from; if (state) assignViewers(); }
+      else if (pictureMode !== (staged || !!m.from)) { pictureMode = staged || !!m.from; if (state) assignViewers(); }
       return;
     }
     if (m.type === "state") {
+      loadHsv(m.hsv || "", m.designVersion);
       if (m.now) clockOffset = m.now - Date.now();
       state = m;
       if (designVersion !== m.designVersion) {

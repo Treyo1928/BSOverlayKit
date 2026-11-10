@@ -2,11 +2,18 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Overlay panel</title>
 <link rel="stylesheet" href="/panel.css"></head>
 <body>
-<header><h1>Overlay panel</h1><span class="pill" id="conn">offline</span><span class="muted" id="src"></span><div class="spacer"></div></header>
+<header><h1>Overlay panel</h1><span class="pill" id="conn">offline</span><span class="muted" id="src"></span><div class="spacer"></div>
+  <label class="stage-toggle" title="Like OBS's Studio Mode: set up the next scene and its texts, look at it, then put it on air in one step"><input type="checkbox" id="staging"> Staging: preview changes before they go on air</label></header>
+<div id="stageBar" style="display:none">
+  <b>STAGING</b><span id="stageWhat"></span><span class="spacer"></span>
+  <button id="take" class="take">Go live ▶</button><button id="discard">Discard</button>
+</div>
 <main>
   <div class="col">
-    <div class="card"><h2>Scene <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="auto"> Auto-switch</label></h2>
+    <div class="card staged-edit"><h2>Scene <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="auto"> Auto-switch</label></h2>
       <div class="scenes" id="scenes"></div>
+      <div class="row" id="airNow" style="display:none;margin-top:10px"><div><label>Emergency: switch what is ON AIR right now (skips staging)</label><select id="airScene"></select></div>
+        <button class="shrink" id="airCut">Switch on air now</button></div>
       <div class="hint">Auto-switch follows the <code>automation:</code> rules in overlay.yaml.</div></div>
     <div class="card" id="plCard"><h2>Replay playlist <span class="spacer"></span><span id="plState" class="muted"></span></h2>
       <div id="plNow" class="pl-now"></div>
@@ -33,26 +40,26 @@
         <label style="margin:0;display:flex;gap:6px;align-items:center">Speed <input id="speed" type="number" min="1" max="30" style="width:70px"></label>
       </div>
       <div class="hint" id="simStatus"></div></div>
-    <div class="card"><h2>Top bar</h2><input id="header" placeholder="e.g. MSU BEAT SABER · WINTER SESSION">
+    <div class="card staged-edit"><h2>Top bar</h2><input id="header" placeholder="e.g. MSU BEAT SABER · WINTER SESSION">
       <div class="hint">The event text in the Match scene's top bar. Empty = the round name from the match.</div></div>
     <div class="card" id="bscsCard" style="display:none"><h2>BSCompStats match</h2>
       <div class="row"><div><label>Follow</label><select id="bscsMatch"></select></div></div>
       <div class="hint">The match the overlay shows. Pick it here when the next match starts.</div></div>
-    <div class="card"><h2>Casters <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="castersFrom"> From Discord</label></h2>
+    <div class="card staged-edit"><h2>Casters <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="castersFrom"> From Discord</label></h2>
       <div class="hint" id="castersHint"></div><div id="casters"></div></div>
-    <div class="card"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
+    <div class="card staged-edit"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
       <div class="row"><div><label>Team (left)</label><input id="upA" list="teamNames" placeholder="pick or type a team"></div>
         <div><label>Team (right)</label><input id="upB" list="teamNames" placeholder="pick or type a team"></div></div>
       <label>Text: a round name to go with the two teams, or a line of its own ("Grand final at 8 pm")</label><input id="upText" placeholder="e.g. Winners Final">
       <datalist id="teamNames"></datalist>
       <div class="btns"><button id="upSet">Show on Casters</button><button id="upClear">Clear (hide it)</button></div>
       <div class="hint">The Casters scene's "up next" block. It stays hidden until you set it here: the overlay can't know whose match is next.</div></div>
-    <div class="card"><h2>Be right back</h2>
+    <div class="card staged-edit"><h2>Be right back</h2>
       <div class="row"><div><label>Title</label><input id="brbTitle"></div><div><label>Message</label><input id="brbMsg"></div></div>
       <div class="btns" id="brbBtns"></div></div>
-    <div class="card"><h2>Ticker</h2><textarea id="ticker"></textarea><div class="hint">One line per item.</div></div>
+    <div class="card staged-edit"><h2>Ticker</h2><textarea id="ticker"></textarea><div class="hint">One line per item.</div></div>
     <div class="card"><h2>Video holes</h2>
-      <div class="hint">Filled automatically: live TA replays during a match (mock replays in the test stack), the replay playlist in the big box. Only type a link here to override one.</div>
+      <div class="hint">Filled automatically: each player's live TA replay during a match, the replay playlist in the big box. Only type a link here to override one.</div>
       <div class="row"><div><label>Side A (<code>feed:a</code>)</label><input id="feedA" placeholder="https://…"></div>
         <div><label>Side B (<code>feed:b</code>)</label><input id="feedB" placeholder="https://…"></div></div>
       <div class="row"><div><label>Stream delay (ms) — scores and events wait this long</label><input id="delay" type="number" step="100"></div></div>
@@ -71,9 +78,13 @@
       <div class="hint">"Pictures": while OBS (or the OBS link in a browser) is open, it sends this preview small pictures of its replays, about 12 a second, so each replay is drawn once. With no on-air overlay open, the preview draws its own, small and at 30 fps.</div></div>
   </div>
   <div class="col" style="position:sticky;top:16px">
-    <div class="card"><h2>Preview <span class="spacer"></span><a id="open" target="_blank">open</a></h2>
+    <div class="card" id="airCard"><h2><span class="tag air">On air</span> <span id="airName"></span> <span class="spacer"></span><a id="open" target="_blank">open</a></h2>
       <div class="preview"><iframe id="pv"></iframe></div>
       <div class="hint">Exactly what OBS shows. Save a design in Inkscape and it updates here within a second.</div></div>
+    <div class="card" id="nextCard" style="display:none"><h2><span class="tag next">Next</span> <span id="nextName"></span> <span class="spacer"></span><span id="nextState" class="muted"></span></h2>
+      <div class="preview"><iframe id="pvNext"></iframe></div>
+      <div class="btns"><button class="take" id="take2">Go live ▶</button><button id="discard2">Discard</button></div>
+      <div class="hint">What goes on air when you press Go live: the staged scene with the staged texts, on the live match data. Its video boxes show pictures of the on-air replays, or stay dark when that replay isn't on air (it never draws replays of its own). Auto-switch keeps working on air; it never changes what is staged here.</div></div>
     <div id="errors"></div>
     <div class="card"><h2>OBS</h2>
       <p>Browser Source, 1920 × 1080, tick <b>Control audio via OBS</b>, URL:</p>

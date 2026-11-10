@@ -94,6 +94,9 @@ export interface OverlayData {
     maps: MapSlot[];       // one per map of the best-of: "MAP 1 / MAP 2 / MAP 3" tabs
     playersPerMap: number; // 1 = a 1v1, 2 = duos, …
     solo: boolean;         // playersPerMap is 1 (handy for show:/hide:)
+    /** While phase is "loading", how far TA is: "waiting" (a player hasn't joined TA yet), "loading" (their games
+     *  are fetching the map), "ready" (everyone has it; the organiser can start the song). "" otherwise. */
+    load: "" | "waiting" | "loading" | "ready";
   };
   a: SideData;
   b: SideData;
@@ -113,6 +116,9 @@ export interface OverlayData {
   bracket: BracketData | null;
   feeds?: Record<string, string>;        // video holes the data fills itself: "a1" -> a replay viewer URL (TA live, or mock)
   feedsStartAt?: number;                 // epoch ms of song time 0 for those feeds, so every overlay shows the same moment
+  /** A TA-mode match: each lineup player's live replay stream, per video hole ("a1" -> their TA platform id), and
+   *  the TA server ("host:port"). The server turns these into replay-viewer links (feeds) that follow the player. */
+  taLive?: { relay: string; players: Record<string, string> } | null;
 }
 
 /**
@@ -122,6 +128,7 @@ export interface OverlayData {
 export interface LiveState {
   matchId?: string;                       // only applies while the overlay follows this match
   phase: "loading" | "playing" | null;    // null = nothing live
+  load?: "waiting" | "loading" | "ready";  // while loading: how far (see OverlayData.match.load)
   time?: number; duration?: number;       // song clock, seconds
   players?: { a?: Partial<PlayerData>[]; b?: Partial<PlayerData>[] };
   feeds?: Record<string, string>;
@@ -188,6 +195,11 @@ export interface ShowState {
   /** The Casters scene's "up next" block, typed in the panel (the overlay can't know whose match is next). Two team
    *  names, or a line of text; all empty = the block is hidden. Scenes read it as `nextUp.…` */
   upNext: { a: string; b: string; text: string };
+  /** Staging ("studio mode"): while on, the panel's scene buttons and text cards edit `staged` instead of what is on
+   *  air, and "Go live" (the take action) applies it in one step. */
+  staging?: boolean;
+  /** The staged copy of everything the operator sets by hand (null/undefined = nothing staged: Next equals On air). */
+  staged?: StagedShow | null;
   // every replay viewer: hold the up/down look near level (degrees); resolution (1 = full) and frame cap, which a
   // stream PC drawing replays on the CPU (OBS on Linux + NVIDIA) needs lower
   viewer: { lockPitch: boolean; pitchLimit: number; renderScale: number; maxFps: number;
@@ -199,6 +211,17 @@ export interface ShowState {
     /** ChroViewer's quality: the floor mirror's reflection, "high" (2048 px, smoothed) / "medium" (1024) / "low" (512,
      *  fewer things reflected) / "none" (off); and its screen distortion effects (heat-haze style walls/notes) */
     quality: "high" | "medium" | "low" | "none"; distortion: boolean };
+}
+
+/**
+ * What can be staged: the scene and the values typed in the panel. Match data, the replay playlist (it runs on a
+ * live clock) and the technical settings (video links, stream delay, replay quality) are never staged.
+ */
+export interface StagedShow {
+  scene: string; header: string; upNext: ShowState["upNext"]; brb: ShowState["brb"]; casters: Caster[];
+  castersFrom: ShowState["castersFrom"]; ticker: string[];
+  brbMinutes?: number;                    // "back in N min" was staged: the countdown starts when it goes live
+  airScene: string;                       // the on-air scene when staging began (to tell that air has moved since)
 }
 
 /** A caster on screen. From the Discord bot: everyone in the casting voice channel, speaking lit up live. */
@@ -223,7 +246,8 @@ export interface EventMsg {
 
 export interface DataSource {
   readonly name: string;
-  start(emit: (data: OverlayData) => void, event: (e: EventMsg) => void): Promise<void>;
+  /** `live`: a source that knows the live gameplay itself (BSCompStats in TA mode) reports it here; null = over. */
+  start(emit: (data: OverlayData) => void, event: (e: EventMsg) => void, live?: (state: LiveState | null) => void): Promise<void>;
   stop(): Promise<void>;
   /** Source-specific controls (the simulator's buttons). */
   control?(action: string, args: Record<string, unknown>): Promise<void> | void;

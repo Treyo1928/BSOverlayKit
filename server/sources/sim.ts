@@ -242,7 +242,7 @@ export class SimSource implements DataSource {
       tournament: { name: this.#names.tournament, short: this.#names.short, round: this.#names.round },
       match: {
         label: this.#names.round, bestOf: 5, need: 3, phase: this.#phase,
-        playersPerMap: this.#perMap, solo: this.#perMap === 1,
+        playersPerMap: this.#perMap, solo: this.#perMap === 1, load: this.#phase === "loading" ? "loading" : "",
         mapNumber: this.#played.length + (this.#phase === "finished" || this.#phase === "done" ? 0 : 1),
         winner: matchWinner, winnerName: name(matchWinner),
         maps: Array.from({ length: 5 }, (_, i): MapSlot => {

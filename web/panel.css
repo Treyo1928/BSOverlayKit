@@ -49,3 +49,18 @@ select { width: 100%; background: #0d0d16; border: 1px solid #333350; color: #ee
 .pl-item button { padding: 4px 8px; }
 .pl-empty { padding: 14px; color: var(--muted); text-align: center; }
 code { background: #0008; padding: 1px 5px; border-radius: 4px; }
+/* staging (Preview / Program): red = on air, amber = next */
+.stage-toggle { margin: 0; display: flex; gap: 6px; align-items: center; color: #eee; font-size: 13px; }
+#stageBar { position: sticky; top: 0; z-index: 5; display: flex; gap: 12px; align-items: center; padding: 8px 16px; background: #4a3505; border-bottom: 2px solid #e0a020; color: #ffe9b8; }
+#stageBar.dirty { background: #6b4a00; }
+#stageBar .spacer { flex: 1; }
+button.take { background: #b3261e; border-color: #ff6a5e; color: #fff; }
+button.take:hover { background: #cf3027; }
+button.take:disabled, #discard:disabled, #discard2:disabled { opacity: .45; cursor: default; }
+.tag { padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #fff; letter-spacing: .1em; }
+.tag.air { background: #b3261e; } .tag.next { background: #b07a00; }
+body.staging #airCard { border-color: #b3261e; } body.staging #nextCard { border-color: #e0a020; }
+body.staging .scenes button.on { background: #7a5600; border-color: #e0a020; }
+body.staging .scenes button.air { box-shadow: 0 0 0 2px #b3261e inset; }
+body.staging .scenes button.air::after { content: " · on air"; color: #ff9d94; font-size: 11px; }
+body.staging .card.staged-edit { border-left: 3px solid #e0a020; }

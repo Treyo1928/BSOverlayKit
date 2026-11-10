@@ -101,7 +101,8 @@
         <rect x="84" y="282" width="216" height="216" rx="10" fill="none" stroke="url(#cream)" stroke-width="1.5" opacity=".6"/>
         <text inkscape:label="{item.name | upper} fit:212" x="86" y="528" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
         <text inkscape:label="{item.artist} fit:212" x="86" y="554" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist</tspan></text>
-        <text x="86" y="578" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{item.difficulty} · {item.category}</tspan></text>
+        <text inkscape:label="show:item.category" x="86" y="578" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{item.difficulty} · {item.category}</tspan></text>
+        <text inkscape:label="hide:item.category" x="86" y="578" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{item.difficulty}</tspan></text>
         <g inkscape:label="state:item.state">
           <g inkscape:label="when:banned" style="display:none">
             <rect x="72" y="270" width="240" height="360" fill="#0a0105" opacity=".72"/>
@@ -120,7 +121,10 @@
           </g>
           <g inkscape:label="when:current" style="display:none">
             <rect inkscape:label="now-glow" x="75" y="273" width="234" height="354" fill="none" stroke="url(#cream)" stroke-width="7"/>
-            <text inkscape:label="fit:216" x="192" y="614" style="font-family:Shader;font-size:15px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>NOW PLAYING</tspan></text>
+            <g inkscape:label="state:match.phase">
+              <g inkscape:label="when:playing" style="display:none"><text inkscape:label="fit:216" x="192" y="614" style="font-family:Shader;font-size:15px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>NOW PLAYING</tspan></text></g>
+              <g inkscape:label="when:else"><text inkscape:label="fit:216" x="192" y="614" style="font-family:Shader;font-size:15px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.9;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>UP NEXT</tspan></text></g>
+            </g>
           </g>
           <g inkscape:label="when:played" style="display:none">
             <rect x="72" y="270" width="240" height="360" fill="#0a0105" opacity=".45"/>

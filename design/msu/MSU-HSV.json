@@ -1,0 +1,196 @@
+{
+  "majorVersion": 3,
+  "minorVersion": 5,
+  "patchVersion": 3,
+  "displayMode": "format",
+  "doIntermediateUpdates": true,
+  "assumeMaxPostSwing": false,
+  "judgments": [
+    {
+      "threshold": 115,
+      "text": "<size=150%><u>%s</u></size>",
+      "color": [
+        0.89,
+        0.278,
+        0.318,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 113,
+      "text": "<size=130%>%B%s%A</size>",
+      "color": [
+        0.89,
+        0.278,
+        0.318,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 112,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.965,
+        0.961,
+        0.957,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 109,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.871,
+        0.867,
+        0.855,
+        1.0
+      ],
+      "fade": true
+    },
+    {
+      "threshold": 100,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.961,
+        0.761,
+        0.067,
+        1.0
+      ],
+      "fade": true
+    },
+    {
+      "threshold": 0,
+      "text": "<size=80%>%B%s%A</size>",
+      "color": [
+        0.961,
+        0.761,
+        0.067,
+        1.0
+      ],
+      "fade": false
+    }
+  ],
+  "chainHeadJudgments": [
+    {
+      "threshold": 85,
+      "text": "<size=150%><u>%s</u></size>",
+      "color": [
+        0.89,
+        0.278,
+        0.318,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 83,
+      "text": "<size=130%>%B%s%A</size>",
+      "color": [
+        0.89,
+        0.278,
+        0.318,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 82,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.965,
+        0.961,
+        0.957,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 79,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.871,
+        0.867,
+        0.855,
+        1.0
+      ],
+      "fade": false
+    },
+    {
+      "threshold": 70,
+      "text": "<size=110%>%B%s%A</size>",
+      "color": [
+        0.961,
+        0.761,
+        0.067,
+        1.0
+      ],
+      "fade": true
+    },
+    {
+      "threshold": 0,
+      "text": "<size=80%>%B%s%A</size>",
+      "color": [
+        0.961,
+        0.761,
+        0.067,
+        1.0
+      ],
+      "fade": false
+    }
+  ],
+  "chainLinkDisplay": {
+    "text": "<alpha=#80><size=80%>%s",
+    "color": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "beforeCutAngleJudgments": [
+    {
+      "threshold": 70,
+      "text": ""
+    },
+    {
+      "threshold": 65,
+      "text": "<color=#F5C211>-</color>"
+    },
+    {
+      "threshold": 0,
+      "text": "<color=#F5C211>=</color>"
+    }
+  ],
+  "accuracyJudgments": [
+    {
+      "threshold": 15,
+      "text": ""
+    },
+    {
+      "threshold": 0,
+      "text": ""
+    }
+  ],
+  "afterCutAngleJudgments": [
+    {
+      "threshold": 30,
+      "text": ""
+    },
+    {
+      "threshold": 25,
+      "text": "<color=#F5C211>-</color>"
+    },
+    {
+      "threshold": 0,
+      "text": "<color=#F5C211>=</color>"
+    }
+  ],
+  "timeDependenceDecimalPrecision": 1,
+  "timeDependenceDecimalOffset": 2,
+  "timeDependenceJudgments": [],
+  "randomizeBadCutDisplays": true,
+  "randomizeMissDisplays": true
+}

@@ -4,7 +4,7 @@
 //      OVERLAY (the settings file, default overlay.yaml; e.g. OVERLAY=overlay.starter.yaml for the starter scenes),
 //      KIT_DATA (runtime state folder, default data; must be allowed for writing, see run.sh)
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { fmtTime, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState } from "./model.ts";
+import { fmtTime, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState, type StagedShow } from "./model.ts";
 import { SimSource, type SimOptions } from "./sources/sim.ts";
 import { BscsSource, type BscsOptions } from "./sources/bscompstats.ts";
 import { emptyPlaylist, PlaylistControl, position } from "./playlist.ts";
@@ -16,6 +16,10 @@ const HOST = Deno.env.get("HOST") ?? "127.0.0.1";
 const CONFIG_FILE = Deno.env.get("OVERLAY") ?? "overlay.yaml";
 // the replay viewer (our ChroViewer build). Its address as OBS sees it.
 const VIEWER = (Deno.env.get("CHROVIEWER_URL") ?? "http://127.0.0.1:4000").replace(/\/+$/, "");
+// TA live replays reach the viewers through the viewer's own relay (/ta-live/<host:port>/u/<player>). The TA server's
+// address as the VIEWER reaches it, when that differs from the one the BSCompStats site uses (a container name in
+// the local test stack): KIT_TA_RELAY_HOST=msu-ta-server:8676. Empty: the address in the match's `ta`.
+const TA_RELAY = (Deno.env.get("KIT_TA_RELAY_HOST") ?? "").trim();
 // KIT_DATA: a different runtime-state folder (login code, panel settings), e.g. for a second test instance
 const DATA = (Deno.env.get("KIT_DATA") ?? "data").replace(/\/$/, "");
 const dataAt = (p: string) => new URL(p, new URL(`${DATA}/`, ROOT));
@@ -28,6 +32,8 @@ type Config = {
   sim: SimOptions;
   bscompstats: BscsOptions;
   header: string;
+  /** A HitScoreVisualizer config in design/, used by every replay viewer. Empty: each replay's own. */
+  hsv: string;
 };
 let config!: Config;
 let configError = "";
@@ -39,7 +45,7 @@ async function loadConfig() {
       if (typeof s === "string") scenes[s] = { svg: s };
       else for (const [k, v] of Object.entries(s)) scenes[k] = { svg: (v as any).svg ?? k, vars: (v as any).vars, label: (v as any).label };
     }
-    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "" };
+    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? "") };
     // the start script points a test stack somewhere else without editing this file
     const e = (k: string) => Deno.env.get(k) || undefined;
     config.source = e("KIT_SOURCE") ?? config.source;
@@ -48,7 +54,7 @@ async function loadConfig() {
   } catch (e) {
     configError = `${CONFIG_FILE}: ${(e as Error).message}`;
     console.error(configError);
-    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], sim: {}, bscompstats: {}, header: "" };
+    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], sim: {}, bscompstats: {}, header: "", hsv: "" };
   }
 }
 await loadConfig();
@@ -81,6 +87,8 @@ show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
 show.viewer = Object.assign({ lockPitch: true, pitchLimit: 12, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+show.staging = !!show.staging;
+show.staged ??= null;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 const saveShow = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => Deno.writeTextFile(dataAt("show.json"), JSON.stringify(show, null, 1)), 300); };
 
@@ -149,6 +157,7 @@ await source.start(
     show.streamDelayMs > 0 ? setTimeout(push, show.streamDelayMs) : push();
   },
   (e) => setTimeout(() => onEvent(e), show.streamDelayMs),
+  (l) => setTimeout(() => setLive(l), 0),
 );
 
 let songEndAt = 0;                      // when songEnd last went out
@@ -185,6 +194,47 @@ function setScene(scene: string, fadeMs?: number) {
   dirty = true;
 }
 
+// ------------------------------------------------------------------ staging (Preview / Program, like OBS's Studio Mode)
+// On air is `show`, as always. `show.staged` is an optional copy of what the operator sets by hand (scene, up next,
+// top bar text, BRB, casters, ticker). Actions sent with "staged": true edit that copy; "take" puts all of it on air
+// in one step (normal crossfade), "discardStaged" drops it. Automation and everything without the flag act on air
+// only: when a rule switches the on-air scene, the staged copy stays as it is (the panel says that air has moved).
+const STAGE_KEYS = ["scene", "header", "upNext", "brb", "casters", "castersFrom", "ticker"] as const;
+const STAGEABLE = new Set(["scene", "header", "upNext", "brb", "casters", "castersFrom", "ticker"]);
+let target: ShowState | StagedShow = show;     // what the action being run edits: on air, or the staged copy
+function ensureStaged(): StagedShow {
+  show.staging = true;
+  if (!show.staged) {
+    const copy = structuredClone(Object.fromEntries(STAGE_KEYS.map((k) => [k, show[k]]))) as unknown as StagedShow;
+    copy.casters = copy.casters.map((c) => ({ ...c, speaking: false }));
+    show.staged = { ...copy, airScene: show.scene };
+  }
+  return show.staged;
+}
+/** Is anything staged that differs from what is on air? (A countdown that has only ticked on doesn't count.) */
+function stagedDiffers(): boolean {
+  const st = show.staged;
+  if (!st) return false;
+  if (st.brbMinutes !== undefined) return true;
+  const plain = (c: { id: string; name: string; handle: string; avatar: string }[]) => JSON.stringify(c.map((x) => [x.id, x.name, x.handle, x.avatar]));
+  return st.scene !== show.scene || st.header !== show.header || JSON.stringify(st.upNext) !== JSON.stringify(show.upNext)
+    || JSON.stringify(st.brb) !== JSON.stringify(show.brb) || st.castersFrom !== show.castersFrom
+    || (st.castersFrom === "panel" && plain(st.casters) !== plain(show.casters)) || JSON.stringify(st.ticker) !== JSON.stringify(show.ticker);
+}
+function take() {
+  const st = show.staged;
+  if (!st) return;
+  show.header = st.header; show.upNext = st.upNext; show.ticker = st.ticker;
+  show.brb = { ...st.brb, endsAt: st.brbMinutes !== undefined ? Date.now() + st.brbMinutes * 60_000 : st.brb.endsAt };
+  // a list the Discord bot keeps is live already: don't put a stale copy of it back
+  if (!(st.castersFrom === "discord" && show.castersFrom === "discord")) show.casters = st.casters;
+  show.castersFrom = st.castersFrom;
+  show.staged = null;
+  setScene(st.scene);
+}
+/** The show as a staged preview sees it: on air, with the staged values over it. */
+const stagedView = () => ({ ...show, ...(show.staged ?? {}) });
+
 // ------------------------------------------------------------------ sockets
 const overlays = new Set<WebSocket>();
 const panels = new Set<WebSocket>();
@@ -197,13 +247,16 @@ const broadcastAll = (m: unknown) => { broadcastOverlays(m); broadcastPanels(m);
 // of its replay viewers, and the previews show those instead of running viewers of their own. Rendering every replay
 // twice on one PC halved the frame rate of both.
 const previews = new Set<WebSocket>();
+const stagedViews = new Set<WebSocket>();     // previews of the staged state (&staged): never run viewers of their own
 let picturesFrom: WebSocket | null = null;   // the on-air overlay sending them
 function choosePictureSource() {
-  const want = previews.size > 0 && show.viewer.preview === "program";
+  const program = [...previews].some((ws) => !stagedViews.has(ws)) && show.viewer.preview === "program";
+  const want = program || stagedViews.size > 0;
   if (picturesFrom && (!overlays.has(picturesFrom) || previews.has(picturesFrom))) picturesFrom = null;
   if (want && !picturesFrom) picturesFrom = [...overlays].find((ws) => !previews.has(ws)) ?? null;
   for (const ws of overlays) {
-    if (previews.has(ws)) send(ws, { type: "pictures", from: want && !!picturesFrom });
+    if (stagedViews.has(ws)) send(ws, { type: "pictures", from: true });   // pictures or dark boxes, never viewers
+    else if (previews.has(ws)) send(ws, { type: "pictures", from: program && !!picturesFrom });
     else send(ws, { type: "pictures", send: want && ws === picturesFrom });
   }
 }
@@ -211,8 +264,38 @@ setInterval(choosePictureSource, 2000);
 // ------------------------------------------------------------------ live gameplay (TA bridge / mock TA)
 let live: LiveState | null = null;
 let songEnded = false;                 // songEnd was sent for the song being played
+/** Live gameplay changed: from the `live` action (tools, the old TA bridge) or from the source (BSCompStats in TA mode). */
+function setLive(a: any) {
+  const before = live;
+  const was = live?.phase ?? null;
+  live = a?.phase ? { matchId: a.matchId, phase: a.phase, load: a.load, time: Number(a.time) || 0, duration: Number(a.duration) || 0, players: a.players, feeds: a.feeds, startedAt: Number(a.startedAt) || undefined } : null;
+  const now = live?.phase ?? null;
+  if (now !== was && now === "loading") { onEvent({ name: "mapLoad" }); songEnded = false; }
+  if (now !== was && now === "playing") { onEvent({ name: "mapStart" }); if (was !== "loading") songEnded = false; }
+  // The song is over (the referee still has to close the map): every player has reported a finish, or the live
+  // feed stopped at the end of the song. The second case matters: a player who quits, fails out or drops never
+  // reports "finished", and waiting for all of them meant the overlay sat on Match until the map was closed.
+  const everyone = (Object.values(live?.players ?? {}).flat() as ({ finished?: boolean } | null)[]).filter(Boolean);
+  const allDone = now === "playing" && everyone.length > 0 && everyone.every((p) => p?.finished);
+  const ranOut = was === "playing" && now === null && (before?.duration ?? 0) > 0 && (before?.time ?? 0) >= before!.duration! - 3;
+  if (!songEnded && (allDone || ranOut)) {
+    songEnded = true;
+    onEvent({ name: "songEnd" });
+  }
+  dirty = true;
+}
+
 const followedMatch = () => ((source as any).panel?.()?.following as string | undefined) ?? "";
+/** A TA-mode match's video holes: a replay viewer following each lineup player's live replay. */
+function withTaFeeds(d: OverlayData | null): OverlayData | null {
+  if (!d?.taLive) return d;
+  const relay = TA_RELAY || d.taLive.relay;
+  const feeds = Object.fromEntries(Object.entries(d.taLive.players).map(([hole, id]) =>
+    [hole, `${VIEWER}/?${new URLSearchParams({ taLive: `/ta-live/${relay}/u/${id}`, hideUI: "true" })}`]));
+  return { ...d, feeds: { ...feeds, ...(d.feeds ?? {}) } };
+}
 function withLive(d: OverlayData | null): OverlayData | null {
+  d = withTaFeeds(d);
   if (!d || !live?.phase || (live.matchId && live.matchId !== followedMatch())) return d;
   const out: OverlayData = structuredClone(d);
   for (const s of ["a", "b"] as const) {
@@ -232,6 +315,7 @@ function withLive(d: OverlayData | null): OverlayData | null {
   out.diff = (out.a.acc ?? 0) - (out.b.acc ?? 0);
   out.tug = 0.5 + Math.max(-1, Math.min(1, out.diff / 0.02)) / 2;
   out.match.phase = live.phase;
+  out.match.load = live.phase === "loading" ? live.load ?? "loading" : "";
   if (out.map && live.duration) {
     out.map.progress = Math.min(1, (live.time ?? 0) / live.duration);
     out.map.time = fmtTime(live.time ?? 0);
@@ -271,30 +355,39 @@ function replayMsg() {
 // (no overlay open = nobody watching: the clock waits instead of playing songs to no one)
 setInterval(() => playlist.tick(replayScenes.has(show.scene) && overlays.size > 0), 250);
 
-const stateMsg = () => ({
-  type: "state", data: withLive(data), show: { ...show, playlist: undefined }, colors: config.colors,
+const stateMsg = (staged = false) => ({
+  type: "state", data: withLive(data), show: { ...(staged ? stagedView() : show), playlist: undefined, staged: undefined }, colors: config.colors,
   crossfade: fade && Date.now() < fade.until ? fade.ms : config.crossfade, designVersion,
   replay: replayMsg(), now: Date.now(),
+  // the HitScoreVisualizer config for the replay viewers' flying hit scores: a file in design/ (overlay.yaml `hsv:`)
+  hsv: config.hsv,
 });
 const panelMsg = async () => ({
-  ...stateMsg(), playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
+  ...stateMsg(), staging: !!show.staging, staged: show.staged ? { ...stagedView(), playlist: undefined, staged: undefined } : null,
+  stagedDiffers: stagedDiffers(), airMoved: !!show.staged && show.staged.airScene !== show.scene,
+  playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
 });
 setInterval(async () => {
   if (!dirty) return;
   dirty = false;
-  broadcastOverlays(stateMsg());
+  const air = stateMsg(), next = stagedViews.size ? stateMsg(true) : null;
+  for (const ws of overlays) send(ws, stagedViews.has(ws) ? next : air);
   if (panels.size) { const m = await panelMsg(); broadcastPanels(m); }
 }, 50);
 
 // ------------------------------------------------------------------ actions (panel + HTTP API)
 const actions: Record<string, (a: any) => unknown> = {
-  scene: (a) => setScene(a.scene),
+  scene: (a) => { if (target === show) setScene(a.scene); else if (config.scenes[a.scene]) target.scene = a.scene; },
+  // staging: on/off (off drops what was staged), "take" = staged goes on air, "discardStaged" = Next is On air again
+  staging: (a) => { show.staging = !!a.on; if (!show.staging) show.staged = null; },
+  take: () => take(),
+  discardStaged: () => { show.staged = null; },
   auto: (a) => { show.auto = !!a.on; },
   // from the panel: typing casters in takes over from the Discord bot until the bot is switched back on
-  casters: (a) => { show.casters = (a.casters ?? []).map(cleanCaster); show.castersFrom = "panel"; },
-  castersFrom: (a) => { show.castersFrom = a.from === "discord" ? "discord" : "panel"; },
+  casters: (a) => { target.casters = (a.casters ?? []).map(cleanCaster); target.castersFrom = "panel"; },
+  castersFrom: (a) => { target.castersFrom = a.from === "discord" ? "discord" : "panel"; },
   // from the Discord bot (tools/discord-bot): who is in the casting voice channel, and who is talking
   discordCasters: (a) => {
     if (show.castersFrom !== "discord") return;
@@ -302,24 +395,7 @@ const actions: Record<string, (a: any) => unknown> = {
     show.casters = (a.casters ?? []).map(cleanCaster).map((c: any) => ({ ...c, speaking: talking.has(c.id) }));
   },
   // live gameplay from a TA bridge or tools/mock-ta (see LiveState in model.ts)
-  live: (a) => {
-    const before = live;
-    const was = live?.phase ?? null;
-    live = a.phase ? { matchId: a.matchId, phase: a.phase, time: Number(a.time) || 0, duration: Number(a.duration) || 0, players: a.players, feeds: a.feeds, startedAt: Number(a.startedAt) || undefined } : null;
-    const now = live?.phase ?? null;
-    if (now !== was && now === "loading") { onEvent({ name: "mapLoad" }); songEnded = false; }
-    if (now !== was && now === "playing") { onEvent({ name: "mapStart" }); if (was !== "loading") songEnded = false; }
-    // The song is over (the referee still has to close the map): every player has reported a finish, or the live
-    // feed stopped at the end of the song. The second case matters: a player who quits, fails out or drops never
-    // reports "finished", and waiting for all of them meant the overlay sat on Match until the map was closed.
-    const everyone = (Object.values(live?.players ?? {}).flat() as ({ finished?: boolean } | null)[]).filter(Boolean);
-    const allDone = now === "playing" && everyone.length > 0 && everyone.every((p) => p?.finished);
-    const ranOut = was === "playing" && now === null && (before?.duration ?? 0) > 0 && (before?.time ?? 0) >= before!.duration! - 3;
-    if (!songEnded && (allDone || ranOut)) {
-      songEnded = true;
-      onEvent({ name: "songEnd" });
-    }
-  },
+  live: (a) => setLive(a),
   // the replay playlist: { action: "playlist", op: "add", refs: [...] } and play / next / prev / random / restart /
   // remove / move / sort / mode / clear (see server/playlist.ts)
   playlist: (a) => {
@@ -338,9 +414,9 @@ const actions: Record<string, (a: any) => unknown> = {
     const c = show.casters.find((x) => x.id && x.id === String(a.id));
     if (c) c.speaking = !!a.on;
   },
-  header: (a) => { show.header = String(a.header ?? ""); },
+  header: (a) => { target.header = String(a.header ?? ""); },
   // the Casters scene's "up next" block: two team names, or one line of text; all empty = hidden
-  upNext: (a) => { show.upNext = { a: String(a.a ?? "").trim(), b: String(a.b ?? "").trim(), text: String(a.text ?? "").trim() }; },
+  upNext: (a) => { target.upNext = { a: String(a.a ?? "").trim(), b: String(a.b ?? "").trim(), text: String(a.text ?? "").trim() }; },
   viewer: (a) => {
     if (a.lockPitch !== undefined) show.viewer.lockPitch = !!a.lockPitch;
     if (a.pitchLimit !== undefined) show.viewer.pitchLimit = Math.max(0, Math.min(90, Number(a.pitchLimit) || 0));
@@ -351,8 +427,13 @@ const actions: Record<string, (a: any) => unknown> = {
     if (a.distortion !== undefined) show.viewer.distortion = !!a.distortion;
     if (a.output !== undefined) show.viewer.output = [0, 720, 1080, 1440, 2160].includes(Number(a.output)) ? Number(a.output) : 1080;
   },
-  brb: (a) => { Object.assign(show.brb, a.brb ?? {}); if (a.minutes !== undefined) show.brb.endsAt = Date.now() + Number(a.minutes) * 60_000; },
-  ticker: (a) => { show.ticker = (a.ticker as string[]).map((s) => s.trim()).filter(Boolean); },
+  brb: (a) => {
+    Object.assign(target.brb, a.brb ?? {});
+    if (a.minutes === undefined) return;
+    target.brb.endsAt = Date.now() + Number(a.minutes) * 60_000;
+    if (target !== show) (target as StagedShow).brbMinutes = Number(a.minutes);   // counts down from "Go live"
+  },
+  ticker: (a) => { target.ticker = (a.ticker as string[]).map((s) => s.trim()).filter(Boolean); },
   feeds: (a) => { show.feeds = a.feeds; },
   streamDelay: (a) => { show.streamDelayMs = Math.max(0, Number(a.ms) || 0); },
   source: (a) => source.control?.(a.control, a),
@@ -360,7 +441,9 @@ const actions: Record<string, (a: any) => unknown> = {
 async function runAction(a: any) {
   const fn = actions[a?.action];
   if (!fn) throw new Error(`unknown action "${a?.action}"`);
-  await fn(a);
+  // "staged": true on a scene / text action edits the staged copy (and turns staging on); anything else is on air
+  target = a.staged && STAGEABLE.has(a.action) ? ensureStaged() : show;
+  try { await fn(a); } finally { target = show; }
   if (a.action !== "speaking" && a.action !== "live") saveShow();   // talking flickers on and off; not worth a file write each time
   dirty = true;
 }
@@ -391,15 +474,17 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req) => {
   if (p === "/ws/overlay" && upgrade) {
     if (url.searchParams.get("key") !== secrets.overlayKey) return new Response("bad key", { status: 403 });
     const { socket, response } = Deno.upgradeWebSocket(req);
-    const preview = url.searchParams.get("role") === "preview";
+    const isStaged = url.searchParams.has("staged");
+    const preview = url.searchParams.get("role") === "preview" || isStaged;
     socket.binaryType = "arraybuffer";
     socket.onopen = () => {
       overlays.add(socket);
       if (preview) previews.add(socket);
-      send(socket, stateMsg());
+      if (isStaged) stagedViews.add(socket);
+      send(socket, stateMsg(isStaged));
       choosePictureSource();
     };
-    socket.onclose = () => { overlays.delete(socket); previews.delete(socket); choosePictureSource(); };
+    socket.onclose = () => { overlays.delete(socket); previews.delete(socket); stagedViews.delete(socket); choosePictureSource(); };
     // an overlay reports on its replay viewer: loaded, the song's real length, finished
     socket.onmessage = (e) => {
       // a picture of one of its replays (hole name + JPEG): on to the previews
@@ -433,7 +518,8 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req) => {
   }
   if (p === "/api/state") {
     if (!authed(req)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
-    return Response.json({ data: liveData, show, source: source.status() });
+    return Response.json({ data: liveData, show: { ...show, staged: undefined }, staging: !!show.staging, staged: show.staged ?? null,
+      stagedDiffers: stagedDiffers(), source: source.status() });
   }
   if (p === "/api/design") return Response.json({ version: designVersion, scenes: await designList(), fonts: await fontList() });
   if (p === "/api/login" && req.method === "POST") {

@@ -6,6 +6,10 @@ title: MSU Esports Beat Saber
 # The event text in the Match scene's top bar (the panel can change it during the show).
 header: MSU Beat Saber · Winter Session
 
+# The hit-score look (a HitScoreVisualizer config, a file in design/) every replay on stream is drawn with.
+# Leave out to show each replay with the scores its player recorded it with.
+hsv: msu/MSU-HSV.json
+
 # Scenes, in the order the panel shows them. svg: is the file in design/ without .svg.
 scenes:
   - starting: { svg: msu/starting, label: "Starting Soon" }

@@ -113,7 +113,13 @@
 
   <g inkscape:groupmode="layer" inkscape:label="status">
     <g inkscape:label="state:match.phase">
-      <g inkscape:label="when:loading" style="display:none"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MAP LOADING · STARTING ANY MOMENT</tspan></text></g>
+      <g inkscape:label="when:loading" style="display:none">
+        <g inkscape:label="state:match.load">
+          <g inkscape:label="when:waiting" style="display:none"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>WAITING FOR PLAYERS TO JOIN</tspan></text></g>
+          <g inkscape:label="when:ready" style="display:none"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>EVERYONE IS READY · STARTING ANY MOMENT</tspan></text></g>
+          <g inkscape:label="when:else"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>MAP LOADING FOR THE PLAYERS</tspan></text></g>
+        </g>
+      </g>
       <g inkscape:label="when:else"><text inkscape:label="status-text" x="1212" y="144" style="font-family:Shader;font-size:26px;letter-spacing:3px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYERS ARE GETTING READY</tspan></text></g>
     </g>
   </g>
@@ -128,7 +134,8 @@
       <text inkscape:label="{map.name | upper} fit:322" x="228" y="262" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
       <text inkscape:label="{map.artist} fit:322" x="229" y="292" style="font-family:Geom Graphic;font-size:18px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
       <text inkscape:label="show:map.mapper fit:322" x="229" y="320" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
-      <text inkscape:label="fit:322" x="229" y="350" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category} · {map.length}</tspan></text>
+      <text inkscape:label="show:map.category fit:322" x="229" y="350" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category} · {map.length}</tspan></text>
+        <text inkscape:label="hide:map.category fit:322" x="229" y="350" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.length}</tspan></text>
       <text inkscape:label="show:map.pickedBy fit:322" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>PICKED BY {map.pickedByName | upper}</tspan></text>
       <text inkscape:label="hide:map.pickedBy" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>TIEBREAKER</tspan></text>
     </g>

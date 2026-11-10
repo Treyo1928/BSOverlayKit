@@ -67,12 +67,44 @@ data/                      runtime state: panel settings, secrets (login code, o
 |---|---|
 | `{"action":"scene","scene":"match"}` | switch scene |
 | `{"action":"auto","on":true}` | automation on/off |
+| `{"action":"scene","scene":"brb","staged":true}` | stage it instead of putting it on air. `"staged": true` works on `scene`, `header`, `upNext`, `brb`, `casters`, `castersFrom`, `ticker` (and turns staging on) |
+| `{"action":"take"}` / `{"action":"discardStaged"}` | put everything staged on air in one step / throw it away |
+| `{"action":"staging","on":false}` | staging mode on/off (off also throws away what was staged) |
 | `{"action":"brb","minutes":5}` | BRB countdown |
 | `{"action":"upNext","a":"Team 1","b":"Team 2","text":"Winners Final"}` | the Casters scene's "up next" block (`{"action":"upNext"}` hides it) |
 | `{"action":"live","phase":"playing","time":12,"duration":180,"players":{"a":[{"acc":0.97,"score":1,"combo":1,"misses":0,"finished":false}],"b":[…]}}` | live gameplay from a TA bridge (`phase`: `loading` / `playing` / `null` = over) |
 | `{"action":"source","control":"next"}` | simulator step (`reset`, `auto`, `speed`) |
 
-`GET /api/state` (same header) returns the current data and show state. `tools/act.sh '<json>'` is a shortcut.
+Environment: `PORT`, `HOST_CODE`, `OVERLAY`, `KIT_DATA` (see `server/main.ts`), `KIT_SOURCE` / `BSCS_URL` /
+`BSCS_TOURNAMENT` / `BSCS_KEY` for the BSCompStats source, `CHROVIEWER_URL` (the replay viewer as the browser reaches
+it), and `KIT_TA_RELAY_HOST` (`host:port` of the TA server as the replay viewer reaches it, when that is not the
+address in the match; the local test stack sets `msu-ta-server:8676`).
+
+**TA-mode matches** need nothing posted to the overlay: the BSCompStats source reads each map's TA status (loading /
+ready / playing / finished) and the live scores from the match's events stream, and every lineup player's video hole
+becomes a replay viewer following that player's TA live replay. The `live` action above still works, for tools.
+
+`GET /api/state` (same header) returns the current data, `show` (what is on air), `staging` (the mode), `staged`
+(the staged copy, or `null` when nothing is staged) and `stagedDiffers`. Calls without `"staged"` act on air, as
+they always did.
+
+## Staging: look before it goes on air
+
+Tick **Staging** at the top of the panel (it works like OBS's Studio Mode). From then on the scene buttons and the
+text cards (top bar, casters, up next, be right back, ticker: the ones with an amber edge) edit **Next**, not what
+viewers see. The panel shows two previews, **On air** (red) and **Next** (amber); **Go live** puts the whole staged
+set on air in one step with the normal crossfade, **Discard** throws it away. An amber bar across the top says
+whether changes are waiting.
+
+- Not staged, always immediate: match data, the replay playlist (it runs on a live clock), video links, stream
+  delay and the replay settings.
+- **Auto-switch only ever acts on air.** If a rule changes the on-air scene while you have something staged, Next
+  stays exactly as you set it; the bar says that the on-air scene has changed since you started.
+- **Emergency:** the Scene card has "Switch on air now", which skips staging. Unticking Staging goes back to one
+  click = on air.
+- "Back in N min" staged for Be Right Back starts counting when it goes live.
+- The Next preview is the overlay page with `&staged=1`. It never draws replays: its video boxes show pictures of
+  the on-air replays, or stay dark. `tools/act.sh '<json>'` is a shortcut.
 
 ## How it works (one paragraph)
 

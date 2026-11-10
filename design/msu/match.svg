@@ -150,7 +150,8 @@
         <text inkscape:label="{map.name | upper} fit:290" x="964" y="838" style="font-family:Shader;font-size:30px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
         <text inkscape:label="{map.artist} fit:290" x="964" y="872" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
         <text inkscape:label="show:map.mapper fit:290" x="964" y="902" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
-        <text inkscape:label="fit:290" x="964" y="934" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category}</tspan></text>
+        <text inkscape:label="show:map.category fit:290" x="964" y="934" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.category}</tspan></text>
+        <text inkscape:label="hide:map.category fit:290" x="964" y="934" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty}</tspan></text>
         <text inkscape:label="show:map.bpm" x="964" y="964" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.bpm} BPM</tspan></text>
         <rect x="964" y="992" width="290" height="8" rx="4" fill="#12020a"/>
         <rect inkscape:label="bar:map.progress" x="964" y="992" width="290" height="8" rx="4" fill="url(#cream)"/>
