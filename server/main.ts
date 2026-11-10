@@ -4,7 +4,7 @@
 //      OVERLAY (the settings file, default overlay.yaml; e.g. OVERLAY=overlay.starter.yaml for the starter scenes),
 //      KIT_DATA (runtime state folder, default data; must be allowed for writing, see run.sh)
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { fmtTime, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState, type StagedShow } from "./model.ts";
+import { accuracyForRaw, fmtTime, rawCurve, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState, type StagedShow } from "./model.ts";
 import { SimSource, type SimOptions } from "./sources/sim.ts";
 import { BscsSource, type BscsOptions } from "./sources/bscompstats.ts";
 import { emptyPlaylist, PlaylistControl, position } from "./playlist.ts";
@@ -317,7 +317,17 @@ function withLive(d: OverlayData | null): OverlayData | null {
     out[s].players = lp.map((p, i) => ({ ...(out[s].players[i] ?? { name: "?", avatar: "", score: 0, acc: null, combo: 0, misses: 0, finished: false }), ...p }));
     const ps = out[s].players;
     const accs = ps.map((p) => p.acc).filter((x): x is number => typeof x === "number");
-    out[s].acc = accs.length ? accs.reduce((t, x) => t + x, 0) / accs.length : null;
+    // The side's figure, as the match is scored. On match points each player's accuracy goes through the curve
+    // first and the points are averaged (a 98 and an 80 are worth more than two 89s); `acc` is then the accuracy
+    // that earns those mean points, which is what BSCompStats shows and decides the map on.
+    const curve = out.match.scoring === "points" ? out.match.curve : null;
+    if (!accs.length) { out[s].acc = null; out[s].matchPoints = null; }
+    else if (curve) {
+      const raw = accs.reduce((t, x) => t + rawCurve(x, curve), 0) / accs.length;
+      out[s].acc = accuracyForRaw(raw, curve);
+      const perfect = out.match.perfectAcc;
+      out[s].matchPoints = perfect ? (curve.perfectPoints / rawCurve(perfect, curve)) * raw : null;
+    } else { out[s].acc = accs.reduce((t, x) => t + x, 0) / accs.length; out[s].matchPoints = null; }
     out[s].score = ps.reduce((t, p) => t + (p.score || 0), 0);
     out[s].misses = ps.reduce((t, p) => t + (p.misses || 0), 0);
     out[s].combo = Math.min(...ps.map((p) => p.combo || 0));

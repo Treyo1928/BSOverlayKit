@@ -30,6 +30,9 @@ export interface SideData {
   country: string;         // ISO alpha-2
   seed: number | null;
   points: number;          // maps won in this match
+  /** Match points on the current (or last) map: the team's mean points. Null unless the match is scored on match
+   *  points and the map has a perfect accuracy. Live while a map is played. */
+  matchPoints: number | null;
   // live, while a map is played (0 otherwise)
   score: number;
   acc: number | null;      // 0..1, null before the map starts (shows as —)
@@ -98,6 +101,13 @@ export interface OverlayData {
     winnerName: string;
     maps: MapSlot[];       // one per map of the best-of: "MAP 1 / MAP 2 / MAP 3" tabs
     playersPerMap: number; // 1 = a 1v1, 2 = duos, …
+    /** How maps are decided: "accuracy" (the lineup's mean accuracy) or "points" (BSCompStats' match points: each
+     *  player's accuracy goes through the curve first, then the points are averaged). Under "points" a side's `acc`
+     *  is the accuracy that earns its mean points, not the plain average. */
+    scoring?: "accuracy" | "points";
+    /** The match points curve, and what counts as perfect on the current map (0..1; null = none set). */
+    curve?: { padding: number; slope: number; perfectPoints: number } | null;
+    perfectAcc?: number | null;
     solo: boolean;         // playersPerMap is 1 (handy for show:/hide:)
     /** While phase is "loading", how far TA is: "waiting" (a player hasn't joined TA yet), "loading" (their games
      *  are fetching the map), "ready" (everyone has it; the organiser can start the song). "" otherwise. */
@@ -276,7 +286,21 @@ export interface DataSource {
 
 export const blankSide = (): SideData => ({
   name: "TBD", players: [], roster: [], avatar: "", logoKind: "star", logo: "", replays: [], initials: "?", country: "", seed: null, points: 0,
-  score: 0, acc: null, combo: 0, maxCombo: 0, misses: 0, health: 0.5, finished: false, leading: false, winner: false,
+  matchPoints: null, score: 0, acc: null, combo: 0, maxCombo: 0, misses: 0, health: 0.5, finished: false, leading: false, winner: false,
 });
+
+/** BSCompStats' match points curve (packages/core/src/match/points.ts there; keep the two the same). */
+export const rawCurve = (acc: number, c: { padding: number; slope: number }) => {
+  const a = Math.min(1, Math.max(0, acc));
+  return 1 / (1 + c.padding - a) + c.slope * a;
+};
+/** The curve run backwards: the accuracy whose curve value is `raw` (1 where not even 100% reaches it). */
+export function accuracyForRaw(raw: number, c: { padding: number; slope: number }): number {
+  if (!Number.isFinite(raw) || raw > rawCurve(1, c)) return 1;
+  if (raw <= rawCurve(0, c)) return 0;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 50; i++) { const mid = (lo + hi) / 2; if (rawCurve(mid, c) < raw) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
 
 export const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;

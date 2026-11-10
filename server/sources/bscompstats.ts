@@ -21,10 +21,10 @@ export interface BscsOptions { url?: string; tournament?: string; match?: string
 // The parts of the BSCompStats match JSON this source reads.
 interface PoolMap {
   poolMapId: string; name: string; mapper: string | null; artist?: string | null; coverImage: string | null;
-  difficultyLabel: string; isTiebreaker: boolean; duration: number; category?: string | null; bpm?: number; hash?: string;
+  difficultyLabel: string; isTiebreaker: boolean; duration: number; perfectAcc?: number | null; category?: string | null; bpm?: number; hash?: string;
 }
 interface Run { playerId: string; playerName: string; score: number; accuracy: number | null; failed: boolean }
-interface Go { accEquivalent: number | null; counted: boolean; complete: boolean; runs: Run[] }
+interface Go { accEquivalent: number | null; points?: number | null; counted: boolean; complete: boolean; runs: Run[] }
 interface PlannedMap {
   order: number; poolMapId: string; matchMapId: string; isTiebreaker: boolean; pickedByTeamId: string | null; map: PoolMap;
   lineups: Record<string, string[]>; scores: Record<string, Run[]>; goes: Record<string, Go[]>;
@@ -42,6 +42,7 @@ interface LiveEvent {
 }
 interface Match {
   id: string; name: string; state: "PICKBAN" | "PLAYING" | "COMPLETE";
+  scoring?: { mode?: string; curve?: { padding: number; slope: number; perfectPoints: number } } | null;
   taMode?: boolean; ta?: { host: string; port: number; liveUrl?: string } | null;
   tournament: { name: string; slug: string };
   format: { playersPerMap: number; tiebreaker: string; winCondition?: string; pickBanSequence: { actor: "COIN_WINNER" | "COIN_LOSER"; action: "PICK" | "BAN" }[] };
@@ -376,7 +377,7 @@ export class BscsSource implements DataSource {
         ...blankSide(), ...this.#teamInfo(team), initials: team.name.slice(0, 1), points: m.scoreboard[s],
         avatar: perMap === 1 ? playersOf(s)[0]?.avatar ?? "" : "",
         players: playersOf(s), roster: team.players.map((p) => p.name),
-        acc: go?.accEquivalent ?? null, score: (go?.runs ?? []).reduce((t, r) => t + (r.score || 0), 0),
+        acc: go?.accEquivalent ?? null, matchPoints: go?.points ?? null, score: (go?.runs ?? []).reduce((t, r) => t + (r.score || 0), 0),
         finished: !!go?.complete, leading: (go?.accEquivalent ?? 0) > (other?.accEquivalent ?? 0), winner: winner === s,
       };
     };
@@ -431,6 +432,9 @@ export class BscsSource implements DataSource {
         label: m.name, bestOf: slots, need, phase,
         mapNumber: Math.min(slots, m.plannedMaps.filter((p) => p.scoresClosed).length + (current ? 1 : 0)) || 1, load: "",
         winner, winnerName: nameOf(winner), maps: mapSlots, playersPerMap: perMap, solo: perMap === 1,
+        scoring: m.scoring?.mode === "MATCH_POINTS" ? "points" : "accuracy",
+        curve: m.scoring?.mode === "MATCH_POINTS" ? m.scoring.curve ?? null : null,
+        perfectAcc: (current ?? lastClosed)?.map.perfectAcc ?? null,
       },
       a, b, diff,
       tug: 0.5 + Math.max(-1, Math.min(1, diff / 0.02)) / 2,
