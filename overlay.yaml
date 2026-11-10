@@ -51,17 +51,17 @@ sim:
 # fade: = this switch's own crossfade.
 automation:
   - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket, final" }
-  # a map is up next (picked, and nothing left to pick or ban first): show the pick for a moment, then Getting Ready
-  # with the two lineups while the players load in. The 30s rule is for a map that was already picked when the one
-  # before it ended: Match goes to Picks & Bans for the result first (mapEnd below), then on to Getting Ready.
-  - { on: mapNext, scene: ready, after: 6s, when: "picks" }
-  - { on: mapNext, scene: ready, after: 30s, when: "picks" }
+  # a map is up next (picked, and nothing left to pick or ban first): Picks & Bans stays for 10 seconds (the pick,
+  # or the result of the map before it), then Getting Ready with the two lineups while the players load in.
+  - { on: mapNext, scene: ready, after: 10s, when: "picks" }
   # players are actually playing (not the organiser's start request, not "loading")
   - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket, final" }
   - { on: mapStart, scene: match, when: "ready", fade: 200ms }   # Getting Ready: a quick cut the moment they play
-  - { on: songEnd, scene: picks, after: 12s, when: "match" }     # everyone finished (before the referee closes the map)
-  - { on: mapEnd, scene: picks, after: 10s, when: "match" }
-  # the match is decided (the site completed it, or one side has the maps it needs): the last map's result stays up
-  # on Match for a moment, then Final with the winner and the score (9s: just before the mapEnd rule above would
-  # go to Picks & Bans for the last map).
-  - { on: matchEnd, scene: final, after: 9s, when: "match, picks, ready" }
+  # The song is over (everyone finished, or the map closed): straight to Picks & Bans. "3s" is liveDelay (2.5 s: the
+  # replays on screen are that far behind the players, so the last notes are still being shown) plus half a second.
+  # Change the two together. The video boxes keep their last frame until the scene has changed.
+  - { on: songEnd, scene: picks, after: 3s, when: "match" }
+  - { on: mapEnd, scene: picks, after: 3s, when: "match" }
+  # the match is decided (the site completed it, or one side has the maps it needs): Picks & Bans shows the winner
+  # and the final score for a few seconds, then Final.
+  - { on: matchEnd, scene: final, after: 12s, when: "match, picks, ready" }

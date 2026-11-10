@@ -319,6 +319,11 @@ function sendLoad(f) {
 
 /** Holes → viewers: keep what's right, move viewers that already have a wanted replay, load the rest, preload spares. */
 let wanted = {};                                       // hole id -> { src, link, clock, replayId }
+const lastLive = {};                                   // hole id -> { w: its last live entry, lostAt: when the data dropped it }
+// long enough for the scene to change: the switch waits out the live delay first (overlay.yaml), then crossfades
+const lingerMs = (l) => (Number(l.w.link?.taDelay) || 1000) + 2500;
+const LIVE_LINGER_MS = 6000;
+let lingerTimer;
 function updateFeeds(st) {
   const ids = new Set(Object.values(scenes).flatMap((s) => s.feeds.map((f) => f.id)));
   wanted = {};
@@ -326,7 +331,18 @@ function updateFeeds(st) {
     const w = feedSrc(id, st);
     if (w.src) wanted[id] = { ...w, link: replayLink(w.src) };
     if (wanted[id]?.link?.taLive) wanted[id].clock = null;        // live: the viewer follows the player, not our clock
+    // A live hole keeps its player's last frame for a moment after the data stops naming it (the song is over and
+    // the map closed: the next map has no lineup yet). The scene is about to change; without this the boxes went
+    // see-through on Match before it did.
+    if (wanted[id]?.link?.taLive) lastLive[id] = { w: wanted[id], lostAt: 0 };
+    else if (!wanted[id] && lastLive[id]) {
+      const l = lastLive[id];
+      l.lostAt ||= performance.now();
+      if (performance.now() - l.lostAt < lingerMs(l)) wanted[id] = l.w;
+      else delete lastLive[id];
+    }
   }
+  if (Object.values(lastLive).some((l) => l.lostAt)) { clearTimeout(lingerTimer); lingerTimer = setTimeout(() => state && updateFeeds(state), 500); }
   // links that aren't replays: a plain iframe per hole, as before
   for (const id of ids) {
     const src = wanted[id] && !wanted[id].link ? wanted[id].src : "";
