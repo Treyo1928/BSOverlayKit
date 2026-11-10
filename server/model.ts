@@ -207,6 +207,8 @@ export interface ShowState {
   scene: string;
   auto: boolean;                          // run the automation rules in overlay.yaml
   header: string;                         // the top bar's event text ("MSU BEAT SABER · WINTER SESSION"); "" = the round
+  /** The stream is ending: the Final scene adds THANKS FOR WATCHING. Off for every other match of the day. */
+  signOff?: boolean;
   casters: Caster[];
   castersFrom: "panel" | "discord";       // discord = the caster bot keeps the list in sync with the voice channel
   brb: { title: string; message: string; endsAt: number };

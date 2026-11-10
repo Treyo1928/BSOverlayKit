@@ -99,6 +99,7 @@ function render() {
       <div><label>Handle</label><input data-c="${i}" data-k="handle" value="${esc(c.handle)}"></div></div>
     <label>Discord avatar (in Discord: right-click their picture → Copy Image Link)</label><input data-c="${i}" data-k="avatar" value="${esc(c.avatar)}" placeholder="https://cdn.discordapp.com/avatars/…">`).join("<hr style='border-color:#2a2a40'>");
   $("#header").value = sh.header ?? "";
+  $("#signOff").checked = !!S.show.signOff;
   const up = sh.upNext ?? {};
   // only when it changed on the server: what you are typing stays until you press a button
   if (JSON.stringify(up) !== upShown) { upShown = JSON.stringify(up); $("#upA").value = up.a ?? ""; $("#upB").value = up.b ?? ""; $("#upText").value = up.text ?? ""; }
@@ -163,6 +164,7 @@ document.addEventListener("change", (e) => {
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
   if (el.id === "header") send("header", { header: el.value.trim() });
   if (el.id === "plMode") send("playlist", { op: "mode", mode: el.value });
+  if (el.id === "signOff") send("signOff", { on: el.checked });
   if (el.id === "plFollow") send("playlist", { op: "followTeams", on: el.checked });
   if (el.id === "plSort" && el.value) { send("playlist", { op: "sort", by: el.value }); el.value = ""; }
   if (el.id === "ticker") send("ticker", { ticker: el.value.split("\n") });

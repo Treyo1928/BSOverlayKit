@@ -459,6 +459,7 @@ const actions: Record<string, (a: any) => unknown> = {
     if (c) c.speaking = !!a.on;
   },
   header: (a) => { target.header = String(a.header ?? ""); },
+  signOff: (a) => { show.signOff = !!a.on; },
   // the Casters scene's "up next" block: two team names, or one line of text; all empty = hidden
   upNext: (a) => { target.upNext = { a: String(a.a ?? "").trim(), b: String(a.b ?? "").trim(), text: String(a.text ?? "").trim() }; },
   viewer: (a) => {
