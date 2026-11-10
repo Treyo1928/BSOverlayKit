@@ -45,14 +45,14 @@ sim:
 # Automatic scene switching (the panel's Auto-switch box). when: = only from these scenes; after: = wait first;
 # fade: = this switch's own crossfade.
 automation:
-  - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket" }
+  - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket, final" }
   # a map is up next (picked, and nothing left to pick or ban first): show the pick for a moment, then Getting Ready
   # with the two lineups while the players load in. The 30s rule is for a map that was already picked when the one
   # before it ended: Match goes to Picks & Bans for the result first (mapEnd below), then on to Getting Ready.
   - { on: mapNext, scene: ready, after: 6s, when: "picks" }
   - { on: mapNext, scene: ready, after: 30s, when: "picks" }
   # players are actually playing (not the organiser's start request, not "loading")
-  - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket" }
+  - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket, final" }
   - { on: mapStart, scene: match, when: "ready", fade: 200ms }   # Getting Ready: a quick cut the moment they play
   - { on: songEnd, scene: picks, after: 12s, when: "match" }     # everyone finished (before the referee closes the map)
   - { on: mapEnd, scene: picks, after: 10s, when: "match" }

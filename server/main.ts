@@ -161,6 +161,7 @@ await source.start(
 );
 
 let songEndAt = 0;                      // when songEnd last went out
+let pendingSwitches: ReturnType<typeof setTimeout>[] = [];   // automation rules waiting out their `after:`
 function onEvent(e: EventMsg) {
   // songEnd can come from two places for the same song (the live feed, and the source seeing TA's "finished"): once
   if (e.name === "songEnd") {
@@ -169,15 +170,20 @@ function onEvent(e: EventMsg) {
   }
   broadcastOverlays({ type: "event", ...e });
   broadcastPanels({ type: "log", text: `${e.name}${e.item !== undefined ? ` #${e.item}` : ""}${e.side ? ` (${e.side})` : ""}` });
+  // A song starting overtakes whatever was still waiting to happen: "back to Picks & Bans 10 s after the last map"
+  // must not pull the stream off a map that began in the meantime.
+  if (e.name === "mapStart") { for (const t of pendingSwitches) clearTimeout(t); pendingSwitches = []; }
   if (!show.auto) return;
   for (const rule of config.automation) {
     if (rule.on !== e.name) continue;
     const ms = typeof rule.after === "number" ? rule.after : parseDuration(rule.after ?? "0");
-    setTimeout(() => {
+    const timer = setTimeout(() => {
+      pendingSwitches = pendingSwitches.filter((t) => t !== timer);
       if (!show.auto) return;
       if (rule.when && !rule.when.split(/\s*,\s*/).includes(show.scene)) return;   // only from these scenes
       setScene(rule.scene, rule.fade === undefined ? undefined : typeof rule.fade === "number" ? rule.fade : parseDuration(rule.fade));
     }, ms);
+    pendingSwitches.push(timer);
   }
 }
 const parseDuration = (s: string) => {
