@@ -79,6 +79,7 @@ function replayCtx(r) {
     revealing: r.startAt != null && now >= r.startAt && now < r.startAt + REVEAL_MS,
     time: fmt(Math.min(pos, dur || pos)), length: dur ? fmt(dur) : "", progress: dur ? Math.min(1, pos / dur) : 0,
     next: r.next ?? {}, index: r.index, count: r.count, mode: r.mode,
+    team: r.team ?? "",                                  // whose showcase replay it is ("" = from the panel's own list)
     // ready-made lines, so a design needn't juggle empty values
     byline: [i.artist, i.mapper && `mapped by ${i.mapper}`].filter(Boolean).join(" · "),
     diffline: [i.difficulty, i.stars ? `★ ${i.stars.toFixed(2)}` : ""].filter(Boolean).join(" · "),
@@ -98,7 +99,10 @@ function ctxFrom(st) {
     nextUp: (() => {
       const n = show.upNext ?? {}, teams = !!(n.a && n.b);
       // two names = a match-up (`teams`, with the text as its `label`); otherwise one `line` of text
-      return { a: n.a ?? "", b: n.b ?? "", teams, label: teams ? n.text ?? "" : "", line: teams ? "" : n.text || n.a || n.b || "", set: !!(n.a || n.b || n.text) };
+      // their marks, where the names are teams of the tournament (else the default star)
+      const mark = (name) => (d.teams ?? []).find((t) => t.name.toLowerCase() === String(name ?? "").trim().toLowerCase()) ?? { logoKind: "star", logo: "" };
+      const ma = mark(n.a), mb = mark(n.b);
+      return { aLogoKind: ma.logoKind, aLogo: ma.logo, bLogoKind: mb.logoKind, bLogo: mb.logo, a: n.a ?? "", b: n.b ?? "", teams, label: teams ? n.text ?? "" : "", line: teams ? "" : n.text || n.a || n.b || "", set: !!(n.a || n.b || n.text) };
     })(),
     brb: show.brb ?? {},
     ticker: (show.ticker ?? []).join("     ◆     "),

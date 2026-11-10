@@ -125,7 +125,10 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `match.playersPerMap`, `match.solo` | players per map (1 = 1v1, 2 = duos); `solo` is true in a 1v1, so one scene can hold both layouts with `show:match.solo` / `hide:match.solo` |
 | `a.players` / `b.players` (list) | who plays the current/next map for that side: `name`, `avatar` (picture URL, empty if they have none), and live `acc`, `score`, `combo`, `misses`, `finished`. Use `repeat:a.players`, or `a.players.1.name` for one of them |
 | `a.roster` | everyone on the team (names) |
-| `a.…` / `b.…` | each side (the team; in a 1v1, the player). For teams the live numbers are the lineup together (average accuracy, total score and misses): `name`, `avatar` (image URL), `initials`, `country`, `seed`, `points` (maps won), and live while playing: `acc`, `score`, `combo`, `maxCombo`, `misses`, `health` (0–1), `finished`, `leading`, `winner` |
+| `a.…` / `b.…` | each side (the team; in a 1v1, the player). For teams the live numbers are the lineup together (average accuracy, total score and misses): `name`, `avatar` (image URL), `logoKind` and `logo` (the team's mark, see below), `initials`, `country`, `seed`, `points` (maps won), and live while playing: `acc`, `score`, `combo`, `maxCombo`, `misses`, `health` (0–1), `finished`, `leading`, `winner` |
+| `a.logoKind`, `a.logo` | the team's mark, set on BSCompStats' Teams page: `logoKind` is `star` (the default), `msu` (the MSU Esports shield) or `image` (an uploaded picture, whose address is `logo`). Draw all three in a group named `state:a.logoKind` with children `when:msu`, `when:image` (holding an image named `img:a.logo`; give it `preserveAspectRatio="xMidYMid meet"` so it is shown whole, not cropped) and `when:else` for the star. The up-next block has the same for its two names: `nextUp.aLogoKind`, `nextUp.aLogo`, `nextUp.bLogoKind`, `nextUp.bLogo` |
+| `teams` (list) | every team entered in the tournament: `name`, `logoKind`, `logo` |
+| `replay.team` | the playlist replay on screen is one a player of this team chose to show (empty for a replay from the panel's own list) |
 | `diff`, `tug` | accuracy difference a − b, and the same as 0–1 for `bar:tug` (0.5 = even, ±2 % fills it) |
 | `map.…` | current or next map: `name`, `artist`, `mapper`, `difficulty`, `category`, `cover`, `bpm`, `nps`, `length` ("3:35"), `duration` (s), `progress` (0–1), `time` ("1:12"), `pickedBy` (`a`/`b`, empty for the tiebreaker), `pickedByName`, `tiebreaker` |
 | `pool` (list) | every map in the pool. Per item: the map fields above plus `state` (`available` `banned` `picked` `tiebreaker` `current` `played`), `by` (`a`/`b`), `byName`, `order` (play order), `winner`, `winnerName` |
@@ -263,6 +266,7 @@ Name a panel's shape **`glass`** and the background shows through it, blurred, l
 | `matchStart` | the match starts |
 | `mapPick`, `mapBan` | a map was picked or banned (targets inside `repeat:pool` hit only that map's copy) |
 | `picksDone` | picks and bans finished |
+| `mapNext` | a map is up to be played next: it is picked and nobody has a pick or ban to make first (BSCompStats: the last pick of the pick/ban phase, a pick made between maps, or the previous map closing with this one already picked) |
 | `mapLoad` | the next map is loading |
 | `mapStart` | players started the map (after the stream delay set in the panel) |
 | `songEnd` | the song is over, before the referee closes the map: every player has finished (or failed, or left), as seen in the live feed or in BSCompStats' TA status |

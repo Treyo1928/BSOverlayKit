@@ -29,6 +29,8 @@
           <option value="stars">Stars (hardest first)</option><option value="acc">Accuracy (best first)</option><option value="length">Length (shortest first)</option>
           <option value="shuffle">Shuffle the list</option></select></div>
       </div>
+      <label class="check"><input type="checkbox" id="plFollow"> Play the replays of the teams that are up next</label>
+      <div class="hint" id="plScope"></div>
       <div id="plList" class="pl-list"></div>
       <label>Add replays: one link per line (a BeatLeader replay or score link, a score id, <code>ss:&lt;id&gt;</code> for ScoreSaber, or a <code>.bsor</code> link)</label>
       <textarea id="plAdd" rows="3" placeholder="https://replay.beatleader.com/?scoreId=15467120&#10;beatleader.com/score/11169337"></textarea>

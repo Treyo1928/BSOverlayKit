@@ -14,7 +14,7 @@
 // turns both into the overlay's live state (phase loading/playing, numbers per side and lineup slot), and names each
 // lineup player's TA live-replay stream for the video holes (`taLive`). Matches that are not in TA mode have no live
 // play: a map is "waiting" until its scores are in, then the scores show as the map's result.
-import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side } from "../model.ts";
+import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side, type TeamInfo } from "../model.ts";
 
 export interface BscsOptions { url?: string; tournament?: string; match?: string }
 
@@ -33,7 +33,8 @@ interface PlannedMap {
   start?: { requestedAt?: string | null; playRequestedAt?: string | null;
     status?: { phase?: string | null; startedAt?: string | number | null; players?: { playerId: string; state: string; score?: number; accuracy?: number }[] } | null } | null;
 }
-interface Team { id: string; name: string; color: string; players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null }[] }
+interface Team { id: string; name: string; color: string; logo?: string | null;
+  players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null; replays?: string[] }[] }
 /** `event: live` of the match events stream: every lineup player's numbers while a song plays. */
 interface LiveEvent {
   matchId: string; matchMapId: string; phase: "playing" | "over"; startedAt: number; at: number;
@@ -43,7 +44,7 @@ interface Match {
   id: string; name: string; state: "PICKBAN" | "PLAYING" | "COMPLETE";
   taMode?: boolean; ta?: { host: string; port: number; liveUrl?: string } | null;
   tournament: { name: string; slug: string };
-  format: { playersPerMap: number; tiebreaker: string; pickBanSequence: { actor: "COIN_WINNER" | "COIN_LOSER"; action: "PICK" | "BAN" }[] };
+  format: { playersPerMap: number; tiebreaker: string; winCondition?: string; pickBanSequence: { actor: "COIN_WINNER" | "COIN_LOSER"; action: "PICK" | "BAN" }[] };
   teamA: Team; teamB: Team; coinFlipWinnerId: string | null; winnerId: string | null;
   pool: { maps: PoolMap[] };
   actions: { seq: number; type: "PICK" | "BAN"; teamId: string; poolMapId: string }[];
@@ -81,7 +82,8 @@ export class BscsSource implements DataSource {
   #live: (l: LiveState | null) => void = () => {};
   #lastLive: LiveEvent | null = null;     // the newest numbers of the song being played
   #liveOn = false;                        // this source has a live state out (so it must also take it back)
-  #platformIds = new Map<string, string>();   // playerId -> TA platform id, as seen in live events
+  #platformIds = new Map<string, string>();
+  #teams: TeamInfo[] = [];                // every team entered in the tournament   // playerId -> TA platform id, as seen in live events
 
   constructor(opts: BscsOptions, key: string, private onFollow: (matchId: string) => void = () => {}) {
     this.#url = (opts.url ?? "http://127.0.0.1:3100").replace(/\/+$/, "");
@@ -128,6 +130,7 @@ export class BscsSource implements DataSource {
     if (!this.#key || !this.#tournament) return;
     try {
       const t = await this.#api(`/tournaments/${encodeURIComponent(this.#tournament)}`);
+      this.#teams = (t.teams ?? []).map((team: Team) => this.#teamInfo(team));
       this.#matches = (t.matches ?? []).map((m: any) => ({ id: m.id, label: `${m.name || `${m.teamA?.name} vs ${m.teamB?.name}`}`, state: m.state }));
       // nothing picked in the panel: follow the newest match that isn't finished
       if (this.#auto) {
@@ -148,6 +151,18 @@ export class BscsSource implements DataSource {
     } catch (e) {
       this.#status = `tournament: ${(e as Error).message}`;
     }
+  }
+
+  /** A picture's address on the site: uploads are stored as a path ("/api/img/…"). */
+  #abs(path: string | null | undefined): string {
+    return !path ? "" : /^https?:\/\//i.test(path) ? path : path.startsWith("/") ? this.#url + path : "";
+  }
+  #teamInfo(team: Team): TeamInfo {
+    const logoKind = !team.logo ? "star" : team.logo === "msu" ? "msu" : "image";
+    return {
+      name: team.name, logoKind, logo: logoKind === "image" ? this.#abs(team.logo) : "",
+      replays: [...new Set(team.players.flatMap((p) => p.replays ?? []))],
+    };
   }
 
   #follow(id: string) {
@@ -206,6 +221,24 @@ export class BscsSource implements DataSource {
     })();
   }
 
+  /**
+   * Whether the match is over, and who won. The site says so once an organiser completes it; before that, a match
+   * won on maps is over as soon as one side has the maps it needs (3-1 in a best of five: the tiebreaker is still
+   * on the plan, but nobody will play it). A map that has been started in TA anyway is played: not over.
+   */
+  #over(m: Match): { over: boolean; winner: Side | null } {
+    const sideOf = (teamId: string | null): Side | null => (teamId === m.teamA.id ? "a" : teamId === m.teamB.id ? "b" : null);
+    if (m.state === "COMPLETE") return { over: true, winner: sideOf(m.winnerId) };
+    if (m.format.winCondition === "AGGREGATE_MARGIN") return { over: false, winner: null };
+    if (m.plannedMaps.find((p) => !p.scoresClosed)?.start?.requestedAt) return { over: false, winner: null };
+    const picks = m.format.pickBanSequence.filter((s) => s.action === "PICK").length;
+    const slots = picks + (m.format.tiebreaker && m.format.tiebreaker !== "NONE" ? 1 : 0);
+    const need = Math.floor(slots / 2) + 1;
+    const won = (teamId: string) => m.plannedMaps.filter((p) => p.scoresClosed && p.result.winnerId === teamId).length;
+    const winner: Side | null = won(m.teamA.id) >= need ? "a" : won(m.teamB.id) >= need ? "b" : null;
+    return { over: !!winner, winner };
+  }
+
   // ---------------------------------------------------------------- events from match changes
   #onMatch(m: Match) {
     const prev = this.#prev;
@@ -232,7 +265,12 @@ export class BscsSource implements DataSource {
           this.#event({ name: "mapEnd", side: sideOf(pm.result.winnerId) });
         }
       }
-      if (m.state === "COMPLETE" && prev.state !== "COMPLETE") this.#event({ name: "matchEnd", side: sideOf(m.winnerId) });
+      if (this.#over(m).over && !this.#over(prev).over) this.#event({ name: "matchEnd", side: this.#over(m).winner ?? undefined });
+      // a map is up: the next one to play is known and nobody has a pick or ban to make first (the last pick of the
+      // pick/ban phase, a pick made between maps, or the map before it closing with this one already picked)
+      const upNext = (x: Match) => (!this.#over(x).over && !(x.pending && !x.pending.waitingForPoolMapId)
+        ? x.plannedMaps.find((p) => !p.scoresClosed)?.matchMapId ?? null : null);
+      if (upNext(m) && upNext(m) !== upNext(prev)) this.#event({ name: "mapNext" });
     }
     this.#prev = m;
     this.#sendLive();
@@ -250,7 +288,7 @@ export class BscsSource implements DataSource {
   /** The overlay's live state, from the next map's TA status and the newest live numbers; null = nothing live. */
   #liveState(): LiveState | null {
     const m = this.#match;
-    if (!m?.taMode) return null;
+    if (!m?.taMode || this.#over(m).over) return null;
     const pm = m.plannedMaps.find((p) => !p.scoresClosed);
     const phase = pm?.start?.requestedAt ? pm.start.status?.phase : null;
     if (!pm || !phase) return null;
@@ -297,13 +335,13 @@ export class BscsSource implements DataSource {
     const picks = m.format.pickBanSequence.filter((s) => s.action === "PICK").length;
     const slots = picks + (m.format.tiebreaker && m.format.tiebreaker !== "NONE" ? 1 : 0);
     const need = Math.floor(slots / 2) + 1;
-    const winner = m.state === "COMPLETE" ? sideOf(m.winnerId) : null;
+    const { over, winner } = this.#over(m);
 
-    const current = m.plannedMaps.find((p) => !p.scoresClosed) ?? null;
+    const current = over ? null : m.plannedMaps.find((p) => !p.scoresClosed) ?? null;
     const lastClosed = [...m.plannedMaps].reverse().find((p) => p.scoresClosed) ?? null;
     const waiting = m.pending?.waitingForPoolMapId ?? null;
     const phase: OverlayData["match"]["phase"] =
-      m.state === "COMPLETE" ? "done"
+      over ? "done"
       : Date.now() < this.#finishedUntil && lastClosed ? "finished"
       : m.pending && !waiting ? "picks"
       : current ? "waiting"
@@ -327,7 +365,7 @@ export class BscsSource implements DataSource {
       return ids.map((id) => {
         const p = team.players.find((x) => x.id === id);
         const run = runs.find((r) => r.playerId === id);
-        return { name: p?.name ?? "?", avatar: p?.avatar ?? "", score: run?.score ?? 0, acc: run?.accuracy ?? null, combo: 0, misses: 0, finished: !!run };
+        return { name: p?.name ?? "?", avatar: this.#abs(p?.avatar), score: run?.score ?? 0, acc: run?.accuracy ?? null, combo: 0, misses: 0, finished: !!run };
       });
     };
     const side = (s: Side) => {
@@ -335,7 +373,7 @@ export class BscsSource implements DataSource {
       const go = lineupMap ? goOf(lineupMap, s) : null;
       const other = lineupMap ? goOf(lineupMap, s === "a" ? "b" : "a") : null;
       return {
-        ...blankSide(), name: team.name, initials: team.name.slice(0, 1), points: m.scoreboard[s],
+        ...blankSide(), ...this.#teamInfo(team), initials: team.name.slice(0, 1), points: m.scoreboard[s],
         avatar: perMap === 1 ? playersOf(s)[0]?.avatar ?? "" : "",
         players: playersOf(s), roster: team.players.map((p) => p.name),
         acc: go?.accEquivalent ?? null, score: (go?.runs ?? []).reduce((t, r) => t + (r.score || 0), 0),
@@ -379,7 +417,7 @@ export class BscsSource implements DataSource {
       const tb = i === slots - 1 && slots > picks;
       return {
         number: i + 1, label: tb ? "TB" : `MAP ${i + 1}`, tiebreaker: tb,
-        state: p?.scoresClosed ? "played" : p && p === current ? "current" : winner ? "unneeded" : "upcoming",
+        state: p?.scoresClosed ? "played" : p && p === current ? "current" : over ? "unneeded" : "upcoming",
         name: p?.map.name ?? "", winner: p?.scoresClosed ? sideOf(p.result.winnerId) : null, winnerName: nameOf(p?.scoresClosed ? sideOf(p.result.winnerId) : null),
       };
     });
@@ -410,6 +448,7 @@ export class BscsSource implements DataSource {
       last: results.at(-1) ?? null,
       upNext: this.#matches.filter((x) => x.state === "PICKBAN" && x.id !== m.id).slice(0, 3).map((x) => ({ label: x.label, a: "", b: "" })),
       bracket: this.#bracket,
+      teams: this.#teams,
       taLive: m.taMode && m.ta && current ? { relay: `${m.ta.host}:${m.ta.port}`, players: this.#taPlayers(m, current, perMap) } : null,
     });
   }
@@ -432,7 +471,7 @@ export class BscsSource implements DataSource {
       tournament: { name: "", short: "", round: "" },
       match: { label: "", bestOf: 0, need: 0, phase: "idle", mapNumber: 1, load: "", winner: null, winnerName: "", maps: [], playersPerMap: 1, solo: true },
       a: blankSide(), b: blankSide(), diff: 0, tug: 0.5, map: null, pool: [],
-      picks: { next: null, done: false, steps: [] }, results: [], last: null, upNext: [], bracket: this.#bracket,
+      picks: { next: null, done: false, steps: [] }, results: [], last: null, upNext: [], bracket: this.#bracket, teams: this.#teams,
     };
   }
 

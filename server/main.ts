@@ -348,12 +348,32 @@ function replayMsg() {
   return {
     id: it.id, url: viewerUrl(it.ref, { masterVolume: 0 }, false), startAt: c.startAt, pausedAt: c.pausedAt, duration: c.duration,
     switchedAt: c.switchedAt, info: it.info, next: next && next !== it ? next.info : null, index: i + 1, count: show.playlist.items.length,
-    mode: show.playlist.mode,
+    mode: show.playlist.mode, team: it.team ?? "",
   };
 }
 // the playlist's clock; the client shows/hides the "up next" card from the same numbers
 // (no overlay open = nobody watching: the clock waits instead of playing songs to no one)
 setInterval(() => playlist.tick(replayScenes.has(show.scene) && overlays.size > 0), 250);
+
+/**
+ * Whose replays the playlist plays. The data source lists every team's showcase replays; the teams "up next" are the
+ * two of the match being followed while it is unfinished (before it, between its maps, while waiting on players),
+ * else two team names typed into the panel's Up next card. With neither (a break with nobody up next) the playlist
+ * falls back to the panel's own list, or to every team's replays when that is empty. See server/playlist.ts.
+ */
+function syncTeamReplays() {
+  const d = liveData;
+  if (!d) return;
+  const teams = new Map<string, { name: string; replays: string[] }>();
+  for (const t of d.teams ?? []) teams.set(t.name.toLowerCase(), { name: t.name, replays: t.replays ?? [] });
+  // a side put together for this match only is not in the tournament's list
+  for (const s of [d.a, d.b]) if (s?.name && s.replays?.length && !teams.has(s.name.toLowerCase())) teams.set(s.name.toLowerCase(), { name: s.name, replays: s.replays });
+  const inMatch = d.match.phase !== "idle" && d.match.phase !== "done" ? [d.a.name, d.b.name] : [];
+  const typed = [show.upNext?.a, show.upNext?.b].map((n) => (n ?? "").trim()).filter((n) => teams.has(n.toLowerCase()));
+  const active = inMatch.length ? inMatch : typed;
+  playlist.setTeams([...teams.values()], active.length ? active : null, replayScenes.has(show.scene) && overlays.size > 0);
+}
+setInterval(syncTeamReplays, 1000);
 
 const stateMsg = (staged = false) => ({
   type: "state", data: withLive(data), show: { ...(staged ? stagedView() : show), playlist: undefined, staged: undefined }, colors: config.colors,
@@ -405,6 +425,7 @@ const actions: Record<string, (a: any) => unknown> = {
       random: () => playlist.random(), restart: () => playlist.restart(), remove: () => playlist.remove(String(a.id)),
       move: () => playlist.move(String(a.id), Number(a.to)), sort: () => playlist.sort(String(a.by)),
       mode: () => playlist.setMode(String(a.mode)), clear: () => playlist.clear(),
+      followTeams: () => playlist.setFollowTeams(!!a.on),
     };
     if (!ops[a.op]) throw new Error(`unknown playlist op "${a.op}"`);
     ops[a.op]();

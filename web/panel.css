@@ -64,3 +64,5 @@ body.staging .scenes button.on { background: #7a5600; border-color: #e0a020; }
 body.staging .scenes button.air { box-shadow: 0 0 0 2px #b3261e inset; }
 body.staging .scenes button.air::after { content: " · on air"; color: #ff9d94; font-size: 11px; }
 body.staging .card.staged-edit { border-left: 3px solid #e0a020; }
+label.check { display: flex; gap: 8px; align-items: center; margin: 10px 0 2px; color: #eee; }
+.pl-team { display: inline-block; padding: 0 6px; border-radius: 4px; background: #5a1626; color: #f2ead8; font-size: 11px; letter-spacing: .3px; vertical-align: 1px; }

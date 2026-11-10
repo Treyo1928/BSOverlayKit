@@ -159,6 +159,7 @@ document.addEventListener("change", (e) => {
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
   if (el.id === "header") send("header", { header: el.value.trim() });
   if (el.id === "plMode") send("playlist", { op: "mode", mode: el.value });
+  if (el.id === "plFollow") send("playlist", { op: "followTeams", on: el.checked });
   if (el.id === "plSort" && el.value) { send("playlist", { op: "sort", by: el.value }); el.value = ""; }
   if (el.id === "ticker") send("ticker", { ticker: el.value.split("\n") });
   if (el.id === "feedA" || el.id === "feedB") send("feeds", { feeds: { ...S.show.feeds, a: $("#feedA").value.trim(), b: $("#feedB").value.trim() } });
@@ -179,8 +180,16 @@ function renderPlaylist() {
   if (!pl) return;
   clockOffset = S.now - Date.now();
   if (document.activeElement?.id !== "plMode") $("#plMode").value = pl.mode;
+  $("#plFollow").checked = pl.followTeams !== false;
+  const sc = pl.scope ?? { kind: "none", teams: [] };
+  const teamCount = pl.items.filter((x) => x.team).length;
+  $("#plScope").textContent = sc.kind === "teams" ? `Playing the replays of the teams up next: ${sc.teams.join(" and ")} (random order).`
+    : sc.kind === "special" ? `Playing your own list below${teamCount && pl.followTeams !== false ? " (no team is up next, or the teams up next have no replays)" : ""}.`
+    : sc.kind === "all" ? "Nobody is up next and your own list is empty: playing every team's replays (random order)."
+    : "Nothing to play yet.";
   const cur = pl.items.find((x) => x.id === pl.current?.id);
   const name = (it) => (it.info?.song ? esc(it.info.song) : esc(it.ref));
+  const tag = (it) => (it.team ? `<span class="pl-team" title="A replay this team's player chose on BSCompStats (Teams page). It is removed there.">${esc(it.team)}</span> ` : "");
   const sub = (it) => it.error ? `<span class="err">${esc(it.error)}</span>` : !it.info ? "looking it up…" :
     [it.info.player && `played by ${esc(it.info.player)}`, it.info.difficulty, it.info.stars ? `★ ${it.info.stars.toFixed(2)}` : "",
       it.info.acc ? `${(it.info.acc * 100).toFixed(2)}%` : "", it.info.duration ? fmt(it.info.duration) : ""].filter(Boolean).join(" · ");
@@ -190,9 +199,9 @@ function renderPlaylist() {
     : `<div class="muted">${pl.items.length ? "Starts when a scene with the big box (Starting Soon, Intermission, Be Right Back) is on." : "The playlist is empty. Add replay links below."}</div>`;
   $("#plList").innerHTML = pl.items.length ? pl.items.map((it, i) => `<div class="pl-item ${it.id === pl.current?.id ? "on" : ""}">
       <span class="n">${i + 1}</span><img src="${esc(it.info?.cover ?? "")}" alt="">
-      <div class="t">${name(it)}<br><small>${sub(it)}</small></div>
+      <div class="t">${tag(it)}${name(it)}<br><small>${sub(it)}</small></div>
       <button data-pl="play" data-id="${it.id}" title="Play this one now">▶</button><button data-pl="up" data-id="${it.id}" title="Move up" ${i ? "" : "disabled"}>↑</button>
-      <button data-pl="down" data-id="${it.id}" title="Move down" ${i < pl.items.length - 1 ? "" : "disabled"}>↓</button><button data-pl="remove" data-id="${it.id}" title="Remove">✕</button></div>`).join("")
+      <button data-pl="down" data-id="${it.id}" title="Move down" ${i < pl.items.length - 1 ? "" : "disabled"}>↓</button><button data-pl="remove" data-id="${it.id}" title="${it.team ? "A team's replay: take it off on the site's Teams page" : "Remove"}" ${it.team ? "disabled" : ""}>✕</button></div>`).join("")
     : `<div class="pl-empty">No replays yet</div>`;
   tickPlaylist();
 }

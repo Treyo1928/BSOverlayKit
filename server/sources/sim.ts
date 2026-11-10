@@ -136,13 +136,13 @@ export class SimSource implements DataSource {
     if (this.#phase === "idle") { this.#phase = "picks"; this.#event({ name: "matchStart" }); return this.#push(); }
     if (this.#phase === "picks") {
       const step = ORDER[this.#picks.length];
-      if (!step) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); return this.#push(); }
+      if (!step) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); return this.#push(); }
       const used = new Set(this.#picks.map((p) => p.index));
       const free = this.#pool.map((m, i) => ({ m, i })).filter((x) => !x.m.tiebreaker && !used.has(x.i));
       const pick = free[Math.floor(Math.random() * free.length)];
       this.#picks.push({ ...step, index: pick.i });
       this.#event({ name: step.type === "pick" ? "mapPick" : "mapBan", item: pick.i, side: step.by });
-      if (this.#picks.length === ORDER.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); }
+      if (this.#picks.length === ORDER.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); }
       return this.#push();
     }
     if (this.#phase === "waiting" || this.#phase === "finished") {
@@ -211,7 +211,7 @@ export class SimSource implements DataSource {
         return { name, avatar: avatar(name), score: playing ? p.score : 0, acc: playing ? p.acc : null, combo: playing ? p.combo : 0, misses: playing ? p.misses : 0, finished: playing && p.finished };
       });
       return {
-        ...blankSide(), avatar: this.#perMap === 1 ? avatar(P[s].name) : "", name: P[s].name, players, roster: this.#roster[s], initials: P[s].name.slice(0, 1), country: P[s].country, seed: P[s].seed, points: pts[s],
+        ...blankSide(), logoKind: s === "a" ? "msu" as const : "star" as const, avatar: this.#perMap === 1 ? avatar(P[s].name) : "", name: P[s].name, players, roster: this.#roster[s], initials: P[s].name.slice(0, 1), country: P[s].country, seed: P[s].seed, points: pts[s],
         ...(playing ? { score: l.score, acc: l.acc, combo: l.combo, maxCombo: l.maxCombo, misses: l.misses, health: l.health } : {}),
         finished: playing && l.finished, leading: playing && l.score > o.score, winner: matchWinner === s,
       };

@@ -21,6 +21,11 @@ export interface SideData {
   players: PlayerData[];  // who plays the current/next map for this side (1 in a 1v1, 2 in duos, …)
   roster: string[];       // everyone on the team
   avatar: string;          // image URL ("" = none)
+  /** The team's mark: "star" (the default), "msu" (the MSU Esports shield) or "image" (`logo` is its address). */
+  logoKind: "star" | "msu" | "image";
+  logo: string;            // image URL when logoKind is "image", else ""
+  /** Replays this team's players chose to show on stream (viewer links): the playlist plays them while it is up next. */
+  replays: string[];
   initials: string;
   country: string;         // ISO alpha-2
   seed: number | null;
@@ -114,6 +119,8 @@ export interface OverlayData {
   last: ResultItem | null;  // the most recent map result
   upNext: { label: string; a: string; b: string }[];
   bracket: BracketData | null;
+  /** Every team entered in the tournament, with its mark and its players' showcase replays. */
+  teams?: TeamInfo[];
   feeds?: Record<string, string>;        // video holes the data fills itself: "a1" -> a replay viewer URL (TA live, or mock)
   feedsStartAt?: number;                 // epoch ms of song time 0 for those feeds, so every overlay shows the same moment
   /** A TA-mode match: each lineup player's live replay stream, per video hole ("a1" -> their TA platform id), and
@@ -143,9 +150,15 @@ export interface ReplayInfo {
   player: string; playerAvatar: string; country: string;
   acc: number | null; fc: boolean; misses: number | null;
 }
-export interface PlaylistItem { id: string; ref: string; info: ReplayInfo | null; error?: string }
+export interface TeamInfo { name: string; logoKind: SideData["logoKind"]; logo: string; replays: string[] }
+/** `team`: the replay came from that team's players (the data source), not from the panel's own list. */
+export interface PlaylistItem { id: string; ref: string; info: ReplayInfo | null; error?: string; team?: string }
 export interface Playlist {
   items: PlaylistItem[];
+  /** Play the teams' own replays: the two teams that are up next while there are some, else the panel's list. */
+  followTeams?: boolean;
+  /** What is being played from right now (worked out by the server, for the panel). */
+  scope?: { kind: "teams" | "special" | "all" | "none"; teams: string[] };
   mode: "order" | "shuffle" | "repeat";   // what plays when a song ends
   current: {
     id: string;
@@ -235,7 +248,7 @@ export interface Caster {
 
 /** Things that happen; scenes react to them with `on:` rules. */
 export type OverlayEvent =
-  | "matchStart" | "mapPick" | "mapBan" | "picksDone" | "mapLoad" | "mapStart" | "songEnd" | "mapEnd" | "matchEnd"
+  | "matchStart" | "mapPick" | "mapBan" | "picksDone" | "mapNext" | "mapLoad" | "mapStart" | "songEnd" | "mapEnd" | "matchEnd"
   | "replay" | "timeout";
 
 export interface EventMsg {
@@ -255,7 +268,7 @@ export interface DataSource {
 }
 
 export const blankSide = (): SideData => ({
-  name: "TBD", players: [], roster: [], avatar: "", initials: "?", country: "", seed: null, points: 0,
+  name: "TBD", players: [], roster: [], avatar: "", logoKind: "star", logo: "", replays: [], initials: "?", country: "", seed: null, points: 0,
   score: 0, acc: null, combo: 0, maxCombo: 0, misses: 0, health: 0.5, finished: false, leading: false, winner: false,
 });
 

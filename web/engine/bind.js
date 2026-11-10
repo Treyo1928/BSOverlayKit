@@ -317,7 +317,8 @@ function fitText(text, maxWidth, baseSize) {
 function imgBinding(el, path) {
   const img = el.tagName === "image" ? el : el.querySelector("image");
   if (!img) return { update() {} };
-  img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+  // fills its box, cropped (avatars, covers); a picture that must be seen whole (a logo) says so itself in the SVG
+  if (!img.hasAttribute("preserveAspectRatio")) img.setAttribute("preserveAspectRatio", "xMidYMid slice");
   let cur = null;
   return {
     update(ctx) {

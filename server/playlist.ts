@@ -14,7 +14,7 @@ const FADE_S = 1.2;            // overlays fade the music out over this long bef
 const rand = () => [...crypto.getRandomValues(new Uint8Array(8))].map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
 
 export function emptyPlaylist(): Playlist {
-  return { items: [], mode: "order", current: null };
+  return { items: [], mode: "order", current: null, followTeams: true };
 }
 
 /** Song seconds right now (negative while the "up next" card is still up). */
@@ -36,6 +36,8 @@ export class PlaylistControl {
     this.p.items = (this.p.items ?? []).filter((x) => x?.id && x?.ref);
     this.p.mode ??= "order";
     this.p.current ??= null;
+    this.p.followTeams ??= true;
+    this.p.scope = this.scope();
     if (this.p.current && !this.p.items.some((x) => x.id === this.p.current!.id)) this.p.current = null;
     for (const it of this.p.items) if (!it.info) this.resolve(it);
   }
@@ -44,12 +46,75 @@ export class PlaylistControl {
     return this.p.items.find((x) => x.id === this.p.current?.id) ?? null;
   }
 
+  // ---------------------------------------------------------------- whose replays
+  // Besides the panel's own list ("special": items without a team), the list holds the replays the tournament's
+  // players chose to show (items with `team`, kept in step with the data source by setTeams). What plays:
+  //   - two teams are up next and have replays: a random one of theirs, whatever the mode
+  //   - otherwise the panel's list, in its mode; and if that is empty, a random one of every team's
+  private active: string[] | null = null;       // the teams up next (lower-case names), as the server last worked out
+  private pool(): { kind: "teams" | "special" | "all" | "none"; items: PlaylistItem[] } {
+    const items = this.p.items;
+    const follow = this.p.followTeams !== false;
+    const special = items.filter((x) => !x.team);
+    if (follow && this.active?.length) {
+      const theirs = items.filter((x) => x.team && this.active!.includes(x.team.toLowerCase()));
+      if (theirs.length) return { kind: "teams", items: theirs };
+    }
+    if (special.length) return { kind: "special", items: special };
+    const all = follow ? items.filter((x) => x.team) : [];
+    return all.length ? { kind: "all", items: all } : { kind: "none", items: [] };
+  }
+  private scope(): NonNullable<Playlist["scope"]> {
+    const pool = this.pool();
+    return { kind: pool.kind, teams: pool.kind === "teams" ? [...new Set(pool.items.map((x) => x.team!))] : [] };
+  }
+  /** The mode songs follow one another in: the teams' replays are always shuffled. */
+  private modeNow(): Playlist["mode"] { return this.pool().kind === "special" ? this.p.mode : "shuffle"; }
+
+  /**
+   * The data source's word on the teams: every team's replays, and which teams are up next (null: none).
+   * Replays that are new join the list, ones that are gone leave it. The replay that is playing is left to finish;
+   * one that is only waiting (no replay scene on stream) gives way at once to what should play now.
+   */
+  setTeams(teams: { name: string; replays: string[] }[], active: string[] | null, onAir: boolean) {
+    const want = new Map<string, { team: string; ref: string }>();
+    for (const t of teams) for (const ref of t.replays) want.set(`${t.name}\n${ref}`, { team: t.name, ref });
+    const key = (x: PlaylistItem) => `${x.team}\n${x.ref}`;
+    const before = this.p.items.length;
+    let structural = false;
+    this.p.items = this.p.items.filter((x) => !x.team || want.has(key(x)));
+    if (this.p.items.length !== before) structural = true;
+    const have = new Set(this.p.items.filter((x) => x.team).map(key));
+    for (const [k, w] of want) {
+      if (have.has(k)) continue;
+      const it: PlaylistItem = { id: rand(), ref: w.ref, info: null, team: w.team };
+      this.p.items.push(it);
+      this.resolve(it);
+      structural = true;
+    }
+    this.active = active?.length ? active.map((n) => n.toLowerCase()) : null;
+    const scope = this.scope();
+    const moved = JSON.stringify(scope) !== JSON.stringify(this.p.scope);
+    this.p.scope = scope;
+    const pool = this.pool();
+    const cur = this.current;
+    if (this.p.current && !cur) this.p.current = null;                 // the playing one was removed
+    else if (cur && !pool.items.includes(cur) && pool.items.length && !onAir) this.switchTo(this.pick("shuffle"));
+    if (structural || moved) this.changed(structural);
+  }
+  setFollowTeams(on: boolean) {
+    this.p.followTeams = on;
+    this.p.scope = this.scope();
+    this.changed(true);
+  }
+
   /** What plays after the current one (null in shuffle: it is picked when the song ends). */
   upNext(): PlaylistItem | null {
-    const items = this.p.items;
+    const items = this.pool().items;
     if (!items.length) return null;
-    if (this.p.mode === "repeat") return this.current;
-    if (this.p.mode === "shuffle") return null;
+    const mode = this.modeNow();
+    if (mode === "repeat") return this.current;
+    if (mode === "shuffle") return null;
     const i = items.findIndex((x) => x.id === this.p.current?.id);
     return items[(i + 1) % items.length];
   }
@@ -61,12 +126,14 @@ export class PlaylistControl {
       this.p.items.push(it);
       this.resolve(it);
     }
+    this.p.scope = this.scope();
     this.changed(true);
   }
   /** Replace the whole list (the HTTP API's old `replays` action). Keeps items whose link stays. */
   set(refs: string[]) {
-    const keep = new Map(this.p.items.map((x) => [x.ref, x]));
-    this.p.items = refs.map((s) => String(s).trim()).filter(Boolean).map((ref) => keep.get(ref) ?? { id: rand(), ref, info: null });
+    const keep = new Map(this.p.items.filter((x) => !x.team).map((x) => [x.ref, x]));
+    const teams = this.p.items.filter((x) => x.team);
+    this.p.items = [...refs.map((s) => String(s).trim()).filter(Boolean).map((ref) => keep.get(ref) ?? { id: rand(), ref, info: null }), ...teams];
     for (const it of this.p.items) if (!it.info) this.resolve(it);
     if (this.p.current && !this.current) this.p.current = null;
     this.changed(true);
@@ -74,9 +141,10 @@ export class PlaylistControl {
   remove(id: string) {
     const wasCurrent = this.p.current?.id === id;
     const i = this.p.items.findIndex((x) => x.id === id);
-    if (i < 0) return;
+    if (i < 0 || this.p.items[i].team) return;       // a team's replay is taken off where it was put on: the site
     this.p.items.splice(i, 1);
-    if (wasCurrent) this.switchTo(this.p.items[i % Math.max(1, this.p.items.length)] ?? null);
+    this.p.scope = this.scope();
+    if (wasCurrent) this.switchTo(this.pick(this.modeNow() === "repeat" ? "order" : this.modeNow()));
     this.changed(true);
   }
   move(id: string, to: number) {
@@ -113,18 +181,24 @@ export class PlaylistControl {
 
   // ---------------------------------------------------------------- playing
   play(id: string) { this.switchTo(this.p.items.find((x) => x.id === id) ?? null); }
-  next() { this.switchTo(this.pick(this.p.mode === "repeat" ? "order" : this.p.mode)); }
+  next() { const mode = this.modeNow(); this.switchTo(this.pick(mode === "repeat" ? "order" : mode)); }
   prev() {
-    const items = this.p.items;
+    const items = this.pool().items;
     const i = items.findIndex((x) => x.id === this.p.current?.id);
-    this.switchTo(items[(i - 1 + items.length) % items.length] ?? null);
+    this.switchTo(items[(Math.max(0, i) - 1 + items.length) % items.length] ?? null);
   }
   random() { this.switchTo(this.pick("shuffle")); }
   restart() { if (this.current) this.switchTo(this.current); }
-  clear() { this.p.items = []; this.p.current = null; this.changed(true); }
+  /** Empty the panel's own list. The teams' replays stay: they come from the data source. */
+  clear() {
+    this.p.items = this.p.items.filter((x) => x.team);
+    if (this.p.current && !this.current) this.p.current = null;
+    this.p.scope = this.scope();
+    this.changed(true);
+  }
 
   private pick(mode: string): PlaylistItem | null {
-    const items = this.p.items;
+    const items = this.pool().items;
     if (!items.length) return null;
     const i = items.findIndex((x) => x.id === this.p.current?.id);
     if (mode === "shuffle" && items.length > 1) {
@@ -162,13 +236,16 @@ export class PlaylistControl {
   }
 
   private finished() {
-    this.switchTo(this.pick(this.p.mode));
+    this.switchTo(this.pick(this.modeNow()));
   }
 
   /** Every ~250 ms. `onAir`: a scene with the replay hole is on stream. */
   tick(onAir: boolean, now = Date.now()) {
     const p = this.p;
-    if (!p.current && p.items.length && onAir) this.switchTo(p.items[0]);
+    if (!p.current && onAir) {
+      const pool = this.pool();
+      if (pool.items.length) this.switchTo(pool.kind === "special" && p.mode !== "shuffle" ? pool.items[0] : this.pick("shuffle"));
+    }
     const c = p.current;
     if (!c) return;
     if (c.startAt === null && c.pausedAt === null) {
