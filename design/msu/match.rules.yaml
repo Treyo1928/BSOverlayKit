@@ -9,6 +9,7 @@ enter:
   - { target: player-b, play: slideLeft, delay: 300 }
   - { target: song-team, play: fadeIn, delay: 350 }
   - { target: totals, play: fadeIn, delay: 450 }
+  - { target: winbar, play: fadeIn, delay: 400 }
 
 on:
   increase:a.points:
@@ -37,8 +38,8 @@ loop:
 repeat:
   maps: { dx: 76, center: true, over: { 5: { dx: 66, scale: 0.86 } } }   # a best of 7 (finals): smaller pips, so seven fit
   #   # one pip per map of the series, centred under the score
-  a.players: { dy: 482 }           # team layout: the second player's numbers sit on the second video
-  b.players: { dy: 482 }
+  a.players: { dy: 505 }           # team layout: the second player's numbers sit on the second video
+  b.players: { dy: 505 }
 
 fx:
   dust: { amount: 0.5, clouds: 0.3 }

@@ -14,7 +14,7 @@
 // turns both into the overlay's live state (phase loading/playing, numbers per side and lineup slot), and names each
 // lineup player's TA live-replay stream for the video holes (`taLive`). Matches that are not in TA mode have no live
 // play: a map is "waiting" until its scores are in, then the scores show as the map's result.
-import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side, type TeamInfo } from "../model.ts";
+import { TUG_FULL, blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side, type TeamInfo } from "../model.ts";
 
 export interface BscsOptions { url?: string; tournament?: string; match?: string }
 
@@ -438,7 +438,7 @@ export class BscsSource implements DataSource {
         perfectAcc: (current ?? lastClosed)?.map.perfectAcc ?? null,
       },
       a, b, diff,
-      tug: 0.5 + Math.max(-1, Math.min(1, diff / 0.02)) / 2,
+      tug: 0.5 + Math.max(-1, Math.min(1, diff / TUG_FULL)) / 2,
       map: shown ? {
         ...mapData(shown.map), progress: shown.scoresClosed ? 1 : 0, time: fmtTime(0),
         pickedBy: sideOf(shown.pickedByTeamId), pickedByName: nameOf(sideOf(shown.pickedByTeamId)), tiebreaker: !!shown.isTiebreaker,

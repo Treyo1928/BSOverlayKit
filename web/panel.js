@@ -110,6 +110,25 @@ function render() {
   $("#feedB").value = sh.feeds.b ?? "";
   $("#delay").value = sh.streamDelayMs;
   $("#lockPitch").checked = !!sh.viewer?.lockPitch;
+  // the mixer: one slider per scene, built once (rebuilding would drop a slider mid-drag)
+  const mix = air.mix ?? { music: 1, scenes: {} };   // never staged: it acts on what is on air
+  if (document.activeElement?.id !== "mixMusic") $("#mixMusic").value = Math.round(mix.music * 100);
+  $("#mixMusicValue").textContent = $("#mixMusic").value;
+  if (document.activeElement?.id !== "mixHits") $("#mixHits").value = Math.round((mix.hits ?? 1) * 100);
+  $("#mixHitsValue").textContent = $("#mixHits").value;
+  const sceneIds = Object.keys(S.scenes).join();
+  if ($("#mixScenes").dataset.for !== sceneIds) {
+    $("#mixScenes").dataset.for = sceneIds;
+    $("#mixScenes").innerHTML = Object.entries(S.scenes).map(([id, label]) =>
+      `<div class="row" style="align-items:center;gap:8px"><label style="flex:0 0 9.5em;margin:0" data-mix-label="${id}">${esc(cap(label))}</label><input data-mix="${id}" type="range" min="0" max="100" step="1" style="flex:1"><b data-mix-value="${id}" style="flex:0 0 3.2em;text-align:right"></b></div>`).join("");
+  }
+  for (const el of $("#mixScenes").querySelectorAll("[data-mix]")) {
+    const id = el.dataset.mix;
+    if (document.activeElement !== el) el.value = Math.round((mix.scenes?.[id] ?? 1) * 100);
+    $(`[data-mix-value="${id}"]`).textContent = `${el.value}%`;
+    $(`[data-mix-label="${id}"]`).style.color = air.scene === id ? "#ff8a8a" : "";
+    $(`[data-mix-label="${id}"]`).textContent = `${air.scene === id ? "● " : ""}${cap(S.scenes[id])}`;
+  }
   if (document.activeElement?.id !== "fov") $("#fov").value = sh.viewer?.fov ?? 70;
   $("#fovValue").textContent = $("#fov").value;
   if (document.activeElement?.id !== "camZ") $("#camZ").value = sh.viewer?.z ?? -0.55;
@@ -152,10 +171,24 @@ document.addEventListener("click", (e) => {
     else send("playlist", { op, id: t.dataset.id });
   }
 });
+// the mixer's sliders act while they are dragged too
+let mixSent = 0, mixLater;
+function mixInput(el) {
+  if (el.id === "mixMusic") $("#mixMusicValue").textContent = el.value;
+  else if (el.id === "mixHits") $("#mixHitsValue").textContent = el.value;
+  else if (el.dataset.mix) $(`[data-mix-value="${el.dataset.mix}"]`).textContent = `${el.value}%`;
+  clearTimeout(mixLater);
+  const wait = Math.max(0, 100 - (performance.now() - mixSent));
+  mixLater = setTimeout(() => {
+    mixSent = performance.now();
+    send("mix", el.id === "mixMusic" ? { music: Number(el.value) / 100 } : el.id === "mixHits" ? { hits: Number(el.value) / 100 } : { scene: el.dataset.mix, level: Number(el.value) / 100 });
+  }, wait);
+}
 // the camera sliders act while they are dragged (at most ten times a second), not only when they are let go
 function zText(v) { return Number(v) === 0 ? "at the head" : `${Math.abs(Number(v)).toFixed(2)} m ${Number(v) < 0 ? "back" : "forward"}`; }
 let camSent = 0, camLater;
 document.addEventListener("input", (e) => {
+  if (e.target.id === "mixMusic" || e.target.id === "mixHits" || e.target.dataset?.mix) return mixInput(e.target);
   if (e.target.id !== "fov" && e.target.id !== "camZ") return;
   $("#fovValue").textContent = $("#fov").value;
   $("#camZValue").textContent = zText($("#camZ").value);
@@ -188,6 +221,8 @@ document.addEventListener("change", (e) => {
   if (el.id === "feedA" || el.id === "feedB") send("feeds", { feeds: { ...S.show.feeds, a: $("#feedA").value.trim(), b: $("#feedB").value.trim() } });
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
   if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
+  // hear the stream's sound in this panel: the preview is loaded again as one that plays it (this browser only)
+  if (el.id === "listen") $("#pv").src = `${S.overlayUrl}&debug&bg&mute${el.checked ? "&listen" : ""}`;
   if (el.id === "fov") send("viewer", { fov: Number(el.value) });
   if (el.id === "camZ") send("viewer", { z: Number(el.value) });
   // a changed limit is shown straight away: the cameras sit at it for a few seconds

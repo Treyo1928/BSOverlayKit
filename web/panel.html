@@ -61,12 +61,17 @@
       <div class="row"><div><label>Title</label><input id="brbTitle"></div><div><label>Message</label><input id="brbMsg"></div></div>
       <div class="btns" id="brbBtns"></div></div>
     <div class="card staged-edit"><h2>Ticker</h2><textarea id="ticker"></textarea><div class="hint">One line per item.</div></div>
+    <div class="card"><h2>Sound <span class="spacer"></span><label style="display:flex;gap:6px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;color:#eee"><input type="checkbox" id="listen"> Hear it here</label></h2>
+      <div class="row"><div><label>Replay music, everywhere: <b id="mixMusicValue">100</b>%</label><input id="mixMusic" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
+      <div class="row"><div><label>Hitsounds: <b id="mixHitsValue">100</b>%</label><input id="mixHits" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
+      <div id="mixScenes"></div>
+      <div class="hint">The music's level on a scene is the first slider times that scene's own (Getting Ready starts at 50 %: a breather before the song); the scene on air is marked. The same figures sound the same on every scene. Hitsounds have their own slider and do not follow the music's. 100 % is the replay as recorded; it cannot go louder. Sliders act as you drag; a scene change fades. "Hear it here" plays the stream's sound in this panel's preview, which then draws the replays itself, so they are drawn twice while it is on.</div></div>
     <div class="card"><h2>Video holes</h2>
       <div class="hint">Filled automatically: each player's live TA replay during a match, the replay playlist in the big box. Only type a link here to override one.</div>
       <div class="row"><div><label>Side A (<code>feed:a</code>)</label><input id="feedA" placeholder="https://…"></div>
         <div><label>Side B (<code>feed:b</code>)</label><input id="feedB" placeholder="https://…"></div></div>
       <div class="row"><div><label>Stream delay (ms) — scores and events wait this long</label><input id="delay" type="number" step="100"></div></div>
-      <div class="row"><div><label>Replay camera field of view: <b id="fovValue">70</b>°</label><input id="fov" type="range" min="60" max="120" step="1" style="width:100%"></div>
+      <div class="row"><div><label>Replay camera field of view: <b id="fovValue">70</b>°</label><input id="fov" type="range" min="30" max="120" step="1" style="width:100%"></div>
         <button id="fovReset" style="flex:none;align-self:flex-end" title="Back to 70°, the viewer's own setting">70°</button></div>
       <div class="row"><div><label>Replay camera forward / back (Z): <b id="camZValue">0.55 m back</b></label><input id="camZ" type="range" min="-2" max="1" step="0.05" style="width:100%"></div>
         <button id="camZReset" style="flex:none;align-self:flex-end" title="Back to 0.55 m behind the head, the viewer's own setting">0.55 back</button></div>

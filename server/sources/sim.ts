@@ -1,7 +1,7 @@
 // Simulated match source: plays a Bo5 the way a BeatKhana match runs (picks & bans, then per map:
 // players chosen -> map loads -> live scores -> results), so scenes can be designed without a tournament.
 // Controls (panel "Simulator" box): reset, next (one step), auto (run it all), speed.
-import { blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type MapData, type MapSlot, type OverlayData, type PoolItem, type ResultItem, type Side } from "../model.ts";
+import { TUG_FULL, blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type MapData, type MapSlot, type OverlayData, type PoolItem, type ResultItem, type Side } from "../model.ts";
 
 /** `sim:` in overlay.yaml renames the simulated match, so previews look like your event. */
 export interface SimOptions {
@@ -55,6 +55,8 @@ export class SimSource implements DataSource {
   #timer?: ReturnType<typeof setInterval>;
   #autoTimer?: ReturnType<typeof setTimeout>;
   #auto = false;
+  /** Numbers pinned from outside while a map plays (the "hold" control): to look at a design at any lead. */
+  #hold: { a?: number | number[]; b?: number | number[]; misses?: { a?: number; b?: number } } | null = null;
   speed = 4;
 
   constructor(private poolFile: URL, opts: SimOptions = {}) {
@@ -124,6 +126,15 @@ export class SimSource implements DataSource {
   control(action: string, args: Record<string, unknown>) {
     if (action === "reset") return this.#reset();
     if (action === "next") return this.#next();
+    // hold: { a: 0.97, b: [0.99, 0.4], misses: { a: 120 } } pins those numbers while a map plays; hold with nothing lets go
+    if (action === "hold") {
+      const acc = (x: unknown) => (typeof x === "number" || (Array.isArray(x) && x.every((v) => typeof v === "number")) ? x as number | number[] : undefined);
+      const m = args.misses as { a?: unknown; b?: unknown } | undefined;
+      const hold = { a: acc(args.a), b: acc(args.b), misses: m ? { a: typeof m.a === "number" ? m.a : undefined, b: typeof m.b === "number" ? m.b : undefined } : undefined };
+      this.#hold = hold.a === undefined && hold.b === undefined && !hold.misses ? null : hold;
+      this.#applyHold();
+      return this.#push();
+    }
     if (action === "speed") { this.speed = Math.max(1, Math.min(30, Number(args.value) || 4)); return this.#push(); }
     if (action === "auto") {
       this.#auto = args.on === undefined ? !this.#auto : !!args.on;
@@ -195,9 +206,23 @@ export class SimSource implements DataSource {
         l.maxCombo = Math.max(l.maxCombo, l.combo);
         l.score = Math.round(map.nps * map.duration * 115 * 7.6 * (l.pos / map.duration) * l.acc);
       }
+      this.#applyHold();
       if (this.#live.a[0].pos >= map.duration) this.#finish();
       else this.#push();
     }, tick * 1000);
+  }
+
+  /** Pinned accuracies (one for the side, or one per player) and misses (the side's total, on its first player). */
+  #applyHold() {
+    const h = this.#hold;
+    if (!h) return;
+    for (const s of ["a", "b"] as Side[]) {
+      const acc = h[s];
+      this.#live[s].forEach((l, i) => {
+        if (acc !== undefined) l.acc = Math.max(0, Math.min(1, Array.isArray(acc) ? acc[i % acc.length] : acc));
+        if (h.misses?.[s] !== undefined) l.misses = i === 0 ? Math.max(0, Math.round(h.misses[s]!)) : 0;
+      });
+    }
   }
 
   #finish() {
@@ -274,7 +299,7 @@ export class SimSource implements DataSource {
         }),
       },
       a: side("a"), b: side("b"), diff,
-      tug: 0.5 + Math.max(-1, Math.min(1, diff / 0.02)) / 2,
+      tug: 0.5 + Math.max(-1, Math.min(1, diff / TUG_FULL)) / 2,
       map: curMap ? {
         ...curMap,
         progress: playing ? Math.min(1, this.#live.a[0].pos / curMap.duration) : 0,

@@ -118,7 +118,7 @@ export interface OverlayData {
   a: SideData;
   b: SideData;
   diff: number;            // a.acc - b.acc while playing
-  tug: number;             // 0..1, 0.5 = even; ±2 % accuracy fills it
+  tug: number;             // 0..1, 0.5 = even; a lead of TUG_FULL (10 % accuracy) fills it
   // current or next map; pickedBy/pickedByName: the side that picked it (null/"" for the tiebreaker)
   map: (MapData & { progress: number; time: string; pickedBy: Side | null; pickedByName: string; tiebreaker: boolean }) | null;
   pool: PoolItem[];
@@ -229,6 +229,9 @@ export interface ShowState {
   staged?: StagedShow | null;
   // every replay viewer: hold the up/down look near level (degrees); resolution (1 = full) and frame cap, which a
   // stream PC drawing replays on the CPU (OBS on Linux + NVIDIA) needs lower
+  /** Sound: how loud the replays' music is. `music` for everything (1 = as recorded), times the on-air scene's own
+   *  figure in `scenes` (a scene not listed is 1): Getting Ready is quieter, a breather before the song. */
+  mix?: { music: number; /** the hitsounds' level, apart from the music's */ hits?: number; scenes: Record<string, number> };
   viewer: { lockPitch: boolean;
     /** how far the replay camera may look up and down from level, in degrees (they need not be the same) */
     pitchUp: number; pitchDown: number;
@@ -236,7 +239,7 @@ export interface ShowState {
     pitchLimit?: number;
     /** showing a limit: every viewer's camera sits at the "up" or "down" limit until `until` (epoch ms); never saved */
     pitchHold?: { dir: "up" | "down"; until: number } | null;
-    /** the replay camera's field of view in degrees (60 to 120; ChroViewer's own default is 70) */
+    /** the replay camera's field of view in degrees (30 to 120; ChroViewer's own default is 70) */
     fov?: number;
     /** how far the replay camera sits in front of the player's head, in metres along the track (negative = behind
      *  it; ChroViewer's own default is -0.55). World space: it does not turn with where the player looks */
@@ -292,6 +295,9 @@ export interface DataSource {
   control?(action: string, args: Record<string, unknown>): Promise<void> | void;
   status(): string;
 }
+
+/** The accuracy lead that puts the "who is winning" bar (`tug`) at its end: 10 percentage points. */
+export const TUG_FULL = 0.10;
 
 export const blankSide = (): SideData => ({
   name: "TBD", players: [], roster: [], avatar: "", logoKind: "star", logo: "", replays: [], initials: "?", country: "", seed: null, points: 0,

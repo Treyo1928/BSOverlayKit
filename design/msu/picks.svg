@@ -101,14 +101,11 @@
         <path inkscape:label="glass" d="M72,270 H312 V630 H72 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
         <g clip-path="url(#cardCover)"><image inkscape:label="img:item.cover" x="84" y="282" width="216" height="216"/></g>
         <rect x="84" y="282" width="216" height="216" rx="10" fill="none" stroke="url(#cream)" stroke-width="1.5" opacity=".6"/>
-        <text inkscape:label="{item.name | upper} fit:212" x="86" y="528" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
-        <text inkscape:label="{item.artist} fit:212" x="86" y="554" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist</tspan></text>
-        <text x="86" y="578" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{item.difficulty} · {item.length}</tspan></text>
-        <!-- the map's type (typed in on the site's pool page), across the foot of the cover -->
-        <g inkscape:label="type show:item.category">
-          <g clip-path="url(#cardCover)"><rect x="84" y="462" width="216" height="36" fill="#12020a" opacity=".82"/><rect x="84" y="462" width="216" height="2" fill="url(#cream)" opacity=".7"/></g>
-          <text inkscape:label="{item.category | upper} fit:200" x="192" y="487" style="font-family:Shader;font-size:17px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke"><tspan>SPEED TECH</tspan></text>
-        </g>
+        <text inkscape:label="{item.name | upper} fit:212" x="86" y="522" style="font-family:Shader;font-size:20px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.8;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
+        <text inkscape:label="{item.artist} fit:212" x="86" y="545" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist</tspan></text>
+        <text x="86" y="566" style="font-family:Geom Graphic;font-size:15px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>{item.difficulty} · {item.length}</tspan></text>
+        <!-- the map's type (typed in on the site's pool page), under the difficulty -->
+        <text inkscape:label="{item.category | upper} show:item.category fit:212" x="86" y="589" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start"><tspan>SPEED TECH</tspan></text>
         <g inkscape:label="state:item.state">
           <g inkscape:label="when:banned" style="display:none">
             <rect x="72" y="270" width="240" height="360" fill="#0a0105" opacity=".72"/>

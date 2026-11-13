@@ -4,7 +4,7 @@
 //      OVERLAY (the settings file, default overlay.yaml; e.g. OVERLAY=overlay.starter.yaml for the starter scenes),
 //      KIT_DATA (runtime state folder, default data; must be allowed for writing, see run.sh)
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { accuracyForRaw, fmtTime, rawCurve, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState, type StagedShow } from "./model.ts";
+import { TUG_FULL, accuracyForRaw, fmtTime, rawCurve, type DataSource, type EventMsg, type LiveState, type OverlayData, type ShowState, type StagedShow } from "./model.ts";
 import { SimSource, type SimOptions } from "./sources/sim.ts";
 import { BscsSource, type BscsOptions } from "./sources/bscompstats.ts";
 import { emptyPlaylist, PlaylistControl, position } from "./playlist.ts";
@@ -89,6 +89,8 @@ show.castersFrom ??= "panel";
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
+show.mix = { music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, ...(show.mix?.scenes ?? {}) } };
+for (const k of Object.keys(show.mix.scenes)) show.mix.scenes[k] = Math.min(1, show.mix.scenes[k]);
 show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
 // one limit for both directions (older show.json files) becomes the two; a hold never outlives a restart
 if (show.viewer.pitchLimit !== undefined) { show.viewer.pitchUp = show.viewer.pitchDown = show.viewer.pitchLimit; delete show.viewer.pitchLimit; }
@@ -163,8 +165,17 @@ await source.start(
     show.streamDelayMs > 0 ? setTimeout(push, show.streamDelayMs) : push();
   },
   (e) => setTimeout(() => onEvent(e), show.streamDelayMs),
-  (l) => setTimeout(() => setLive(l), 0),
+  // Live numbers (scores, accuracy, combo, misses) are held back as far as the live replays are: a viewer shows its
+  // player `liveDelay` behind, so numbers put up as they arrive ran ahead of the picture (a miss counted on screen
+  // seconds before the player was seen to miss). Less the fifth of a second the numbers take to get here.
+  (l) => setTimeout(() => setLive(l), liveNumbersDelay()),
 );
+
+/** How long live numbers wait: the replays' own delay while the match's videos are live TA replays, else nothing; plus the stream delay. */
+function liveNumbersDelay(): number {
+  const viaTa = !!liveData?.taLive && Object.keys(liveData.taLive.players ?? {}).length > 0;
+  return (viaTa ? Math.max(0, config.liveDelay - 200) : 0) + Math.max(0, show.streamDelayMs);
+}
 
 let pitchHoldTimer: ReturnType<typeof setTimeout> | undefined;   // ends a "show the up/down limit" hold
 let songEndAt = 0;                      // when songEnd last went out
@@ -336,7 +347,7 @@ function withLive(d: OverlayData | null): OverlayData | null {
   out.a.leading = (out.a.acc ?? 0) > (out.b.acc ?? 0);
   out.b.leading = (out.b.acc ?? 0) > (out.a.acc ?? 0);
   out.diff = (out.a.acc ?? 0) - (out.b.acc ?? 0);
-  out.tug = 0.5 + Math.max(-1, Math.min(1, out.diff / 0.02)) / 2;
+  out.tug = 0.5 + Math.max(-1, Math.min(1, out.diff / TUG_FULL)) / 2;
   out.match.phase = live.phase;
   out.match.load = live.phase === "loading" ? live.load ?? "loading" : "";
   if (out.map && live.duration) {
@@ -466,7 +477,7 @@ const actions: Record<string, (a: any) => unknown> = {
     if (a.lockPitch !== undefined) show.viewer.lockPitch = !!a.lockPitch;
     const deg = (x: unknown) => Math.max(0, Math.min(90, Number(x) || 0));
     if (a.z !== undefined) show.viewer.z = Math.max(-3, Math.min(3, Math.round((Number(a.z) || 0) * 100) / 100));
-    if (a.fov !== undefined) show.viewer.fov = Math.max(60, Math.min(120, Math.round(Number(a.fov)) || 70));
+    if (a.fov !== undefined) show.viewer.fov = Math.max(30, Math.min(120, Math.round(Number(a.fov)) || 70));
     if (a.pitchUp !== undefined) show.viewer.pitchUp = deg(a.pitchUp);
     if (a.pitchDown !== undefined) show.viewer.pitchDown = deg(a.pitchDown);
     if (a.pitchLimit !== undefined) show.viewer.pitchUp = show.viewer.pitchDown = deg(a.pitchLimit);   // older tools
@@ -484,6 +495,15 @@ const actions: Record<string, (a: any) => unknown> = {
     if (a.quality !== undefined) show.viewer.quality = ["high", "medium", "low", "none"].includes(String(a.quality)) ? a.quality : "medium";
     if (a.distortion !== undefined) show.viewer.distortion = !!a.distortion;
     if (a.output !== undefined) show.viewer.output = [0, 720, 1080, 1440, 2160].includes(Number(a.output)) ? Number(a.output) : 1080;
+  },
+  // the mixer: the music's level for everything and per scene, and the hitsounds' (0 to 1: a replay viewer cannot
+  // play louder than its recording)
+  mix: (a) => {
+    const level = (x: unknown) => Math.max(0, Math.min(1, Math.round((Number(x) || 0) * 100) / 100));
+    const mix = show.mix!;
+    if (a.music !== undefined) mix.music = level(a.music);
+    if (a.hits !== undefined) mix.hits = level(a.hits);
+    if (a.scene !== undefined && a.level !== undefined && String(a.scene) in config.scenes) mix.scenes[String(a.scene)] = level(a.level);
   },
   brb: (a) => {
     Object.assign(target.brb, a.brb ?? {});

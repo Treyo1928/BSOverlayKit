@@ -130,13 +130,12 @@
     <g inkscape:label="show:map">
       <rect x="42" y="232" width="168" height="168" rx="10" fill="#12020a"/>
       <g clip-path="url(#mapCover)"><image inkscape:label="img:map.cover" x="42" y="232" width="168" height="168"/></g>
-      <!-- the map's type, across the foot of the cover -->
-      <g inkscape:label="type show:map.category"><g clip-path="url(#mapCover)"><rect x="42" y="371" width="168" height="29" fill="#12020a" opacity=".82"/><rect x="42" y="371" width="168" height="2" fill="url(#cream)" opacity=".7"/></g><text inkscape:label="{map.category | upper} fit:152" x="126" y="391" style="font-family:Shader;font-size:14px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke"><tspan>SPEED TECH</tspan></text></g>
       <rect x="42" y="232" width="168" height="168" rx="10" fill="none" stroke="url(#cream)" stroke-width="2"/>
       <text inkscape:label="{map.name | upper} fit:322" x="228" y="262" style="font-family:Shader;font-size:26px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:0.94;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
       <text inkscape:label="{map.artist} fit:322" x="229" y="292" style="font-family:Geom Graphic;font-size:18px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.9"><tspan>Artist</tspan></text>
       <text inkscape:label="show:map.mapper fit:322" x="229" y="320" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>mapped by {map.mapper}</tspan></text>
-        <text inkscape:label="fit:322" x="229" y="350" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.length}</tspan></text>
+        <text inkscape:label="fit:322" x="229" y="346" style="font-family:Geom Graphic;font-size:16px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.8"><tspan>{map.difficulty} · {map.length}</tspan></text>
+      <text inkscape:label="{map.category | upper} show:map.category fit:322" x="229" y="368" style="font-family:Shader;letter-spacing:2px;fill:url(#cream);stroke:url(#cream);stroke-width:0.6;stroke-linejoin:miter;paint-order:stroke;font-size:15px;text-anchor:start"><tspan>SPEED TECH</tspan></text>
       <text inkscape:label="show:map.pickedBy fit:322" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>PICKED BY {map.pickedByName | upper}</tspan></text>
       <text inkscape:label="hide:map.pickedBy" x="229" y="390" style="font-family:Geom Graphic;font-size:14px;letter-spacing:3px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>TIEBREAKER</tspan></text>
     </g>

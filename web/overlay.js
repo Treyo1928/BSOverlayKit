@@ -8,7 +8,10 @@ const debug = params.has("debug");
 // air. It never runs replay viewers: its video holes show pictures of the on-air replays, or stay dark.
 const staged = params.has("staged");
 const mute = params.has("mute") || staged;   // the panel's preview: no sound (OBS plays it), drawn small
-const silent = mute || params.has("silent");   // no sound at full quality (testing)
+// &listen (the panel's "Hear it here"): a preview that plays the sound. It then draws its own replays (small), since
+// pictures of the on-air ones carry no sound
+const listen = params.has("listen") && !staged;
+const silent = (mute && !listen) || params.has("silent");   // no sound at full quality (testing)
 // how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
 let previewScale = 1;
 if (params.has("bg")) document.body.classList.add("preview-bg");
@@ -194,10 +197,12 @@ const MULTI = params.has("multiview");
 // costs little there; a 5th page of its own costs about 1 GB, so separate pages stay at 4. &viewers=N overrides.
 const POOL = Math.max(1, Number(params.get("viewers")) || (MULTI ? 5 : 4));
 let multi = null;                                      // { el, ifr, origin }
-const pool = [];                                       // viewers: { i, el, ifr, origin, alive, hole, link, token, v, … }
+const pool = [];
+if (params.has("debug")) window.__msuPool = pool;       // for checks: what each viewer is told
+// viewers: { i, el, ifr, origin, alive, hole, link, token, v, … }
 const plain = {};                                      // hole -> { el, ifr, src } for non-replay links
 let loadToken = 0;
-const VOLUME = { main: 1, a: 0.6, a1: 0.6 };           // song volume per hole while it is on stream; others silent
+const VOLUME = { main: 1, a: 1, a1: 1 };               // which holes are heard while on stream (the others are silent); how loud is the panel mixer's business
 const FADE_MS = 1200;
 // Re-seek a viewer that is this far off the clock. The copy you hear (OBS) is only corrected when it is clearly off,
 // and rarely: every seek is an audible skip. A muted copy (the panel preview) can be kept tighter.
@@ -385,7 +390,7 @@ function assignViewers() {
   };
   // Live replays (TA): a viewer follows a player's stream by itself. Only the on-air page runs them; a preview that
   // draws its own replays leaves those holes dark (previews normally show pictures of the on-air ones anyway).
-  const mine = (id) => !(mute && wanted[id].link.taLive);
+  const mine = (id) => !(mute && !listen && wanted[id].link.taLive);
   const need = [...visible.keys()].filter(mine);
   // A live match keeps one viewer more: its players' viewers must already be connected and waiting when the song
   // starts, while the playlist's replay still plays on Getting Ready.
@@ -486,14 +491,30 @@ setInterval(() => {
   for (const f of pool) {
     if (!f.alive) continue;
     if (f.want && !f.v && performance.now() - f.loadSentAt > 20_000) sendLoad(f);   // a load that never answered
-    const full = silent ? 0 : VOLUME[f.name] ?? 0;
-    f.target = f.shown ? full : 0;
+    // Three levels go to each viewer. Its whole output fades in and out as its hole comes on stream and leaves it
+    // (masterVolume). The MUSIC has the panel mixer's level on top: the music slider times the level of the scene
+    // that is on (songVolume). The HITSOUNDS have their own slider (hitsoundVolume). So turning the music down does
+    // not turn the hits down, and the same slider figures sound the same on every scene: no hole is quieter by itself.
+    const mix = state?.show?.mix;
+    const scene = state?.show?.scene;
+    const music = mix ? Math.min(1, (Number(mix.music) || 0) * (mix.scenes?.[scene] ?? 1)) : 1;
+    const hits = mix ? Math.max(0, Math.min(1, Number(mix.hits ?? 1))) : 1;
+    f.target = f.shown && !silent ? VOLUME[f.name] ?? 0 : 0;
     const step = (50 / FADE_MS) * Math.max(VOLUME[f.name] ?? 0, 0.01);
     f.vol = f.vol < f.target ? Math.min(f.target, f.vol + step) : Math.max(f.target, f.vol - step);
-    if (Math.abs(f.vol - f.sent) > 0.004 || (f.sent !== 0 && f.vol === 0)) {
-      f.sent = f.vol;
-      tell(f, { type: "msu:settings", settings: { masterVolume: f.vol } });
-    }
+    // The music's level fades when the scene changes; a slider moved in the mixer is heard at once (finding a level
+    // by ear needs the level you set, not a fade toward it).
+    const mixed = mix ? `${mix.music}|${mix.scenes?.[scene] ?? 1}` : "";
+    if (f.song === undefined || (f.mixed !== mixed && f.mixScene === scene)) f.song = music;
+    f.mixed = mixed; f.mixScene = scene;
+    f.song = f.song < music ? Math.min(music, f.song + 50 / FADE_MS) : Math.max(music, f.song - 50 / FADE_MS);
+    const levels = {};
+    if (Math.abs(f.vol - f.sent) > 0.004 || (f.sent !== 0 && f.vol === 0)) levels.masterVolume = f.sent = f.vol;
+    if (f.songSent === undefined || Math.abs(f.song - f.songSent) > 0.004 || (f.songSent !== 0 && f.song === 0)) levels.songVolume = f.songSent = f.song;
+    if (f.hitsSent !== hits) levels.hitsoundVolume = f.hitsSent = hits;
+    // all three again every few seconds: a viewer that reloaded (or was busy loading) has lost them
+    if (performance.now() - (f.levelsAt ?? 0) > 3000) Object.assign(levels, { masterVolume: f.sent = f.vol, songVolume: f.songSent = f.song, hitsoundVolume: f.hitsSent = hits });
+    if (Object.keys(levels).length) { f.levelsAt = performance.now(); f.told = { ...(f.told ?? {}), ...levels }; tell(f, { type: "msu:settings", settings: levels }); }
     // the replay viewer settings from the panel (up/down look lock, resolution, frame cap), sent again after a reload.
     // The panel's small preview (&mute) draws at the size it is shown and 30 fps, leaving the PC's power to OBS.
     const cam = state?.show?.viewer;
@@ -508,7 +529,7 @@ setInterval(() => {
       const quality = cam.quality ?? "medium", distortion = cam.distortion ?? true;
       // "show a limit" from the panel: the camera sits at the up or down limit while it lasts
       const hold = cam.pitchHold && cam.pitchHold.until > serverNow() ? (cam.pitchHold.dir === "up" ? 1 : -1) : 0;
-      const fov = Math.max(60, Math.min(120, Number(cam.fov) || 70));
+      const fov = Math.max(30, Math.min(120, Number(cam.fov) || 70));
       // a lineup player's own saber colours on their hole ("a1" = side a's first player, "a" = a 1v1's); anyone else's replay (the
       // playlist, a typed link) keeps the colours it was recorded with. Sent either way: a viewer is reused.
       const who = /^([ab])(\d*)$/.exec(f.name ?? "");   // "a" alone: a 1v1's only player
@@ -703,7 +724,7 @@ function connect() {
     const m = JSON.parse(e.data);
     if (m.type === "pictures") {
       if (!mute) sendPictures = !!m.send;
-      else if (pictureMode !== (staged || !!m.from)) { pictureMode = staged || !!m.from; if (state) assignViewers(); }
+      else if (pictureMode !== (staged || (!!m.from && !listen))) { pictureMode = staged || (!!m.from && !listen); if (state) assignViewers(); }
       return;
     }
     if (m.type === "state") {

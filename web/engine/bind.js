@@ -30,7 +30,7 @@ export function parseTokens(label) {
   }
   return out;
 }
-const KNOWN = new Set(["img", "bar", "vbar", "show", "hide", "color", "stroke", "feed", "repeat", "state", "when", "fit", "pulse", "enter", "widget", "fx", "glass"]);
+const KNOWN = new Set(["img", "bar", "vbar", "show", "hide", "color", "stroke", "feed", "repeat", "state", "when", "fit", "pulse", "enter", "widget", "fx", "glass", "slide", "tugbar"]);
 
 // ---------------------------------------------------------------- expressions
 /** Resolve "a.name", "pool.3.cover" (1-based), "item.name", with scene vars ("big" -> "a"). */
@@ -132,6 +132,8 @@ export function collect(root, env) {
     if (t.img) result.bindings.push(imgBinding(el, t.img));
     if (t.bar !== undefined) result.bindings.push(barBinding(el, t.bar, false));
     if (t.vbar !== undefined) result.bindings.push(barBinding(el, t.vbar, true));
+    if (t.slide !== undefined) result.bindings.push(slideBinding(el, t.slide));
+    if (t.tugbar !== undefined) result.bindings.push(tugbarBinding(el, t.tugbar));
     if (t.show !== undefined || t.hide !== undefined) result.bindings.push(visBinding(el, t.show, t.hide));
     if (t.color !== undefined) result.bindings.push(colorBinding(shape, t.color, "fill", env));
     if (t.stroke !== undefined) result.bindings.push(colorBinding(shape, t.stroke, "stroke", env));
@@ -309,7 +311,9 @@ function fitText(text, maxWidth, baseSize) {
   const w = text.getComputedTextLength?.() ?? 0;
   if (w <= maxWidth) return;
   const scale = maxWidth / w;
-  if (scale >= 0.7) { text.style.fontSize = `${baseSize * scale}px`; return; }
+  // a figure is never cut short ("12…" for 1234 misses reads as twelve): it shrinks as far as it must
+  const figure = /^[\d\s.,:%+\-–—x×]*$/.test(text.textContent);
+  if (scale >= 0.7 || figure) { text.style.fontSize = `${baseSize * scale}px`; return; }
   text.style.fontSize = `${baseSize * 0.7}px`;
   const span = text.querySelector("tspan") ?? text;
   let s = span.textContent;
@@ -347,6 +351,129 @@ function barBinding(el, path, vertical) {
       const v = Math.max(0, Math.min(1, Number(resolve(ctx, path)) || 0));
       if (vertical) { r.setAttribute("height", String(H * v)); r.setAttribute("y", String(Y + H * (1 - v))); }
       else r.setAttribute("width", String(W * v));
+    },
+  };
+}
+
+/**
+ * slide:tug*1432: the layer moves sideways with a 0..1 value, 1432 px from 0 to 1 (slide:tug*1432*18: but never
+ * closer than 18 px to either end). Draw it where it sits at 0.5
+ * (the middle of the bar it rides on). Moves at the same pace a bar: on the same value grows.
+ */
+function slideBinding(el, spec) {
+  const [path, span, inset] = spec.split("*");
+  const distance = Number(span) || 0;
+  // a third number keeps it that many pixels inside each end (slide:tug*1432*18): a marker that stays on its bar
+  const most = Math.max(0, distance / 2 - (Number(inset) || 0));
+  el.style.transition = "transform .25s linear";
+  return {
+    update(ctx) {
+      const raw = Number(resolve(ctx, path));
+      const v = Math.max(0, Math.min(1, Number.isFinite(raw) ? raw : 0.5));
+      el.style.transform = `translateX(${Math.max(-most, Math.min(most, (v - 0.5) * distance))}px)`;
+    },
+  };
+}
+
+/**
+ * tugbar:diff on a group: a "who is winning" bar that picks its own scale. The value is a lead (a - b, as a
+ * fraction: 0.012 = 1.2 points to a). The bar shows it on the smallest scale it fits comfortably (1 %, 2 %, 4 % …
+ * up to 100 % for half the bar) and changes scale as the lead grows or settles: the tick marks squeeze together and
+ * new ones come in from the ends (zooming out), or spread and leave (zooming in). So a close map uses the whole bar
+ * and a blow-out still fits on it. Layers inside the group, by name:
+ *   #win-fill    a rect, drawn at its full width: side a's colour, growing from the left. Its x and width are the
+ *                span the edge travels (the middle of it is level)
+ *   #win-edge    what rides the end of the fill (drawn at the middle)
+ *   #win-tick    one tick mark, drawn at the middle: copied for every tick (three a side)
+ *   #win-scale-a / #win-scale-b   optional texts: the scale ("4%"), for the two ends
+ *   #win-lead-a-out / -a-in / -b-out / -b-in   optional: the lead written beside the edge. "out" = on the far side
+ *                of the edge from the middle (a small lead, so it never sits on the middle mark), "in" = between
+ *                the edge and the middle (a big one). One of the four shows, none when level.
+ */
+const TUG_STEPS = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1];
+const TUG_ZOOM_MS = 1100, TUG_MOVE_MS = 250, TUG_CALM_MS = 4000;
+function tugbarBinding(group, path) {
+  const find = (n) => [...group.querySelectorAll("*")].find((e) => parseTokens(layerName(e)).names.includes(n));
+  const fill = find("win-fill"), edge = find("win-edge"), tick = find("win-tick");
+  if (!fill || !edge) return { update() {} };
+  const scales = [find("win-scale-a"), find("win-scale-b")].filter(Boolean);
+  const leads = { aOut: find("win-lead-a-out"), aIn: find("win-lead-a-in"), bOut: find("win-lead-b-out"), bIn: find("win-lead-b-in") };
+  const W = parseFloat(fill.getAttribute("width")), half = W / 2;
+  const tickHost = tick?.parentNode;
+  const tickAlpha = Number(tick?.getAttribute("opacity") ?? 1);
+  tick?.remove();
+  fill.style.transition = "none";
+  const marksOf = (s) => [-3, -2, -1, 1, 2, 3].map((k) => Math.round(((k * s) / 4) * 1e5));
+  const ticks = new Map();                           // lead (in 1/100000) -> its mark
+  // Everything on the bar is drawn from two numbers, each frame, by one clock: the lead shown and the scale shown.
+  // A zoom is the scale shown gliding from the old scale to the new one: on the way, the edge and every tick sit
+  // where they belong on the scale of that instant. So the old ticks really do slide toward the middle, the new
+  // scale's ticks slide in from beyond the ends (the bar's outline clips them until they arrive), and the edge moves
+  // with them. That is what makes it read as zooming rather than as a jump.
+  let scale = 0.02, calmSince = 0, first = true;     // the scale in force (what the lead is judged against)
+  let lead = 0, leadFrom = 0, leadTo = 0, leadT0 = 0, leadMs = 0;
+  let shownScale = scale, zoomFrom = scale, zoomTo = scale, zoomT0 = 0, zoomMs = 0;
+  let frame = 0, drawnSide = null;
+  const ease = (k) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
+  function draw(now) {
+    const kl = leadMs > 0 ? Math.min(1, (now - leadT0) / leadMs) : 1;
+    lead = leadFrom + (leadTo - leadFrom) * kl;
+    const kz = zoomMs > 0 ? Math.min(1, (now - zoomT0) / zoomMs) : 1;
+    // in proportion (log), so each moment of the zoom looks like the same rate of zooming
+    shownScale = kz >= 1 ? zoomTo : Math.exp(Math.log(zoomFrom) + (Math.log(zoomTo) - Math.log(zoomFrom)) * ease(kz));
+    const p = Math.max(-1, Math.min(1, lead / shownScale));       // -1 (all b) .. 1 (all a)
+    fill.setAttribute("width", String(W * (0.5 + p / 2)));
+    edge.setAttribute("transform", `translate(${p * half} 0)`);
+    if (tickHost) {
+      const want = new Set(marksOf(zoomTo));
+      for (const key of [...want, ...(kz < 1 ? marksOf(zoomFrom) : [])]) {
+        if (ticks.has(key)) continue;
+        const el = tick.cloneNode(true);
+        tickHost.append(el);
+        ticks.set(key, el);
+      }
+      for (const [key, el] of ticks) {
+        const x = (key / 1e5 / shownScale) * half;
+        // a mark of the scale being left fades as it goes; one of the scale arriving is there from the start
+        const alpha = want.has(key) ? 1 : 1 - kz;
+        if (alpha <= 0) { el.remove(); ticks.delete(key); continue; }
+        el.setAttribute("transform", `translate(${x} 0)`);
+        el.style.opacity = String(tickAlpha * alpha);
+      }
+    }
+    // which side of the edge the lead is written on: decided from where the edge is
+    const side = lead > 0 ? (p >= 0.34 ? "aIn" : "aOut") : lead < 0 ? (p <= -0.34 ? "bIn" : "bOut") : "";
+    if (side !== drawnSide) {
+      drawnSide = side;
+      for (const [k, el] of Object.entries(leads)) if (el) el.style.display = k === side ? "" : "none";
+    }
+    frame = kl < 1 || kz < 1 ? requestAnimationFrame(draw) : 0;
+  }
+  return {
+    update(ctx) {
+      const raw = Number(resolve(ctx, path));
+      const d = Number.isFinite(raw) ? Math.max(-1, Math.min(1, raw)) : 0, size = Math.abs(d), now = performance.now();
+      let next = scale;
+      if (size > 0.85 * scale) {                     // near the end: out to the first scale it sits well inside
+        next = TUG_STEPS.find((s) => size <= 0.7 * s) ?? 1;
+        calmSince = 0;
+      } else {                                       // well inside a smaller scale, and has been for a while: in
+        const snug = TUG_STEPS.find((s) => size <= 0.5 * s) ?? 1;
+        if (snug < scale) { calmSince ||= now; if (now - calmSince >= TUG_CALM_MS) { next = snug; calmSince = 0; } }
+        else calmSince = 0;
+      }
+      if (next !== scale || first) {
+        zoomFrom = first ? next : shownScale; zoomTo = next; zoomT0 = now; zoomMs = first ? 0 : TUG_ZOOM_MS;
+        for (const el of scales) {
+          (el.querySelector("tspan") ?? el).textContent = `${Math.round(next * 100)}%`;
+          const fit = Number(parseTokens(layerName(el)).fit);
+          if (fit) fitText(el, fit, (el.__bsoSize ??= parseFloat(getComputedStyle(el).fontSize)));
+        }
+        scale = next;
+      }
+      if (d !== leadTo || first) { leadFrom = first ? d : lead; leadTo = d; leadT0 = now; leadMs = first ? 0 : TUG_MOVE_MS; }
+      first = false;
+      if (!frame) frame = requestAnimationFrame(draw);
     },
   };
 }
