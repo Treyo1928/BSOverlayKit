@@ -1,5 +1,7 @@
 # runtime state and secrets: never committed
-data/
+data/*
+# the simulator's sample map pool is part of the app
+!data/pool.json
 *.log
 # server settings with the login code and API key
 .env
