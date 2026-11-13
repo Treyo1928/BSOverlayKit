@@ -129,3 +129,8 @@ Testing notes: every starter scene was rendered through Inkscape 1.4.4 (CLI expo
 Browser Source during a full simulated match with automation on (`tools/demo-shots.sh`; screenshots in
 `shots/`). Not yet tested: Figma-exported SVGs (the engine reads layer names from `id` attributes for that),
 and real Twitch/VDO.Ninja feeds in the video holes.
+
+## On a server
+
+`DEPLOY.md`: the overlay and the replay viewer as containers behind a proxy (panel behind the login code, the
+overlay page open, all show logic in the server).

@@ -1,3 +1,5 @@
 # runtime state and secrets: never committed
 data/
 *.log
+# server settings with the login code and API key
+.env

@@ -1,0 +1,61 @@
+# The overlay on a server: the overlay itself and the replay viewer it embeds.
+#   cp .env.example .env   (fill it in)
+#   docker compose up -d --build                    behind a reverse proxy you already run (ports on 127.0.0.1)
+#   docker compose --profile tls up -d --build      with the bundled Caddy (HTTPS by itself)
+# Neither container draws anything: scenes and replays are drawn in the browser that shows the overlay (OBS).
+services:
+  overlay:
+    build: .
+    restart: unless-stopped
+    environment:
+      HOST_CODE: ${HOST_CODE:?set HOST_CODE in .env}
+      KIT_SOURCE: ${KIT_SOURCE:-bscompstats}
+      BSCS_URL: ${BSCS_URL:-https://bs.treyo.dev}
+      BSCS_TOURNAMENT: ${BSCS_TOURNAMENT:-}
+      BSCS_KEY: ${BSCS_KEY:-}
+      CHROVIEWER_URL: ${CHROVIEWER_URL:?set CHROVIEWER_URL in .env}
+      TRUST_PROXY: '1'
+    volumes:
+      - overlay-data:/app/data
+    ports:
+      - '127.0.0.1:8095:8095'
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
+
+  viewer:
+    build:
+      context: ${CHROVIEWER_DIR:-../chroviewer}
+      args:
+        VITE_BEATLEADER_API_URL: ${VIEWER_PUBLIC_URL:?set VIEWER_PUBLIC_URL in .env}/bl-api
+    restart: unless-stopped
+    environment:
+      TA_LIVE_HOSTS: ${TA_LIVE_HOSTS:-}
+    ports:
+      - '127.0.0.1:4000:4000'
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: 1.0
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ['tls']
+    restart: unless-stopped
+    environment:
+      OVERLAY_ADDRESS: ${OVERLAY_ADDRESS:-localhost}
+      VIEWER_ADDRESSES: ${VIEWER_ADDRESSES:-viewer.localhost}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - overlay
+      - viewer
+
+volumes:
+  overlay-data:
+  caddy-data:
+  caddy-config:

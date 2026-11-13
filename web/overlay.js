@@ -5,12 +5,16 @@ const params = new URLSearchParams(location.search);
 const key = params.get("key");
 const debug = params.has("debug");
 // &staged: a preview of the STAGED state (the panel's "Next" side): the staged scene and texts instead of what is on
-// air. It never runs replay viewers: its video holes show pictures of the on-air replays, or stay dark.
+// air. It never runs replay viewers: its video holes stay dark.
 const staged = params.has("staged");
-const mute = params.has("mute") || staged;   // the panel's preview: no sound (OBS plays it), drawn small
-// &listen (the panel's "Hear it here"): a preview that plays the sound. It then draws its own replays (small), since
-// pictures of the on-air ones carry no sound
+// &mute: the panel's preview. It shows the scene with the video boxes dark and plays nothing: the replays are drawn by
+// whoever shows the stream (OBS), and a panel that is open on someone's desk, mostly minimised, should cost nothing.
+const mute = params.has("mute") || staged;
+// &listen (the panel's "Replays and sound here"): the preview draws the replays itself (small) and plays their sound
 const listen = params.has("listen") && !staged;
+// &viewer=http://127.0.0.1:4000: this page takes its replay viewers from there instead of the address the overlay
+// server gives (a stream PC that runs its own viewer, each box then in a browser process of its own)
+const viewerOverride = (() => { try { return params.get("viewer") ? new URL(params.get("viewer")).origin : ""; } catch { return ""; } })();
 const silent = (mute && !listen) || params.has("silent");   // no sound at full quality (testing)
 // how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
 let previewScale = 1;
@@ -148,8 +152,7 @@ if (params.has("fps") || params.has("report")) {
     if (now - t0 >= 1000) {
       pageFps = Math.round(n * 1000 / (now - t0));
       const shown = pool.filter((f) => f.shown && f.fps != null).map((f) => f.fps);
-      const got = pictureMode ? Object.values(pics).filter((p) => p.el.classList.contains("shown")).map((p) => { const r = p.n ?? 0; p.n = 0; return r; }) : [];
-      el.textContent = `${pageFps} fps` + (got.length ? ` · pictures ${got.join(" ")}` : shown.length ? ` · replays ${shown.join(" ")}` : "")
+            el.textContent = `${pageFps} fps` + (shown.length ? ` · replays ${shown.join(" ")}` : "")
         + (liveFreezes ? ` · live freezes ${liveFreezes}` : "");
       n = 0; t0 = now;
     }
@@ -208,14 +211,9 @@ const FADE_MS = 1200;
 // and rarely: every seek is an audible skip. A muted copy (the panel preview) can be kept tighter.
 const DRIFT = { heard: { s: 1.5, wait: 10_000 }, muted: { s: 0.4, wait: 2000 } };
 if (debug) window.msuFeeds = {};                       // hole id -> its viewer, for checking sync from the console
-// The panel preview doesn't run replay viewers of its own while an on-air overlay is open: that one sends small
-// pictures of its replays (PICTURES per second, through the overlay server) and the preview shows them. Two full
-// sets of viewers on one PC halved the frame rate of both. The panel's "Preview replays" setting can turn it off.
-const PICTURES = { fps: 12, width: 480 };
-let sendPictures = false;                              // on air: the server picked this page to send them
-let pictureMode = staged;                              // preview: they're coming, so show them instead of viewers
-const pics = {};                                       // preview: hole id -> { el, img, url, link }
-const enc = new TextEncoder(), dec = new TextDecoder();
+// A preview without &listen runs no viewers: its video boxes are dark panels (`blanks`), so the layout still reads.
+const noViewers = mute && !listen;
+const blanks = {};                                     // hole id -> its dark panel
 
 /**
  * Each viewer on its own local address (127.0.0.2, .3, …: all this PC). Browsers run every frame of one site in one
@@ -223,7 +221,10 @@ const enc = new TextEncoder(), dec = new TextDecoder();
  * its own WebGL context allowance. Only for a viewer on 127.0.0.1 (start.sh serves it on 127.0.0.1-6).
  */
 function viewerOrigin(src, i) {
-  const u = new URL(src);
+  // &viewer= on this page's address wins; else a hosted viewer with an address per box (CHROVIEWER_URL with {n} in
+  // it: v1.…, v2.…); else the one address the server gave
+  const pattern = viewerOverride ? "" : state?.viewerPattern ?? "";
+  const u = new URL(viewerOverride || (pattern ? pattern.replace("{n}", String(1 + (i % 5))) : src));
   if (u.hostname === "127.0.0.1" && !params.has("nospread")) u.hostname = `127.0.0.${2 + (i % 5)}`;
   return u.origin;
 }
@@ -376,7 +377,7 @@ function visibleHoles() {
 }
 function assignViewers() {
   const visible = visibleHoles();
-  if (pictureMode) {                                   // preview: pictures in the holes, every viewer idle
+  if (noViewers) {                                     // a preview: dark boxes, every viewer idle
     for (const f of pool) { f.hole = null; f.name = ""; f.clock = null; f.replayId = null; }
     layoutFeeds(visible);
     return;
@@ -388,10 +389,7 @@ function assignViewers() {
     f.hole = id; f.name = id.slice(5); f.clock = w.clock; f.replayId = w.replayId;
     load(f, w.link);
   };
-  // Live replays (TA): a viewer follows a player's stream by itself. Only the on-air page runs them; a preview that
-  // draws its own replays leaves those holes dark (previews normally show pictures of the on-air ones anyway).
-  const mine = (id) => !(mute && !listen && wanted[id].link.taLive);
-  const need = [...visible.keys()].filter(mine);
+  const need = [...visible.keys()];
   // A live match keeps one viewer more: its players' viewers must already be connected and waiting when the song
   // starts, while the playlist's replay still plays on Getting Ready.
   const poolMax = POOL + (Object.values(wanted).some((w) => w.link?.taLive) ? 1 : 0);
@@ -553,8 +551,6 @@ setInterval(() => {
         tell(f, { type: "msu:frameRate", fps });
       }
     }
-    const pf = sendPictures && f.shown ? PICTURES.fps : 0;
-    if (f.picSent !== pf) { f.picSent = pf; tell(f, { type: "msu:pictures", ...PICTURES, fps: pf }); }
     if (f.isLive) {                                    // never paused, played or seeked by us
       const hash = state?.data?.map?.hash ?? "";       // the map the players are about to load: fetch it ahead
       if (hash && f.preloaded !== hash) { f.preloaded = hash; tell(f, { type: "msu:preload", mapHash: hash }); }
@@ -605,12 +601,6 @@ window.addEventListener("message", (e) => {
   if (e.data.type === "msu:contextLost") revive(f);
   if (e.data.type === "msu:fps") { f.fps = Number(e.data.fps) || 0; f.size = e.data.size ?? null; }
   if (e.data.type === "msu:audio") { f.audioBlocked = !!e.data.blocked; soundBanner(); }
-  // on air: a picture of this viewer's replay → the server → the previews ([name length][hole id][JPEG])
-  if (e.data.type === "msu:picture" && e.data.blob instanceof Blob && sendPictures && f.shown && f.hole
-      && Number(e.data.token) === f.token && f.el.classList.contains("ready") && ws?.readyState === 1 && ws.bufferedAmount < 1_000_000) {
-    const id = enc.encode(f.hole);
-    ws.send(new Blob([new Uint8Array([id.length]), id, e.data.blob]));
-  }
 });
 // ---------------------------------------------------------------- live replays (TA)
 // A hole whose link has ?taLive=… is a viewer following that player's live replay from the TA server (chroviewer's
@@ -648,24 +638,6 @@ function soundBanner() {
 }
 const unlockAll = () => { for (const f of pool) if (f.alive) tell(f, { type: "msu:unlock" }); };
 for (const type of ["pointerdown", "keydown"]) addEventListener(type, unlockAll, true);
-/** Preview: a picture from the on-air overlay, into its hole. */
-function showPicture(buf) {
-  const bytes = new Uint8Array(buf);
-  const p = pics[dec.decode(bytes.subarray(1, 1 + bytes[0]))];
-  if (!p) return;
-  const url = URL.createObjectURL(new Blob([bytes.subarray(1 + bytes[0])], { type: "image/jpeg" }));
-  const img = new Image();
-  img.onload = () => {
-    p.img.replaceWith(img);
-    p.img = img;
-    if (p.url) URL.revokeObjectURL(p.url);
-    p.url = url;
-    p.el.classList.add("ready");
-    p.n = (p.n ?? 0) + 1;
-  };
-  img.onerror = () => URL.revokeObjectURL(url);
-  img.src = url;
-}
 /** A hole inside a layer that show:/hide:/when: has hidden gets no video (one scene can hold a 1v1 and a duos layout). */
 function shownInScene(el) {
   for (let n = el; n && !n.classList?.contains("scene-svg"); n = n.parentNode) {
@@ -690,43 +662,36 @@ function layoutFeeds(visible = visibleHoles()) {
     p.el.classList.toggle("shown", !!b);
     if (b) box(p.el, b);
   }
-  for (const [id, b] of pictureMode ? visible : []) {
-    let p = pics[id];
+  for (const [id, b] of noViewers ? visible : []) {
+    let p = blanks[id];
     if (!p) {
       const el = document.createElement("div");
-      el.className = "feed viewer picture";
-      const img = new Image();
-      el.append(img);
+      el.className = "feed viewer blank";
       $("#feeds").append(el);
-      p = pics[id] = { el, img, url: "", link: "" };
+      p = blanks[id] = { el };
     }
-    const link = linkKey(wanted[id]?.link);
-    if (p.link !== link) { p.link = link; p.el.classList.remove("ready"); }   // another replay: dark until it comes
     box(p.el, b);
   }
-  for (const [id, p] of Object.entries(pics)) p.el.classList.toggle("shown", pictureMode && visible.has(id));
+  for (const [id, p] of Object.entries(blanks)) p.el.classList.toggle("shown", noViewers && visible.has(id));
   if (debug) window.msuFeeds = Object.fromEntries(pool.filter((f) => f.hole).map((f) => [f.hole, f]));
 }
 
 // ---------------------------------------------------------------- connection
 let ws = null;
 function connect() {
-  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?key=${encodeURIComponent(key ?? "")}${mute ? "&role=preview" : ""}${staged ? "&staged=1" : ""}`);
-  ws.binaryType = "arraybuffer";
+  // no key is needed to watch; a page that has the key (optional, for OBS) is the one whose replay reports count
+  const q = new URLSearchParams();
+  if (key) q.set("key", key);
+  if (mute) q.set("role", "preview");
+  if (staged) q.set("staged", "1");
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?${q}`);
   ws.onopen = () => document.body.classList.remove("offline");
   ws.onclose = () => {
     document.body.classList.add("offline");
-    sendPictures = false;
     setTimeout(connect, 1000);
   };
   ws.onmessage = async (e) => {
-    if (e.data instanceof ArrayBuffer) return showPicture(e.data);
     const m = JSON.parse(e.data);
-    if (m.type === "pictures") {
-      if (!mute) sendPictures = !!m.send;
-      else if (pictureMode !== (staged || (!!m.from && !listen))) { pictureMode = staged || (!!m.from && !listen); if (state) assignViewers(); }
-      return;
-    }
     if (m.type === "state") {
       loadHsv(m.hsv || "", m.designVersion);
       if (m.now) clockOffset = m.now - Date.now();

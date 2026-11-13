@@ -15,7 +15,11 @@ const PORT = Number(Deno.env.get("PORT") ?? 8095);
 const HOST = Deno.env.get("HOST") ?? "127.0.0.1";
 const CONFIG_FILE = Deno.env.get("OVERLAY") ?? "overlay.yaml";
 // the replay viewer (our ChroViewer build). Its address as OBS sees it.
-const VIEWER = (Deno.env.get("CHROVIEWER_URL") ?? "http://127.0.0.1:4000").replace(/\/+$/, "");
+// With {n} in it (https://v{n}.viewer.example.org) every video box gets an address of its own (v1 … v5): on a hosted
+// viewer that is what lets a browser give each replay its own process (with the Origin-Agent-Cluster header, see
+// DEPLOY.md). Links the server itself builds use the first.
+const VIEWER_PATTERN = (Deno.env.get("CHROVIEWER_URL") ?? "http://127.0.0.1:4000").replace(/\/+$/, "");
+const VIEWER = VIEWER_PATTERN.replace("{n}", "1");
 // TA live replays reach the viewers through the viewer's own relay (/ta-live/<host:port>/u/<player>). The TA server's
 // address as the VIEWER reaches it, when that differs from the one the BSCompStats site uses (a container name in
 // the local test stack): KIT_TA_RELAY_HOST=msu-ta-server:8676. Empty: the address in the match's `ta`.
@@ -66,7 +70,8 @@ async function readJson<T>(p: string, fallback: T): Promise<T> {
   try { return { ...fallback, ...JSON.parse(await Deno.readTextFile(dataAt(p))) }; } catch { return fallback; }
 }
 const rand = (n: number) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
-const secrets = await readJson("secrets.json", { hostCode: rand(10), overlayKey: rand(20) });
+const secrets = await readJson("secrets.json", { hostCode: rand(10), overlayKey: rand(20), sessionKey: rand(40) });
+secrets.sessionKey ??= rand(40);
 if (Deno.env.get("HOST_CODE")) secrets.hostCode = Deno.env.get("HOST_CODE")!;
 await Deno.writeTextFile(dataAt("secrets.json"), JSON.stringify(secrets, null, 1));
 
@@ -267,24 +272,10 @@ const broadcastOverlays = (m: unknown) => overlays.forEach((ws) => send(ws, m));
 const broadcastPanels = (m: unknown) => panels.forEach((ws) => send(ws, m));
 const broadcastAll = (m: unknown) => { broadcastOverlays(m); broadcastPanels(m); };
 
-// The panel preview's replays, drawn once: one on-air overlay (OBS, or the OBS link in a browser) sends small pictures
-// of its replay viewers, and the previews show those instead of running viewers of their own. Rendering every replay
-// twice on one PC halved the frame rate of both.
-const previews = new Set<WebSocket>();
-const stagedViews = new Set<WebSocket>();     // previews of the staged state (&staged): never run viewers of their own
-let picturesFrom: WebSocket | null = null;   // the on-air overlay sending them
-function choosePictureSource() {
-  const program = [...previews].some((ws) => !stagedViews.has(ws)) && show.viewer.preview === "program";
-  const want = program || stagedViews.size > 0;
-  if (picturesFrom && (!overlays.has(picturesFrom) || previews.has(picturesFrom))) picturesFrom = null;
-  if (want && !picturesFrom) picturesFrom = [...overlays].find((ws) => !previews.has(ws)) ?? null;
-  for (const ws of overlays) {
-    if (stagedViews.has(ws)) send(ws, { type: "pictures", from: true });   // pictures or dark boxes, never viewers
-    else if (previews.has(ws)) send(ws, { type: "pictures", from: program && !!picturesFrom });
-    else send(ws, { type: "pictures", send: want && ws === picturesFrom });
-  }
-}
-setInterval(choosePictureSource, 2000);
+const stagedViews = new Set<WebSocket>();     // previews of the staged state (&staged)
+/** Overlay pages that gave the key (optional): the ones whose reports about a replay's length and end are believed. */
+const trusted = new WeakSet<WebSocket>();
+const MAX_OVERLAYS = 200;                     // watching needs no key, so there is a ceiling
 // ------------------------------------------------------------------ live gameplay (TA bridge / mock TA)
 let live: LiveState | null = null;
 let songEnded = false;                 // songEnd was sent for the song being played
@@ -415,12 +406,13 @@ const stateMsg = (staged = false) => ({
   replay: replayMsg(), now: Date.now(),
   // the HitScoreVisualizer config for the replay viewers' flying hit scores: a file in design/ (overlay.yaml `hsv:`)
   hsv: config.hsv,
+  viewerPattern: VIEWER_PATTERN.includes("{n}") ? VIEWER_PATTERN : "",
 });
 const panelMsg = async () => ({
   ...stateMsg(), staging: !!show.staging, staged: show.staged ? { ...stagedView(), playlist: undefined, staged: undefined } : null,
   stagedDiffers: stagedDiffers(), airMoved: !!show.staged && show.staged.airScene !== show.scene,
   playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
-  source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: `/overlay?key=${secrets.overlayKey}`,
+  source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
 });
 setInterval(async () => {
@@ -491,7 +483,6 @@ const actions: Record<string, (a: any) => unknown> = {
     }
     if (a.renderScale !== undefined) show.viewer.renderScale = Math.max(0.25, Math.min(1, Number(a.renderScale) || 1));
     if (a.maxFps !== undefined) show.viewer.maxFps = Math.max(10, Math.min(120, Number(a.maxFps) || 60));
-    if (a.preview !== undefined) show.viewer.preview = a.preview === "live" ? "live" : "program";
     if (a.quality !== undefined) show.viewer.quality = ["high", "medium", "low", "none"].includes(String(a.quality)) ? a.quality : "medium";
     if (a.distortion !== undefined) show.viewer.distortion = !!a.distortion;
     if (a.output !== undefined) show.viewer.output = [0, 720, 1080, 1440, 2160].includes(Number(a.output)) ? Number(a.output) : 1080;
@@ -539,46 +530,80 @@ async function file(dir: string, rel: string) {
     return new Response(body, { headers: { "content-type": TYPES[rel.split(".").pop()!.toLowerCase()] ?? "application/octet-stream", "cache-control": "no-cache" } });
   } catch { return new Response("not found", { status: 404 }); }
 }
-const sessions = new Set<string>();
+// ------------------------------------------------------------------ signing in to the panel
+// One shared code (HOST_CODE). The cookie is a keyed hash of it, so nothing is kept in memory: a restart signs
+// nobody out, and changing the code signs everybody out. The overlay page itself needs no sign-in.
+async function sha256(text: string) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+const SESSION = await sha256(`${secrets.sessionKey}|${secrets.hostCode}`);
+const same = (a: string, b: string) => { let d = a.length ^ b.length; for (let i = 0; i < a.length && i < b.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
 const authed = (req: Request) => {
   const sid = /(?:^|;\s*)kit_sid=(\w+)/.exec(req.headers.get("cookie") ?? "")?.[1];
-  return !!sid && sessions.has(sid) || req.headers.get("authorization") === `Bearer ${secrets.hostCode}`;
+  return (!!sid && same(sid, SESSION)) || same(req.headers.get("authorization") ?? "", `Bearer ${secrets.hostCode}`);
 };
+const cookie = (req: Request) =>
+  `kit_sid=${SESSION}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${req.headers.get("x-forwarded-proto") === "https" ? "; Secure" : ""}`;
+// Wrong codes are counted per address: 8 in ten minutes and that address waits out the rest of the ten minutes.
+// Behind a proxy the address is the first one in X-Forwarded-For (trusted only when TRUST_PROXY=1).
+const TRUST_PROXY = Deno.env.get("TRUST_PROXY") === "1";
+const failures = new Map<string, { n: number; since: number }>();
+const WINDOW_MS = 600_000, MAX_FAILURES = 8;
+const addressOf = (req: Request, info: Deno.ServeHandlerInfo) =>
+  (TRUST_PROXY && req.headers.get("x-forwarded-for")?.split(",")[0].trim()) || (info.remoteAddr as Deno.NetAddr).hostname;
+function blocked(addr: string) {
+  const f = failures.get(addr);
+  if (f && Date.now() - f.since > WINDOW_MS) failures.delete(addr);
+  return (failures.get(addr)?.n ?? 0) >= MAX_FAILURES;
+}
+/** For what needs a sign-in: null when signed in, else the refusal. A wrong code in the header counts like a wrong code typed in. */
+function refuse(req: Request, info: Deno.ServeHandlerInfo): Response | null {
+  if (authed(req)) return null;
+  const addr = addressOf(req, info);
+  if (blocked(addr)) return Response.json({ ok: false, error: "Too many wrong codes. Try again in ten minutes." }, { status: 429 });
+  if (req.headers.has("authorization")) failed(addr);
+  return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+}
+function failed(addr: string) {
+  const f = failures.get(addr) ?? { n: 0, since: Date.now() };
+  f.n++;
+  failures.set(addr, f);
+  if (failures.size > 5000) for (const [k, v] of failures) if (Date.now() - v.since > WINDOW_MS) failures.delete(k);
+}
 
-Deno.serve({ port: PORT, hostname: HOST }, async (req) => {
+Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
   const url = new URL(req.url), p = url.pathname;
   const upgrade = req.headers.get("upgrade") === "websocket";
 
+  if (p === "/healthz") return new Response("ok");
   if (p === "/ws/overlay" && upgrade) {
-    if (url.searchParams.get("key") !== secrets.overlayKey) return new Response("bad key", { status: 403 });
+    // Watching needs no key: OBS, or anyone with the address. It only ever receives. What a page SENDS is believed
+    // by degree: any page may say its replay has loaded (that only starts a replay a moment sooner); a replay's
+    // real length and its end are taken only from a page that gave the key.
+    if (overlays.size >= MAX_OVERLAYS) return new Response("too many viewers", { status: 503 });
     const { socket, response } = Deno.upgradeWebSocket(req);
     const isStaged = url.searchParams.has("staged");
-    const preview = url.searchParams.get("role") === "preview" || isStaged;
-    socket.binaryType = "arraybuffer";
+    if (same(url.searchParams.get("key") ?? "", secrets.overlayKey)) trusted.add(socket);
     socket.onopen = () => {
       overlays.add(socket);
-      if (preview) previews.add(socket);
       if (isStaged) stagedViews.add(socket);
       send(socket, stateMsg(isStaged));
-      choosePictureSource();
     };
-    socket.onclose = () => { overlays.delete(socket); previews.delete(socket); stagedViews.delete(socket); choosePictureSource(); };
-    // an overlay reports on its replay viewer: loaded, the song's real length, finished
+    socket.onclose = () => { overlays.delete(socket); stagedViews.delete(socket); };
     socket.onmessage = (e) => {
-      // a picture of one of its replays (hole name + JPEG): on to the previews
-      if (e.data instanceof ArrayBuffer) {
-        if (socket === picturesFrom) for (const ws of previews) if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 2_000_000) ws.send(e.data);
-        return;
-      }
+      if (typeof e.data !== "string" || e.data.length > 2000) return;
       try {
         const m = JSON.parse(e.data);
-        if (m?.type === "viewer" && typeof m.id === "string") playlist.viewer(m.id, m);
+        if (m?.type !== "viewer" || typeof m.id !== "string") return;
+        playlist.viewer(m.id, trusted.has(socket) ? m : { ready: m.ready === true });
       } catch { /* ignore */ }
     };
     return response;
   }
   if (p === "/ws/panel" && upgrade) {
-    if (!authed(req)) return new Response("login required", { status: 401 });
+    const no = refuse(req, info);
+    if (no) return no;
     const { socket, response } = Deno.upgradeWebSocket(req);
     socket.onopen = async () => { panels.add(socket); send(socket, await panelMsg()); };
     socket.onclose = () => panels.delete(socket);
@@ -590,28 +615,30 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req) => {
     return response;
   }
   if (p === "/api/action" && req.method === "POST") {
-    if (!authed(req)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    const no = refuse(req, info);
+    if (no) return no;
     try { await runAction(await req.json()); return Response.json({ ok: true }); }
     catch (e) { return Response.json({ ok: false, error: (e as Error).message }, { status: 400 }); }
   }
   if (p === "/api/state") {
-    if (!authed(req)) return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    const no = refuse(req, info);
+    if (no) return no;
     return Response.json({ data: liveData, show: { ...show, staged: undefined }, staging: !!show.staging, staged: show.staged ?? null,
       stagedDiffers: stagedDiffers(), source: source.status() });
   }
   if (p === "/api/design") return Response.json({ version: designVersion, scenes: await designList(), fonts: await fontList() });
   if (p === "/api/login" && req.method === "POST") {
+    const addr = addressOf(req, info);
+    if (blocked(addr)) return Response.json({ ok: false, error: "Too many wrong codes. Try again in ten minutes." }, { status: 429 });
     const { code } = await req.json().catch(() => ({}));
-    if (code !== secrets.hostCode) return Response.json({ ok: false }, { status: 401 });
-    const sid = rand(32);
-    sessions.add(sid);
-    return Response.json({ ok: true }, { headers: { "set-cookie": `kit_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000` } });
+    if (typeof code !== "string" || !same(code, secrets.hostCode)) { failed(addr); return Response.json({ ok: false }, { status: 401 }); }
+    return Response.json({ ok: true }, { headers: { "set-cookie": cookie(req) } });
   }
   if (p.startsWith("/login/")) {
-    if (decodeURIComponent(p.slice(7)) !== secrets.hostCode) return new Response(null, { status: 303, headers: { location: "/" } });
-    const sid = rand(32);
-    sessions.add(sid);
-    return new Response(null, { status: 303, headers: { location: "/", "set-cookie": `kit_sid=${sid}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000` } });
+    const addr = addressOf(req, info);
+    if (blocked(addr)) return new Response("Too many wrong codes. Try again in ten minutes.", { status: 429 });
+    if (!same(decodeURIComponent(p.slice(7)), secrets.hostCode)) { failed(addr); return new Response(null, { status: 303, headers: { location: "/" } }); }
+    return new Response(null, { status: 303, headers: { location: "/", "set-cookie": cookie(req) } });
   }
 
   if (p === "/" || p === "/panel") return file("web", authed(req) ? "panel.html" : "login.html");
@@ -627,8 +654,10 @@ async function fontList() {
   return out;
 }
 
+// a code that came from the environment is the operator's own: it is not written to the log
+const fromEnv = !!Deno.env.get("HOST_CODE");
 console.log(`
   BSOverlayKit on http://${HOST}:${PORT}
-  panel login code:  ${secrets.hostCode}   (or open http://${HOST}:${PORT}/login/${secrets.hostCode})
-  OBS Browser Source: http://${HOST}:${PORT}/overlay?key=${secrets.overlayKey}
+  panel login code:  ${fromEnv ? "(the one set in HOST_CODE)" : `${secrets.hostCode}   (or open http://${HOST}:${PORT}/login/${secrets.hostCode})`}
+  OBS Browser Source: http://${HOST}:${PORT}/overlay
 `);

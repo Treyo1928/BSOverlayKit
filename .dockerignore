@@ -1,0 +1,7 @@
+.git
+data/*
+!data/pool.json
+shots
+docs
+tools
+*.log

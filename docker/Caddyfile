@@ -1,0 +1,19 @@
+# Fronts the overlay and the replay viewer with automatic HTTPS (docker compose --profile tls up -d).
+# With a proxy of your own instead, copy what each block does: see DEPLOY.md.
+{$OVERLAY_ADDRESS} {
+	encode zstd gzip
+	# the panel and the overlay page talk to the server over WebSockets (/ws/…): Caddy passes those through as they are
+	reverse_proxy overlay:8095
+}
+
+{$VIEWER_ADDRESSES} {
+	encode zstd gzip
+	# Each address is one video box's viewer. This header asks the browser to keep each of them apart from the
+	# others (its own agent cluster, and on a desktop browser its own process), so four replays are not drawn by one
+	# process sharing one CPU core.
+	header Origin-Agent-Cluster "?1"
+	reverse_proxy viewer:4000 {
+		# live replays are relayed as they come
+		flush_interval -1
+	}
+}

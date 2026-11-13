@@ -60,8 +60,8 @@ function render() {
   $("#simStatus").textContent = S.live ? `${S.live.match.phase} · ${S.live.a.name} ${S.live.a.points}–${S.live.b.points} ${S.live.b.name}${S.live.map ? ` · ${S.live.map.name} ${S.live.map.time}` : ""}` : "";
   if (!previewSet) {
     previewSet = true;
-    $("#pv").src = `${S.overlayUrl}&debug&bg&mute`;   // checkered = transparent on stream; OBS plays the sound
-    $("#open").href = `${S.overlayUrl}&bg&debug`;
+    $("#pv").src = `${S.overlayUrl}?debug&bg&mute`;   // checkered = transparent on stream; video boxes dark, no sound
+    $("#open").href = `${S.overlayUrl}?bg&debug`;
     $("#obsUrl").value = location.origin + S.overlayUrl;
     const fit = () => {
       const scale = $(".preview").clientWidth / 1920;
@@ -75,7 +75,7 @@ function render() {
     fit();
   }
   // the Next preview only exists while staging (it is a second overlay page, without replay viewers)
-  const wantNext = S.staging ? `${S.overlayUrl}&debug&bg&staged=1` : "about:blank";
+  const wantNext = S.staging ? `${S.overlayUrl}?debug&bg&staged=1` : "about:blank";
   if ($("#pvNext").dataset.src !== wantNext) { $("#pvNext").dataset.src = wantNext; $("#pvNext").src = wantNext; }
   const scaleNext = $("#nextCard .preview").clientWidth / 1920;
   if (scaleNext) $("#pvNext").style.transform = `scale(${scaleNext})`;
@@ -139,7 +139,6 @@ function render() {
   $("#holdUp").disabled = $("#holdDown").disabled = !sh.viewer?.lockPitch;
   $("#renderScale").value = String(sh.viewer?.renderScale ?? 1);
   $("#maxFps").value = String(sh.viewer?.maxFps ?? 60);
-  $("#previewMode").value = sh.viewer?.preview ?? "program";
   $("#output").value = String(sh.viewer?.output ?? 1080);
   $("#quality").value = sh.viewer?.quality ?? "medium";
   $("#distortion").checked = sh.viewer?.distortion ?? true;
@@ -222,13 +221,12 @@ document.addEventListener("change", (e) => {
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
   if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
   // hear the stream's sound in this panel: the preview is loaded again as one that plays it (this browser only)
-  if (el.id === "listen") $("#pv").src = `${S.overlayUrl}&debug&bg&mute${el.checked ? "&listen" : ""}`;
+  if (el.id === "listen") $("#pv").src = `${S.overlayUrl}?debug&bg&mute${el.checked ? "&listen" : ""}`;
   if (el.id === "fov") send("viewer", { fov: Number(el.value) });
   if (el.id === "camZ") send("viewer", { z: Number(el.value) });
   // a changed limit is shown straight away: the cameras sit at it for a few seconds
   if (el.id === "pitchUp") send("viewer", { pitchUp: Number(el.value), pitchHold: "up", holdMs: 4000 });
   if (el.id === "pitchDown") send("viewer", { pitchDown: Number(el.value), pitchHold: "down", holdMs: 4000 });
-  if (el.id === "previewMode") send("viewer", { preview: el.value });
   if (el.id === "quality") send("viewer", { quality: el.value });
   if (el.id === "distortion") send("viewer", { distortion: el.checked });
   if (el.id === "output") send("viewer", { output: Number(el.value) });
