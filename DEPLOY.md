@@ -11,7 +11,7 @@ Source on the stream PC). The overlay container idles at about 35 MB and a fract
 ```
 overlay.treyo.dev            the overlay server (this folder)       /            the panel, behind the login code
                                                                     /overlay     what OBS shows: no sign-in
-v1…v5.viewer.treyo.dev       the replay viewer (ChroViewer, msu)    embedded by the overlay page, one address a box
+viewer1…5.treyo.dev          the replay viewer (ChroViewer, msu)    embedded by the overlay page, one address a box
 ```
 
 ## 1. Bring it up
@@ -25,10 +25,11 @@ docker compose --profile tls up -d --build      # with the bundled Caddy: HTTPS 
 docker compose up -d --build                    # or behind your own proxy (see 3)
 ```
 
-DNS: `overlay.treyo.dev` and `v1` … `v5.viewer.treyo.dev` (or one wildcard `*.viewer.treyo.dev`) pointing at the server.
+DNS: `overlay.treyo.dev` and `viewer1` … `viewer5.treyo.dev` pointing at the server (one level deep, so a wildcard certificate for `*.treyo.dev` covers them).
 
 The viewer image takes a few minutes and up to 8 GB of memory to build. Build it where there is room, or build it
-elsewhere and `docker save | docker load` it.
+elsewhere (`docker build -t msu-chroviewer --build-arg VITE_BEATLEADER_API_URL=https://viewer1.treyo.dev/bl-api chroviewer`)
+and `docker save msu-chroviewer | ssh server docker load`: compose then uses it and builds only the overlay.
 
 ## 2. Use it
 
@@ -41,7 +42,7 @@ of it is chosen in the panel.
 
 ## 3. Behind your own proxy
 
-Both containers listen on 127.0.0.1 only (8095 and 4000). The proxy needs to:
+Both containers listen on 127.0.0.1 only (8095 and 4000) unless `OVERLAY_BIND` / `VIEWER_BIND` in `.env` say otherwise (a proxy in another container or on another machine needs `OVERLAY_BIND=8095`, `VIEWER_BIND=4000`). The proxy needs to:
 
 - send `overlay.treyo.dev` to `127.0.0.1:8095`, passing WebSockets (`/ws/…`) through, and set `X-Forwarded-For`
   and `X-Forwarded-Proto` (the wrong-code limit counts per visitor address, and the sign-in cookie is marked
@@ -71,7 +72,7 @@ visibly early or late.
 A browser runs every page from one site in one process, on one CPU core. On the stream PC the viewer was served on
 127.0.0.1 to .6 so that each video box counted as a different site. A hosted viewer is one site, so:
 
-- **`CHROVIEWER_URL=https://v{n}.viewer.treyo.dev`** gives each box its own address, and the proxy's
+- **`CHROVIEWER_URL=https://viewer{n}.treyo.dev`** gives each box its own address, and the proxy's
   `Origin-Agent-Cluster: ?1` header asks the browser to keep each apart. Desktop Chromium then gives each its own
   process when it has the memory. **Not yet measured in OBS**: check the frame rate with `&debug` on the OBS
   address during a four-player map.

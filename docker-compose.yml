@@ -1,6 +1,6 @@
 # The overlay on a server: the overlay itself and the replay viewer it embeds.
 #   cp .env.example .env   (fill it in)
-#   docker compose up -d --build                    behind a reverse proxy you already run (ports on 127.0.0.1)
+#   docker compose up -d --build                    behind a reverse proxy you already run (OVERLAY_BIND / VIEWER_BIND)
 #   docker compose --profile tls up -d --build      with the bundled Caddy (HTTPS by itself)
 # Neither container draws anything: scenes and replays are drawn in the browser that shows the overlay (OBS).
 services:
@@ -18,12 +18,15 @@ services:
     volumes:
       - overlay-data:/app/data
     ports:
-      - '127.0.0.1:8095:8095'
+      - '${OVERLAY_BIND:-127.0.0.1:8095}:8095'
     mem_limit: 512m
     memswap_limit: 512m
     cpus: 1.0
 
   viewer:
+    # an image built elsewhere and loaded here (docker save | docker load) is used as it is: `docker compose up -d`
+    # builds only what is missing, `--build overlay` rebuilds only the overlay
+    image: ${VIEWER_IMAGE:-msu-chroviewer}
     build:
       context: ${CHROVIEWER_DIR:-../chroviewer}
       args:
@@ -32,7 +35,7 @@ services:
     environment:
       TA_LIVE_HOSTS: ${TA_LIVE_HOSTS:-}
     ports:
-      - '127.0.0.1:4000:4000'
+      - '${VIEWER_BIND:-127.0.0.1:4000}:4000'
     mem_limit: 1g
     memswap_limit: 1g
     cpus: 1.0
