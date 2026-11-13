@@ -213,14 +213,19 @@ function glass(el, value, env) {
   clip.append(outline);
   // where the page's top-left corner is, seen from the shape: undo every transform above it (Inkscape layers and
   // groups, repeat: copies), so the blurred picture sits exactly on the real background
-  let m = new DOMMatrix();
-  for (let n = host; n && n.tagName !== "svg"; n = n.parentNode) {
-    const t = n.transform?.baseVal?.consolidate?.()?.matrix;
-    if (t) m = new DOMMatrix([t.a, t.b, t.c, t.d, t.e, t.f]).multiply(m);
-  }
-  const i = m.inverse();
   const img = document.createElementNS(SVGNS, "image");
-  for (const [k, v] of Object.entries({ x: 0, y: 0, width: 1920, height: 1080, preserveAspectRatio: "none", transform: `matrix(${i.a} ${i.b} ${i.c} ${i.d} ${i.e} ${i.f})` })) img.setAttribute(k, v);
+  for (const [k, v] of Object.entries({ x: 0, y: 0, width: 1920, height: 1080, preserveAspectRatio: "none" })) img.setAttribute(k, v);
+  img.classList.add("bso-glass-bg");
+  img.__bsoAlign = () => {
+    let m = new DOMMatrix();
+    for (let n = host; n && n.tagName !== "svg"; n = n.parentNode) {
+      const t = n.transform?.baseVal?.consolidate?.()?.matrix;
+      if (t) m = new DOMMatrix([t.a, t.b, t.c, t.d, t.e, t.f]).multiply(m);
+    }
+    const i = m.inverse();
+    img.setAttribute("transform", `matrix(${i.a} ${i.b} ${i.c} ${i.d} ${i.e} ${i.f})`);
+  };
+  img.__bsoAlign();
   const behind = document.createElementNS(SVGNS, "g");
   behind.setAttribute("clip-path", `url(#${clip.id})`);
   behind.append(img);
@@ -404,13 +409,43 @@ function pulseBinding(el, path, env) {
   };
 }
 
+/** Line the blurred background of every glass shape under `root` up again, after `root` (or a parent) has moved. */
+export function realignGlass(root) {
+  for (const img of root.querySelectorAll?.("image.bso-glass-bg") ?? []) img.__bsoAlign?.();
+}
+
 /** repeat:pool — the group's children are a template, cloned once per item and offset by dx/dy. */
 function repeatBinding(group, path, env) {
   const template = document.createElementNS(SVGNS, "g");
   for (const c of [...group.childNodes]) template.append(c);
   const clones = [];
-  const layout = env.repeat?.[path] ?? env.repeat?.[path.split(".").pop()] ?? {};
+  const base = env.repeat?.[path] ?? env.repeat?.[path.split(".").pop()] ?? {};
   let bbox = null;
+  // where copy i of n goes. A list longer than a layout's `over:` key gets that layout instead (the biggest key
+  // that applies): a pool of 7 in one row, a pool of 11 smaller and in two.
+  const place = (i, n) => {
+    let layout = base, most = -1;
+    for (const [k, v] of Object.entries(base.over ?? {})) if (n > Number(k) && Number(k) > most) { most = Number(k); layout = { ...base, ...v }; }
+    const s = layout.scale ?? 1;
+    const dx = layout.dx ?? (layout.dy !== undefined ? 0 : bbox.width * s + (layout.gap ?? 20));
+    const dy = layout.dy ?? 0;
+    const wrap = layout.wrap ?? 0, rowH = layout.rowHeight ?? bbox.height * s + (layout.gap ?? 20);
+    // scaled around the template's top-left corner, so `scale` alone leaves the first copy's corner where it was drawn
+    const at = (x, y) => `translate(${x + bbox.x * (1 - s)} ${y + bbox.y * (1 - s) + (layout.y ?? 0)})${s === 1 ? "" : ` scale(${s})`}`;
+    if (wrap && typeof layout.center === "number") {
+      // rows as even as they can be, the longer ones last (11 in rows of at most 6: 5 over 6), each centred on x = center
+      const rows = Math.ceil(n / wrap), short = Math.floor(n / rows), longRows = n % rows;
+      let row = 0, first = 0, len = rows - longRows > 0 ? short : short + 1;
+      while (i >= first + len) { first += len; row++; len = row >= rows - longRows ? short + 1 : short; }
+      // width: one copy's width as drawn, where the template's own outline is not it (placeholder text that runs wider)
+      const left = layout.center - ((len - 1) * dx + (layout.width ?? bbox.width) * s) / 2;
+      return at(left - bbox.x + (i - first) * dx, row * rowH);
+    }
+    // center: true = the row stays centred on where the template was drawn (3 or 5 map tabs, 1 or 2 players)
+    if (layout.center && !wrap) return at((i - (n - 1) / 2) * dx + (bbox.width * (1 - s)) / 2, (i - (n - 1) / 2) * dy);
+    const col = wrap ? i % wrap : i, row = wrap ? Math.floor(i / wrap) : 0;
+    return at(col * dx, row * rowH + col * dy);
+  };
   return {
     repeat: path,
     clones,
@@ -421,23 +456,19 @@ function repeatBinding(group, path, env) {
         bbox = template.getBBox();
         template.remove();
       }
-      const dx = layout.dx ?? (layout.dy !== undefined ? 0 : bbox.width + (layout.gap ?? 20));
-      const dy = layout.dy ?? 0;
-      const wrap = layout.wrap ?? 0, rowH = layout.rowHeight ?? bbox.height + (layout.gap ?? 20);
       while (clones.length < items.length) {
-        const i = clones.length;
         const g = template.cloneNode(true);
-        const col = wrap ? i % wrap : i, row = wrap ? Math.floor(i / wrap) : 0;
-        g.setAttribute("transform", `translate(${col * dx} ${row * rowH + col * dy})`);
+        // in its place before its layers are read: a glass shape lines its background up with where it is
+        g.setAttribute("transform", place(clones.length, items.length));
         group.append(g);
         clones.push({ g, sub: collect(g, env) });
       }
       while (clones.length > items.length) clones.pop().g.remove();
-      // center: true = the row stays centred on where the template was drawn (3 or 5 map tabs, 1 or 2 players)
-      if (layout.center && !wrap) {
-        const n = Math.max(0, items.length - 1);
-        clones.forEach((c, i) => c.g.setAttribute("transform", `translate(${(i - n / 2) * dx} ${(i - n / 2) * dy})`));
-      }
+      // a list that grew or shrank can move every copy (a centred row, a pool that now needs two rows)
+      clones.forEach((c, i) => {
+        const t = place(i, items.length);
+        if (c.g.getAttribute("transform") !== t) { c.g.setAttribute("transform", t); realignGlass(c.g); }
+      });
       clones.forEach((c, i) => {
         const sub = { ...ctx, item: items[i], index: i + 1 };
         for (const b of c.sub.bindings) b.update(sub);

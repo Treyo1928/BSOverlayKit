@@ -14,7 +14,8 @@ loop:
   - { target: pip-now, keyframes: [ { opacity: 1 }, { opacity: 0.45 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
 
 repeat:
-  maps: { dx: 76, center: true }
+  maps: { dx: 76, center: true, over: { 5: { dx: 66, scale: 0.86 } } }   # a best of 7 (finals): smaller pips, so seven fit
+  #
   a.players: { dy: 68 }
   b.players: { dy: 68 }
 

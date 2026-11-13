@@ -508,13 +508,23 @@ setInterval(() => {
       const quality = cam.quality ?? "medium", distortion = cam.distortion ?? true;
       // "show a limit" from the panel: the camera sits at the up or down limit while it lasts
       const hold = cam.pitchHold && cam.pitchHold.until > serverNow() ? (cam.pitchHold.dir === "up" ? 1 : -1) : 0;
-      const camKey = `${cam.lockPitch}|${cam.pitchUp}|${cam.pitchDown}|${hold}|${scale}|${fps}|${quality}|${distortion}|${hsvProfile.key}`;
+      const fov = Math.max(60, Math.min(120, Number(cam.fov) || 70));
+      // a lineup player's own saber colours on their hole ("a1" = side a's first player, "a" = a 1v1's); anyone else's replay (the
+      // playlist, a typed link) keeps the colours it was recorded with. Sent either way: a viewer is reused.
+      const who = /^([ab])(\d*)$/.exec(f.name ?? "");   // "a" alone: a 1v1's only player
+      const sabers = who ? state?.data?.[who[1]]?.players?.[(Number(who[2]) || 1) - 1]?.sabers : null;
+      const colours = sabers
+        ? { customColors: true, preferReplayColors: false, leftColor: sabers.left, rightColor: sabers.right, environmentLeftColor: sabers.left,
+            environmentRightColor: sabers.right, environmentLeftBoostColor: sabers.left, environmentRightBoostColor: sabers.right }
+        : { customColors: false, preferReplayColors: true };
+      const camZ = Math.max(-3, Math.min(3, Number(cam.z ?? -0.55) || 0));
+      const camKey = `${cam.lockPitch}|${cam.pitchUp}|${cam.pitchDown}|${fov}|${camZ}|${sabers ? sabers.left + sabers.right : ''}|${hold}|${scale}|${fps}|${quality}|${distortion}|${hsvProfile.key}`;
       // sent again every few seconds too: a viewer that missed them (busy loading, or reused for another hole) ran
       // at its own 120 fps cap instead of 60, and pulled the shared multiview loop up with it
       if (f.camSent !== camKey || performance.now() - (f.camAt ?? 0) > 3000) {
         f.camSent = camKey;
         f.camAt = performance.now();
-        tell(f, { type: "msu:settings", settings: { replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchUp: Number(cam.pitchUp) || 0, replayCameraPitchDown: Number(cam.pitchDown) || 0,
+        tell(f, { type: "msu:settings", settings: { ...colours, replayCameraFov: fov, replayCameraDepthOffset: camZ, replayCameraLockPitch: !!cam.lockPitch, replayCameraPitchUp: Number(cam.pitchUp) || 0, replayCameraPitchDown: Number(cam.pitchDown) || 0,
           replayCameraPitchHold: cam.lockPitch ? hold : 0, renderScale: scale,
           graphicsQuality: quality, screenDisplacementEffects: !!distortion,
           // our own hit-score look (overlay.yaml `hsv:`) instead of whatever each replay was recorded with

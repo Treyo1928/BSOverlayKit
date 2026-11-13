@@ -23,8 +23,25 @@ loop:
   - { target: now-glow, keyframes: [ { opacity: 1 }, { opacity: 0.35 }, { opacity: 1 } ], duration: 1600, easing: ease-in-out }
 
 repeat:
-  pool: { dx: 256, wrap: 7, rowHeight: 380 }
+  # up to 7 maps: one row, centred. More (the 11-map finals pool): smaller cards in two rows, the longer row below
+  # (11 = 5 over 6), starting higher up the page.
+  pool:
+    dx: 256
+    wrap: 7
+    rowHeight: 380
+    center: 960
+    width: 240        # a card (its placeholder text runs wider than the card itself)
+    over:
+      7: { scale: 0.88, dx: 225, wrap: 6, rowHeight: 331, y: -136 }
   picks.steps: { dx: 128, center: true }   # the pick/ban order, centred
+
+# Two rows of cards need the room: the prompt moves up, the pick/ban order down, and once the match is decided the
+# winner plate takes the order's place at the foot of the page.
+adjust:
+  - { if: "pool.length>7", target: prompt, y: -64 }
+  - { if: "pool.length>7", target: steps, y: 88 }
+  - { if: "pool.length>7", target: winner, y: 716 }
+  - { if: ["pool.length>7", "match.winner"], target: steps, hide: true }
 
 fx:
   dust: { amount: 0.6, clouds: 0.4 }

@@ -110,6 +110,10 @@ function render() {
   $("#feedB").value = sh.feeds.b ?? "";
   $("#delay").value = sh.streamDelayMs;
   $("#lockPitch").checked = !!sh.viewer?.lockPitch;
+  if (document.activeElement?.id !== "fov") $("#fov").value = sh.viewer?.fov ?? 70;
+  $("#fovValue").textContent = $("#fov").value;
+  if (document.activeElement?.id !== "camZ") $("#camZ").value = sh.viewer?.z ?? -0.55;
+  $("#camZValue").textContent = zText($("#camZ").value);
   for (const id of ["pitchUp", "pitchDown"]) if (document.activeElement?.id !== id) $("#" + id).value = sh.viewer?.[id] ?? 12;
   const hold = sh.viewer?.pitchHold;
   $("#holdState").textContent = hold && hold.until > Date.now() + clockOffset ? `showing the ${hold.dir} limit…` : "";
@@ -136,6 +140,8 @@ document.addEventListener("click", (e) => {
   if (t.id === "upSet") send("upNext", { a: $("#upA").value, b: $("#upB").value, text: $("#upText").value });
   if (t.id === "upClear") send("upNext", {});
   if (t.id === "copy") navigator.clipboard.writeText($("#obsUrl").value);
+  if (t.id === "fovReset") send("viewer", { fov: 70 });
+  if (t.id === "camZReset") send("viewer", { z: -0.55 });
   if (t.id === "holdUp" || t.id === "holdDown") send("viewer", { pitchHold: t.id === "holdUp" ? "up" : "down", holdMs: 5000 });
   if (t.id === "plAddBtn") { send("playlist", { op: "add", refs: $("#plAdd").value.split("\n") }); $("#plAdd").value = ""; }
   if (t.id === "plClear" && confirm("Remove every replay from the playlist?")) send("playlist", { op: "clear" });
@@ -145,6 +151,17 @@ document.addEventListener("click", (e) => {
     if (op === "up" || op === "down") send("playlist", { op: "move", id: t.dataset.id, to: i + (op === "up" ? -1 : 1) });
     else send("playlist", { op, id: t.dataset.id });
   }
+});
+// the camera sliders act while they are dragged (at most ten times a second), not only when they are let go
+function zText(v) { return Number(v) === 0 ? "at the head" : `${Math.abs(Number(v)).toFixed(2)} m ${Number(v) < 0 ? "back" : "forward"}`; }
+let camSent = 0, camLater;
+document.addEventListener("input", (e) => {
+  if (e.target.id !== "fov" && e.target.id !== "camZ") return;
+  $("#fovValue").textContent = $("#fov").value;
+  $("#camZValue").textContent = zText($("#camZ").value);
+  clearTimeout(camLater);
+  const wait = Math.max(0, 100 - (performance.now() - camSent));
+  camLater = setTimeout(() => { camSent = performance.now(); send("viewer", { fov: Number($("#fov").value), z: Number($("#camZ").value) }); }, wait);
 });
 document.addEventListener("change", (e) => {
   const el = e.target;
@@ -171,6 +188,8 @@ document.addEventListener("change", (e) => {
   if (el.id === "feedA" || el.id === "feedB") send("feeds", { feeds: { ...S.show.feeds, a: $("#feedA").value.trim(), b: $("#feedB").value.trim() } });
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
   if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
+  if (el.id === "fov") send("viewer", { fov: Number(el.value) });
+  if (el.id === "camZ") send("viewer", { z: Number(el.value) });
   // a changed limit is shown straight away: the cameras sit at it for a few seconds
   if (el.id === "pitchUp") send("viewer", { pitchUp: Number(el.value), pitchHold: "up", holdMs: 4000 });
   if (el.id === "pitchDown") send("viewer", { pitchDown: Number(el.value), pitchHold: "down", holdMs: 4000 });

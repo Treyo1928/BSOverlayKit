@@ -8,6 +8,8 @@ export type Side = "a" | "b";
 export interface PlayerData {
   name: string;
   avatar: string;
+  /** Their own saber colours ("#rrggbb"), where they chose any (BSCompStats, Teams page): their replay is drawn in them. */
+  sabers?: { left: string; right: string } | null;
   // live while the map is played (from TA), or the final score once entered
   score: number;
   acc: number | null;
@@ -234,6 +236,11 @@ export interface ShowState {
     pitchLimit?: number;
     /** showing a limit: every viewer's camera sits at the "up" or "down" limit until `until` (epoch ms); never saved */
     pitchHold?: { dir: "up" | "down"; until: number } | null;
+    /** the replay camera's field of view in degrees (60 to 120; ChroViewer's own default is 70) */
+    fov?: number;
+    /** how far the replay camera sits in front of the player's head, in metres along the track (negative = behind
+     *  it; ChroViewer's own default is -0.55). World space: it does not turn with where the player looks */
+    z?: number;
     renderScale: number; maxFps: number;
     /** the panel preview's replays: "program" = pictures of the on-air overlay's own (light), "live" = its own viewers */
     preview: "program" | "live";

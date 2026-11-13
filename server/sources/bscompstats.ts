@@ -34,7 +34,8 @@ interface PlannedMap {
     status?: { phase?: string | null; startedAt?: string | number | null; players?: { playerId: string; state: string; score?: number; accuracy?: number }[] } | null } | null;
 }
 interface Team { id: string; name: string; color: string; logo?: string | null;
-  players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null; replays?: string[] }[] }
+  players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null; replays?: string[];
+    sabers?: { left: string; right: string } | null }[] }
 /** `event: live` of the match events stream: every lineup player's numbers while a song plays. */
 interface LiveEvent {
   matchId: string; matchMapId: string; phase: "playing" | "over"; startedAt: number; at: number;
@@ -366,7 +367,7 @@ export class BscsSource implements DataSource {
       return ids.map((id) => {
         const p = team.players.find((x) => x.id === id);
         const run = runs.find((r) => r.playerId === id);
-        return { name: p?.name ?? "?", avatar: this.#abs(p?.avatar), score: run?.score ?? 0, acc: run?.accuracy ?? null, combo: 0, misses: 0, finished: !!run };
+        return { name: p?.name ?? "?", avatar: this.#abs(p?.avatar), sabers: p?.sabers ?? null, score: run?.score ?? 0, acc: run?.accuracy ?? null, combo: 0, misses: 0, finished: !!run };
       });
     };
     const side = (s: Side) => {

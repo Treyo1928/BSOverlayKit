@@ -66,6 +66,11 @@
       <div class="row"><div><label>Side A (<code>feed:a</code>)</label><input id="feedA" placeholder="https://…"></div>
         <div><label>Side B (<code>feed:b</code>)</label><input id="feedB" placeholder="https://…"></div></div>
       <div class="row"><div><label>Stream delay (ms) — scores and events wait this long</label><input id="delay" type="number" step="100"></div></div>
+      <div class="row"><div><label>Replay camera field of view: <b id="fovValue">70</b>°</label><input id="fov" type="range" min="60" max="120" step="1" style="width:100%"></div>
+        <button id="fovReset" style="flex:none;align-self:flex-end" title="Back to 70°, the viewer's own setting">70°</button></div>
+      <div class="row"><div><label>Replay camera forward / back (Z): <b id="camZValue">0.55 m back</b></label><input id="camZ" type="range" min="-2" max="1" step="0.05" style="width:100%"></div>
+        <button id="camZReset" style="flex:none;align-self:flex-end" title="Back to 0.55 m behind the head, the viewer's own setting">0.55 back</button></div>
+      <div class="hint">How wide every replay's first-person view is, and where the camera sits along the track: behind the player's head (left) or in front of it (right). Forward and back are the track's, so the camera does not swing when a player turns their head. A wider view shows more of the lanes and the sabers at the edges, and makes the notes look smaller and faster. Both change on stream as you drag.</div>
       <div class="row"><label style="display:flex;gap:6px;align-items:center;color:#eee;flex:none"><input type="checkbox" id="lockPitch"> Lock the replay camera's up/down look</label>
         </div>
       <div class="row">

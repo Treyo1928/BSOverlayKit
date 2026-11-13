@@ -44,6 +44,7 @@ sim:
   a: MSU Maroon
   b: MSU White
   players: 2                     # players per map: 1 = a 1v1, 2 = duos
+  # maps: 11                     # a finals pool: 11 maps, 6 picks and 4 bans, best of 7 (needs a restart)
   rosterA: [Erin, Trey, Mia, Will]
   rosterB: [Kaiden, Kadence, Alex, Wyatt]
 

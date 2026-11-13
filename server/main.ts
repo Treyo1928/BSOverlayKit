@@ -89,7 +89,7 @@ show.castersFrom ??= "panel";
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
-show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
 // one limit for both directions (older show.json files) becomes the two; a hold never outlives a restart
 if (show.viewer.pitchLimit !== undefined) { show.viewer.pitchUp = show.viewer.pitchDown = show.viewer.pitchLimit; delete show.viewer.pitchLimit; }
 show.viewer.pitchHold = null;
@@ -465,6 +465,8 @@ const actions: Record<string, (a: any) => unknown> = {
   viewer: (a) => {
     if (a.lockPitch !== undefined) show.viewer.lockPitch = !!a.lockPitch;
     const deg = (x: unknown) => Math.max(0, Math.min(90, Number(x) || 0));
+    if (a.z !== undefined) show.viewer.z = Math.max(-3, Math.min(3, Math.round((Number(a.z) || 0) * 100) / 100));
+    if (a.fov !== undefined) show.viewer.fov = Math.max(60, Math.min(120, Math.round(Number(a.fov)) || 70));
     if (a.pitchUp !== undefined) show.viewer.pitchUp = deg(a.pitchUp);
     if (a.pitchDown !== undefined) show.viewer.pitchDown = deg(a.pitchDown);
     if (a.pitchLimit !== undefined) show.viewer.pitchUp = show.viewer.pitchDown = deg(a.pitchLimit);   // older tools

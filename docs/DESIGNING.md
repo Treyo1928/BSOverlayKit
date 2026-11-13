@@ -123,7 +123,7 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `match.maps` (list) | one per map of the best-of, for "MAP 1 / MAP 2 / MAP 3" tabs: `number`, `label` ("MAP 2", or "TB" for the tiebreaker), `tiebreaker`, `state` (`played` `current` `upcoming` `unneeded`), `name`, `winner`, `winnerName` |
 | `match.winner`, `match.winnerName` | `a`/`b` and the name, once decided |
 | `match.playersPerMap`, `match.solo` | players per map (1 = 1v1, 2 = duos); `solo` is true in a 1v1, so one scene can hold both layouts with `show:match.solo` / `hide:match.solo` |
-| `a.players` / `b.players` (list) | who plays the current/next map for that side: `name`, `avatar` (picture URL, empty if they have none), and live `acc`, `score`, `combo`, `misses`, `finished`. Use `repeat:a.players`, or `a.players.1.name` for one of them |
+| `a.players` / `b.players` (list) | who plays the current/next map for that side: `name`, `avatar` (picture URL, empty if they have none), `sabers.left` / `sabers.right` (their own saber colours as `#rrggbb`, where they chose any; their video is drawn in them by itself), and live `acc`, `score`, `combo`, `misses`, `finished`. Use `repeat:a.players`, or `a.players.1.name` for one of them |
 | `a.roster` | everyone on the team (names) |
 | `a.…` / `b.…` | each side (the team; in a 1v1, the player). For teams the live numbers are the lineup together (average accuracy, total score and misses): `name`, `avatar` (image URL), `logoKind` and `logo` (the team's mark, see below), `initials`, `country`, `seed`, `points` (maps won), and live while playing: `acc`, `score`, `combo`, `maxCombo`, `misses`, `health` (0–1), `finished`, `leading`, `winner` |
 | `a.logoKind`, `a.logo` | the team's mark, set on BSCompStats' Teams page: `logoKind` is `star` (the default), `msu` (the MSU Esports shield) or `image` (an uploaded picture, whose address is `logo`). Draw all three in a group named `state:a.logoKind` with children `when:msu`, `when:image` (holding an image named `img:a.logo`; give it `preserveAspectRatio="xMidYMid meet"` so it is shown whole, not cropped) and `when:else` for the star. The up-next block has the same for its two names: `nextUp.aLogoKind`, `nextUp.aLogo`, `nextUp.bLogoKind`, `nextUp.bLogo` |
@@ -183,6 +183,15 @@ repeat:           # spacing of repeat: copies (otherwise a row with 20 px gaps)
   results: { dy: 104 }         # or downward
   # wrap: 4, rowHeight: 300    # grid: 4 per row
   # center: true               # the row stays centred on where you drew the first copy (3 or 5 map pips)
+  # wrap: 6, center: 960       # rows of at most 6, each centred on x = 960, as even as they can be with the longer
+  #                            # row last (11 copies = 5 over 6). width: 240 = one copy's width, if its placeholder
+  #                            # text runs wider than the copy itself
+  # scale: 0.88, y: -136       # smaller copies (around the first copy's top-left corner), moved up 136 px
+  # over: { 7: { scale: 0.88, wrap: 6 } }   # a list LONGER than 7 uses these values instead (a finals pool of 11)
+
+adjust:           # move or hide a layer while a condition holds (x, y in pixels; hide: true). Rules add up
+  - { if: "pool.length>7", target: prompt, y: -64 }
+  - { if: ["pool.length>7", "match.winner"], target: steps, hide: true }   # a list: all must hold
 
 tween: 250        # how long counting numbers take (ms), 0 = jump
 
@@ -255,8 +264,8 @@ Name a panel's shape **`glass`** and the background shows through it, blurred, l
   particles that happen to be behind the panel. That is on purpose: the blur is made once when the scene loads, so it
   costs nothing while on stream (a true live blur would be redone every frame, which OBS's browser can't afford on a
   PC that draws it on the CPU). For a plate on top of a video, use a plain fill with 90 % opacity instead.
-- Inside a `repeat:` group it works too (each copy lines up with the background behind it), except in a repeat with
-  `center: true`, whose copies move after they are made.
+- Inside a `repeat:` group it works too: each copy lines up with the background behind it, also after it moves
+  (a centred row that grows, a layer moved by an `adjust:` rule).
 - Strength, for all of a scene's glass, in its rules file: `glass: { blur: 14, brightness: 1.5, saturate: 1.35 }`
   (those are the defaults; blur in pixels). One shape can have its own blur: name it `glass:24`.
 

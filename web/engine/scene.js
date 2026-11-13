@@ -1,7 +1,7 @@
 // One scene = one SVG file + its rules. Split into two layers so video can sit between them:
 //   back  = top-level Inkscape layers named "back" (backgrounds), drawn UNDER the video feeds
 //   front = everything else, drawn OVER the video feeds
-import { collect, evalCond, layerName, parseTokens, resolve } from "/engine/bind.js";
+import { collect, evalCond, layerName, parseTokens, realignGlass, resolve } from "/engine/bind.js";
 import { play } from "/engine/anim.js";
 
 const isBack = (el) => /^back\b/i.test(layerName(el));
@@ -119,8 +119,42 @@ export class Scene {
   update(base) {
     const ctx = this.ctx(base);
     for (const b of [...this.b.bindings, ...this.f.bindings]) b.update(ctx);
+    this.adjust(ctx);
     if (this.active && this.prev) this.dataTriggers(this.prev, ctx);
     this.prev = ctx;
+  }
+
+  /**
+   * `adjust:` rules: move or hide a layer while a condition holds, e.g. the prompt moves up when the pool needs two
+   * rows.  - { if: "pool.length>7", target: prompt, y: -64 }   (if: may be a list, all must hold; x, y, hide: true)
+   * Several rules on one layer add up. The layer gets a group of its own for this, outside the one animations move.
+   */
+  adjust(ctx) {
+    const rules = this.rules.adjust;
+    if (!rules?.length) return;
+    const want = new Map();
+    for (const r of rules) {
+      if (!r?.target) continue;
+      const on = [].concat(r.if ?? []).every((c) => evalCond(ctx, String(c)));
+      for (const el of this.targets(r.target)) {
+        const w = want.get(el) ?? { x: 0, y: 0, hide: false };
+        if (on) { w.x += Number(r.x ?? 0); w.y += Number(r.y ?? 0); w.hide ||= !!r.hide; }
+        want.set(el, w);
+      }
+    }
+    for (const [el, w] of want) {
+      let g = el.__bsoAdjust;
+      if (!g) {
+        if (!w.x && !w.y && !w.hide) continue;
+        const inner = el.parentNode?.__bsoWrapper ? el.parentNode : el;   // keep an animation's group inside
+        g = el.__bsoAdjust = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        inner.parentNode.insertBefore(g, inner);
+        g.append(inner);
+      }
+      const t = `translate(${w.x} ${w.y})`;
+      if (g.getAttribute("transform") !== t) { g.setAttribute("transform", t); realignGlass(g); }
+      g.style.display = w.hide ? "none" : "";
+    }
   }
 
   /** `on:` keys like increase:a.misses, decrease:x, change:map.name, becomes:a.leading=true */

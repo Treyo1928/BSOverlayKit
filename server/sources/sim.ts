@@ -8,6 +8,7 @@ export interface SimOptions {
   tournament?: string; short?: string; round?: string; a?: string; b?: string;
   players?: number;                  // players per map: 1 = 1v1 (the default), 2 = duos, …
   rosterA?: string[]; rosterB?: string[];
+  maps?: number;                     // pool size (7 by default). 11 = a finals pool: 6 picks, 4 bans, best of 7
 }
 
 interface Live { score: number; acc: number; combo: number; maxCombo: number; misses: number; health: number; pos: number; skill: number; finished: boolean }
@@ -20,10 +21,17 @@ const avatar = (name: string) => {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 };
 
-const ORDER: { type: "pick" | "ban"; by: Side }[] = [
+const ORDER_7: { type: "pick" | "ban"; by: Side }[] = [
   { type: "ban", by: "a" }, { type: "ban", by: "b" }, { type: "pick", by: "a" }, { type: "pick", by: "b" },
   { type: "pick", by: "a" }, { type: "pick", by: "b" },
 ];
+// a bigger (finals) pool: 6 picks and 4 bans, the map left over is the tiebreaker
+const ORDER_11: typeof ORDER_7 = [
+  { type: "pick", by: "a" }, { type: "pick", by: "b" }, { type: "ban", by: "b" }, { type: "ban", by: "a" }, { type: "pick", by: "b" },
+  { type: "pick", by: "a" }, { type: "ban", by: "a" }, { type: "ban", by: "b" }, { type: "pick", by: "a" }, { type: "pick", by: "b" },
+];
+const TYPES = ["True Acc", "Tech Acc", "Standard Acc", "Midspeed", "Tech", "Low Tech", "Speed", "Speed Tech", "Extreme", "Burst", "Stamina"];
+
 
 export class SimSource implements DataSource {
   readonly name = "sim";
@@ -33,6 +41,10 @@ export class SimSource implements DataSource {
   #players = { a: { name: "Nova", country: "US", seed: 1 }, b: { name: "Kestrel", country: "DE", seed: 4 } };
   #names = { tournament: "Saber Showdown Invitational", short: "SSI", round: "Quarterfinal 1" };
   #perMap = 1;
+  #maps = 0;
+  #order = ORDER_7;
+  get #slots() { return this.#order.filter((s) => s.type === "pick").length + 1; }   // picked maps + the tiebreaker
+  get #need() { return Math.floor(this.#slots / 2) + 1; }
   #roster: Record<Side, string[]> = { a: ["Nova"], b: ["Kestrel"] };
   #lineup: Record<Side, string[]> = { a: ["Nova"], b: ["Kestrel"] };
   #phase: OverlayData["match"]["phase"] = "idle";
@@ -48,6 +60,7 @@ export class SimSource implements DataSource {
   constructor(private poolFile: URL, opts: SimOptions = {}) {
     if (opts.a) this.#players.a.name = opts.a;
     if (opts.b) this.#players.b.name = opts.b;
+    this.#maps = Math.round(opts.maps ?? 0);
     this.#perMap = Math.max(1, Math.min(4, Math.round(opts.players ?? 1)));
     const roster = (side: Side, given?: string[]) => {
       if (given?.length) return given;
@@ -62,7 +75,10 @@ export class SimSource implements DataSource {
   async start(emit: (d: OverlayData) => void, event: (e: EventMsg) => void) {
     this.#emit = emit;
     this.#event = event;
-    const raw = JSON.parse(await Deno.readTextFile(this.poolFile));
+    let raw = JSON.parse(await Deno.readTextFile(this.poolFile));
+    // maps: N with a shorter pool file: the file's maps again (with other types), so a big pool can be previewed
+    if (this.#maps > 0) raw = Array.from({ length: this.#maps }, (_, i) => i < raw.length ? raw[i] : { ...raw[i % raw.length], category: TYPES[i % TYPES.length] });
+    if (raw.length >= 11) this.#order = ORDER_11;
     this.#pool = raw.map((m: any, i: number) => ({
       hash: m.hash, name: m.name, artist: m.artist, mapper: m.mapper, difficulty: m.difficulty, category: m.category,
       cover: m.cover, bpm: Math.round(m.bpm), nps: Math.round(m.nps * 10) / 10, duration: Math.round(m.duration),
@@ -135,18 +151,18 @@ export class SimSource implements DataSource {
     if (this.#phase === "done") return;
     if (this.#phase === "idle") { this.#phase = "picks"; this.#event({ name: "matchStart" }); return this.#push(); }
     if (this.#phase === "picks") {
-      const step = ORDER[this.#picks.length];
+      const step = this.#order[this.#picks.length];
       if (!step) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); return this.#push(); }
       const used = new Set(this.#picks.map((p) => p.index));
       const free = this.#pool.map((m, i) => ({ m, i })).filter((x) => !x.m.tiebreaker && !used.has(x.i));
       const pick = free[Math.floor(Math.random() * free.length)];
       this.#picks.push({ ...step, index: pick.i });
       this.#event({ name: step.type === "pick" ? "mapPick" : "mapBan", item: pick.i, side: step.by });
-      if (this.#picks.length === ORDER.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); }
+      if (this.#picks.length === this.#order.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); }
       return this.#push();
     }
     if (this.#phase === "waiting" || this.#phase === "finished") {
-      if (pts.a >= 3 || pts.b >= 3) return;
+      if (pts.a >= this.#need || pts.b >= this.#need) return;
       const done = new Set(this.#played.map((p) => p.index));
       this.#current = this.#playOrder().find((i) => !done.has(i)) ?? null;
       if (this.#current === null) return;
@@ -191,9 +207,9 @@ export class SimSource implements DataSource {
     const winner: Side | null = a.score === b.score ? null : a.score > b.score ? "a" : "b";
     this.#played.push({ index: this.#current!, winner, a: { ...a }, b: { ...b } });
     const pts = this.#points();
-    this.#phase = pts.a >= 3 || pts.b >= 3 ? "done" : "finished";
+    this.#phase = pts.a >= this.#need || pts.b >= this.#need ? "done" : "finished";
     this.#event({ name: "mapEnd", side: winner ?? undefined });
-    if (this.#phase === "done") this.#event({ name: "matchEnd", side: pts.a >= 3 ? "a" : "b" });
+    if (this.#phase === "done") this.#event({ name: "matchEnd", side: pts.a >= this.#need ? "a" : "b" });
     this.#push();
   }
 
@@ -202,7 +218,7 @@ export class SimSource implements DataSource {
     const pts = this.#points();
     const P = this.#players;
     const name = (s: Side | null) => (s ? P[s].name : "");
-    const matchWinner: Side | null = pts.a >= 3 ? "a" : pts.b >= 3 ? "b" : null;
+    const matchWinner: Side | null = pts.a >= this.#need ? "a" : pts.b >= this.#need ? "b" : null;
     const playing = this.#phase === "playing" || this.#phase === "finished";
     const side = (s: Side) => {
       const l = this.#agg(s), o = this.#agg(s === "a" ? "b" : "a");
@@ -237,20 +253,20 @@ export class SimSource implements DataSource {
     const nextIdx = this.#current ?? order.find((i) => !this.#played.some((p) => p.index === i));
     const curMap = nextIdx !== undefined && nextIdx >= 0 && (this.#phase !== "picks" && this.#phase !== "idle") ? this.#pool[nextIdx] : null;
     const diff = playing ? this.#agg("a").acc - this.#agg("b").acc : 0;
-    const step = this.#phase === "picks" ? ORDER[this.#picks.length] : null;
+    const step = this.#phase === "picks" ? this.#order[this.#picks.length] : null;
     this.#emit({
       tournament: { name: this.#names.tournament, short: this.#names.short, round: this.#names.round },
       match: {
-        label: this.#names.round, bestOf: 5, need: 3, phase: this.#phase,
+        label: this.#names.round, bestOf: this.#slots, need: this.#need, phase: this.#phase,
         playersPerMap: this.#perMap, solo: this.#perMap === 1, load: this.#phase === "loading" ? "loading" : "",
         mapNumber: this.#played.length + (this.#phase === "finished" || this.#phase === "done" ? 0 : 1),
         winner: matchWinner, winnerName: name(matchWinner),
-        maps: Array.from({ length: 5 }, (_, i): MapSlot => {
+        maps: Array.from({ length: this.#slots }, (_, i): MapSlot => {
           const p = this.#played[i];
           const idx = p?.index ?? order.filter((x) => !this.#played.some((q) => q.index === x))[i - this.#played.length];
           const live = i === this.#played.length && (this.#phase === "loading" || this.#phase === "playing");
           return {
-            number: i + 1, label: i === 4 ? "TB" : `MAP ${i + 1}`, tiebreaker: i === 4,
+            number: i + 1, label: i === this.#slots - 1 ? "TB" : `MAP ${i + 1}`, tiebreaker: i === this.#slots - 1,
             state: p ? "played" : live ? "current" : matchWinner ? "unneeded" : "upcoming",
             name: idx !== undefined && idx >= 0 && this.#picks.length ? this.#pool[idx]?.name ?? "" : "",
             winner: p?.winner ?? null, winnerName: name(p?.winner ?? null),
@@ -270,8 +286,8 @@ export class SimSource implements DataSource {
       pool,
       picks: {
         next: step ? { ...step, verb: step.type === "ban" ? "banning" : "picking", byName: name(step.by) } : null,
-        done: this.#picks.length >= ORDER.length,
-        steps: ORDER.map((s, i) => ({ ...s, byName: name(s.by), done: i < this.#picks.length, current: this.#phase === "picks" && i === this.#picks.length })),
+        done: this.#picks.length >= this.#order.length,
+        steps: this.#order.map((s, i) => ({ ...s, byName: name(s.by), done: i < this.#picks.length, current: this.#phase === "picks" && i === this.#picks.length })),
       },
       results,
       last: results.at(-1) ?? null,
