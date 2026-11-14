@@ -20,13 +20,24 @@ function connect() {
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
     if (m.type === "state" && m.scenes) { S = m; render(); }
-    if (m.type === "log") $("#log").insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString()}  ${m.text}</div>`);
-    if (m.type === "ack" && !m.ok) alert(m.error);
+    if (m.type === "log") $("#log").insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString()}  ${esc(m.text)}</div>`);
+    if (m.type === "ack" && !m.ok) tell(m.error);
     if (m.type === "design") $("#log").insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString()}  design reloaded</div>`);
   };
 }
 connect();
+// who this is, when they signed in with a site account (the shared code has no name)
+fetch("/api/me").then((r) => r.json()).then((me) => {
+  $("#who").innerHTML = `${me.name ? `Signed in as <b>${esc(me.name)}</b>` : "Signed in with the code"} <button id="signOut" title="Sign out of the panel on this browser. The stream carries on">Sign out</button>`;
+}).catch(() => {});
 
+// What this browser's preview draws: the replays in the video boxes (on unless switched off), and their sound (off
+// unless switched on: a browser will not start sound on a page nobody has clicked in anyway).
+let pvPrefs = { replays: true, sound: false };
+try { pvPrefs = { ...pvPrefs, ...JSON.parse(localStorage.getItem("kit.preview") ?? "{}") }; } catch { /* keep the defaults */ }
+if (!pvPrefs.replays) pvPrefs.sound = false;
+// checkered = transparent on stream
+const previewUrl = () => `${S.overlayUrl}?debug&bg&mute${pvPrefs.sound ? "&listen" : pvPrefs.replays ? "&replays" : ""}`;
 let previewSet = false, upShown = "", airList = "";
 function render() {
   const sh = cur(), air = S.show;
@@ -53,6 +64,12 @@ function render() {
   $("#simCard").style.display = S.source.name === "sim" ? "" : "none";
   $("#bscsCard").style.display = S.source.name === "bscompstats" ? "" : "none";
   const bp = S.source.panel;
+  // which tournament: offered when the key works in more than one (the one followed is always in the list)
+  if (bp && document.activeElement?.id !== "bscsTournament") {
+    const list = bp.tournaments?.some((t) => t.slug === bp.tournament) ? bp.tournaments : [{ slug: bp.tournament, name: bp.tournament || "none set" }, ...(bp.tournaments ?? [])];
+    $("#bscsTournament").innerHTML = list.map((t) => `<option value="${esc(t.slug)}" ${t.slug === bp.tournament ? "selected" : ""}>${esc(t.name)}</option>`).join("");
+    $("#bscsTournamentRow").style.display = list.length > 1 ? "" : "none";
+  }
   if (bp && document.activeElement?.id !== "bscsMatch") {
     $("#bscsMatch").innerHTML = `<option value="">Newest unfinished match (automatic)</option>` + bp.matches.map((m) => `<option value="${esc(m.id)}" ${m.id === bp.following && !bp.auto ? "selected" : ""}>${esc(m.label)} (${esc(m.state.toLowerCase())})</option>`).join("");
   }
@@ -60,9 +77,12 @@ function render() {
   $("#simStatus").textContent = S.live ? `${S.live.match.phase} · ${S.live.a.name} ${S.live.a.points}–${S.live.b.points} ${S.live.b.name}${S.live.map ? ` · ${S.live.map.name} ${S.live.map.time}` : ""}` : "";
   if (!previewSet) {
     previewSet = true;
-    $("#pv").src = `${S.overlayUrl}?debug&bg&mute`;   // checkered = transparent on stream; video boxes dark, no sound
+    $("#pvReplays").checked = pvPrefs.replays; $("#pvSound").checked = pvPrefs.sound;
+    $("#pv").src = previewUrl();
     $("#open").href = `${S.overlayUrl}?bg&debug`;
-    $("#obsUrl").value = location.origin + S.overlayUrl;
+    // with its key: the page OBS runs is the one whose word on a replay's end is taken (a page without the key
+    // shows the same picture; that address is fine to hand to anyone)
+    $("#obsUrl").value = location.origin + S.overlayKeyUrl;
     const fit = () => {
       const scale = $(".preview").clientWidth / 1920;
       $("#pv").style.transform = `scale(${scale})`;
@@ -143,6 +163,22 @@ function render() {
   $("#quality").value = sh.viewer?.quality ?? "medium";
   $("#distortion").checked = sh.viewer?.distortion ?? true;
 }
+// "Are you sure?" and errors are drawn by this page: a browser stops showing its own confirm/alert boxes once
+// someone ticks "don't ask again", and then answers "no" by itself, which leaves the button behind it dead.
+function ask(question, yesLabel = "Yes", noLabel = "Cancel") {
+  return new Promise((resolve) => {
+    const d = document.createElement("dialog");
+    d.className = "ask";
+    d.innerHTML = `<p>${esc(question)}</p><div class="btns">${noLabel ? `<button value="">${esc(noLabel)}</button>` : ""}<button value="yes" class="${noLabel ? "danger" : ""}">${esc(yesLabel)}</button></div>`;
+    for (const b of d.querySelectorAll("button")) b.onclick = () => d.close(b.value);
+    d.onclick = (e) => e.target === d && d.close("");
+    d.onclose = () => { d.remove(); resolve(d.returnValue === "yes"); };
+    document.body.append(d);
+    d.showModal();
+    d.querySelector("button").focus();     // Enter must not carry out something that cannot be undone
+  });
+}
+const tell = (message) => ask(String(message || "That did not work."), "OK", "");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 $("#brbBtns").innerHTML = [1, 3, 5, 10, 15].map((n) => `<button data-brb="${n}">Back in ${n} min</button>`).join("");
@@ -162,7 +198,8 @@ document.addEventListener("click", (e) => {
   if (t.id === "camZReset") send("viewer", { z: -0.55 });
   if (t.id === "holdUp" || t.id === "holdDown") send("viewer", { pitchHold: t.id === "holdUp" ? "up" : "down", holdMs: 5000 });
   if (t.id === "plAddBtn") { send("playlist", { op: "add", refs: $("#plAdd").value.split("\n") }); $("#plAdd").value = ""; }
-  if (t.id === "plClear" && confirm("Remove every replay from the playlist?")) send("playlist", { op: "clear" });
+  if (t.id === "plClear") ask("Remove every replay from the playlist?", "Remove them all").then((yes) => yes && send("playlist", { op: "clear" }));
+  if (t.id === "signOut") fetch("/api/signout", { method: "POST" }).then(() => location.reload());
   const op = t.dataset.pl;
   if (op) {
     const items = S.playlist.items, i = items.findIndex((x) => x.id === t.dataset.id);
@@ -199,7 +236,11 @@ document.addEventListener("change", (e) => {
   const el = e.target;
   if (el.id === "auto") send("auto", { on: el.checked });
   if (el.id === "staging") {
-    if (!el.checked && S.stagedDiffers && !confirm("Turn staging off? The changes waiting in Next are thrown away.")) { el.checked = true; return; }
+    if (!el.checked && S.stagedDiffers) {
+      el.checked = true;                 // stays on until the answer is yes
+      ask("Turn staging off? The changes waiting in Next are thrown away.", "Turn staging off").then((yes) => yes && send("staging", { on: false }));
+      return;
+    }
     send("staging", { on: el.checked });
   }
   if (el.id === "speed") send("source", { control: "speed", value: Number(el.value) });
@@ -210,6 +251,13 @@ document.addEventListener("change", (e) => {
   }
   if (el.id === "brbTitle" || el.id === "brbMsg") send("brb", { brb: { title: $("#brbTitle").value, message: $("#brbMsg").value } });
   if (el.id === "bscsMatch") send("source", { control: "follow", matchId: el.value });
+  if (el.id === "bscsTournament") {
+    const to = el.selectedOptions[0]?.textContent ?? el.value, slug = el.value;
+    el.value = S.source.panel?.tournament ?? "";          // stays where it is until the answer is yes
+    el.blur();
+    ask(`Switch the overlay to ${to}?\n\nIt stops showing the current tournament and follows the newest unfinished match of ${to}. The stream changes straight away.`, `Switch to ${to}`)
+      .then((yes) => yes && send("source", { control: "tournament", slug }));
+  }
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
   if (el.id === "header") send("header", { header: el.value.trim() });
   if (el.id === "plMode") send("playlist", { op: "mode", mode: el.value });
@@ -220,8 +268,14 @@ document.addEventListener("change", (e) => {
   if (el.id === "feedA" || el.id === "feedB") send("feeds", { feeds: { ...S.show.feeds, a: $("#feedA").value.trim(), b: $("#feedB").value.trim() } });
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
   if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
-  // hear the stream's sound in this panel: the preview is loaded again as one that plays it (this browser only)
-  if (el.id === "listen") $("#pv").src = `${S.overlayUrl}?debug&bg&mute${el.checked ? "&listen" : ""}`;
+  // the preview's own switches: this browser only, remembered here; the preview is loaded again with them
+  if (el.id === "pvReplays" || el.id === "pvSound") {
+    if (el.id === "pvSound" && el.checked) $("#pvReplays").checked = true;      // sound comes from the replays
+    if (el.id === "pvReplays" && !el.checked) $("#pvSound").checked = false;
+    pvPrefs = { replays: $("#pvReplays").checked, sound: $("#pvSound").checked };
+    try { localStorage.setItem("kit.preview", JSON.stringify(pvPrefs)); } catch { /* private window: not remembered */ }
+    $("#pv").src = previewUrl();
+  }
   if (el.id === "fov") send("viewer", { fov: Number(el.value) });
   if (el.id === "camZ") send("viewer", { z: Number(el.value) });
   // a changed limit is shown straight away: the cameras sit at it for a few seconds

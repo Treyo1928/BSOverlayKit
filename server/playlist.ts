@@ -225,14 +225,20 @@ export class PlaylistControl {
   }
 
   /** An overlay page reports on its viewer for the current item. */
-  viewer(id: string, r: { ready?: boolean; duration?: number; ended?: boolean }) {
+  /**
+   * What an overlay page says about the replay it is playing. `trusted`: the page gave the overlay key (OBS).
+   * Any page may say its replay has loaded. A length is taken from any page only while none is known (a ScoreSaber
+   * or file replay has none until a viewer has opened it: without one the replay would never end); a known length
+   * is corrected, and a replay's end believed, only from a trusted page.
+   */
+  viewer(id: string, r: { ready?: boolean; duration?: number; ended?: boolean }, trusted = true) {
     const c = this.p.current;
     if (!c || c.id !== id) return;
     if (r.ready && !c.ready) { c.ready = true; this.changed(false); }
     const d = Number(r.duration);
-    if (d > 5 && d < 3600 && Math.abs(d - c.duration) > 0.05) { c.duration = d; this.changed(false); }
+    if ((trusted || !(c.duration > 0)) && d > 5 && d < 3600 && Math.abs(d - c.duration) > 0.05) { c.duration = d; this.changed(false); }
     const pos = position(this.p);
-    if (r.ended && pos !== null && c.pausedAt === null && pos > Math.max(5, c.duration * 0.8)) this.finished();
+    if (trusted && r.ended && pos !== null && c.pausedAt === null && pos > Math.max(5, c.duration * 0.8)) this.finished();
   }
 
   private finished() {

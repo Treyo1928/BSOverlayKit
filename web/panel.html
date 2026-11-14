@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Overlay panel</title>
 <link rel="stylesheet" href="/panel.css"></head>
 <body>
-<header><h1>Overlay panel</h1><span class="pill" id="conn">offline</span><span class="muted" id="src"></span><div class="spacer"></div>
+<header><h1>Overlay panel</h1><span class="pill" id="conn">offline</span><span class="muted" id="src"></span><div class="spacer"></div><span id="who"></span>
   <label class="stage-toggle" title="Like OBS's Studio Mode: set up the next scene and its texts, look at it, then put it on air in one step"><input type="checkbox" id="staging"> Staging: preview changes before they go on air</label></header>
 <div id="stageBar" style="display:none">
   <b>STAGING</b><span id="stageWhat"></span><span class="spacer"></span>
@@ -46,8 +46,9 @@
       <label class="check"><input type="checkbox" id="signOff"> Last match of the stream: add THANKS FOR WATCHING to the Final scene</label>
       <div class="hint">The event text in the Match scene's top bar. Empty = the round name from the match.</div></div>
     <div class="card" id="bscsCard" style="display:none"><h2>BSCompStats match</h2>
+      <div class="row" id="bscsTournamentRow" style="display:none"><div><label>Tournament</label><select id="bscsTournament"></select></div></div>
       <div class="row"><div><label>Follow</label><select id="bscsMatch"></select></div></div>
-      <div class="hint">The match the overlay shows. Pick it here when the next match starts.</div></div>
+      <div class="hint">The match the overlay shows. Pick it here when the next match starts. The tournament list is what the overlay's API key works in.</div></div>
     <div class="card staged-edit"><h2>Casters <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="castersFrom"> From Discord</label></h2>
       <div class="hint" id="castersHint"></div><div id="casters"></div></div>
     <div class="card staged-edit"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
@@ -61,11 +62,11 @@
       <div class="row"><div><label>Title</label><input id="brbTitle"></div><div><label>Message</label><input id="brbMsg"></div></div>
       <div class="btns" id="brbBtns"></div></div>
     <div class="card staged-edit"><h2>Ticker</h2><textarea id="ticker"></textarea><div class="hint">One line per item.</div></div>
-    <div class="card"><h2>Sound <span class="spacer"></span><label style="display:flex;gap:6px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;color:#eee"><input type="checkbox" id="listen"> Replays and sound in this preview</label></h2>
+    <div class="card"><h2>Sound</h2>
       <div class="row"><div><label>Replay music, everywhere: <b id="mixMusicValue">100</b>%</label><input id="mixMusic" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
       <div class="row"><div><label>Hitsounds: <b id="mixHitsValue">100</b>%</label><input id="mixHits" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
       <div id="mixScenes"></div>
-      <div class="hint">The music's level on a scene is the first slider times that scene's own (Getting Ready starts at 50 %: a breather before the song); the scene on air is marked. The same figures sound the same on every scene. Hitsounds have their own slider and do not follow the music's. 100 % is the replay as recorded; it cannot go louder. Sliders act as you drag; a scene change fades. The preview on this page shows the scene with the video boxes dark and makes no sound, so an open panel costs nothing. Tick "Replays and sound in this preview" to have it draw the replays and play their sound here (this browser only, and only while this page is open).</div></div>
+      <div class="hint">The music's level on a scene is the first slider times that scene's own (Getting Ready starts at 50 %: a breather before the song); the scene on air is marked. The same figures sound the same on every scene. Hitsounds have their own slider and do not follow the music's. 100 % is the replay as recorded; it cannot go louder. Sliders act as you drag; a scene change fades. To hear it on this page, tick Sound above the preview.</div></div>
     <div class="card"><h2>Video holes</h2>
       <div class="hint">Filled automatically: each player's live TA replay during a match, the replay playlist in the big box. Only type a link here to override one.</div>
       <div class="row"><div><label>Side A (<code>feed:a</code>)</label><input id="feedA" placeholder="https://…"></div>
@@ -95,16 +96,16 @@
       <div class="hint">ChroViewer's quality setting is the floor's reflection: High draws it at 2048 px and smoothed, Medium at 1024, Low at 512 with fewer things reflected; Mirror off skips the reflection pass, which saves the most. A change redraws each replay's scene (a short blink). Distortion is the heat-haze effect some maps use on walls and notes.</div></div>
   </div>
   <div class="col" style="position:sticky;top:16px">
-    <div class="card" id="airCard"><h2><span class="tag air">On air</span> <span id="airName"></span> <span class="spacer"></span><a id="open" target="_blank">open</a></h2>
+    <div class="card" id="airCard"><h2><span class="tag air">On air</span> <span id="airName"></span> <span class="spacer"></span><label class="pvopt" title="Draw the replays in this preview's video boxes (small, 30 fps). Off: the boxes stay dark and the preview costs this PC nothing"><input type="checkbox" id="pvReplays"> Replays</label><label class="pvopt" title="Play the stream's sound on this page. Needs Replays"><input type="checkbox" id="pvSound"> Sound</label><a id="open" target="_blank">open</a></h2>
       <div class="preview"><iframe id="pv"></iframe></div>
-      <div class="hint">The scene OBS shows, with the video boxes dark (see Sound to draw the replays here). Everything is run by the overlay server: this page can be closed or minimised and the stream carries on.</div></div>
+      <div class="hint">The scene OBS shows. Replays and Sound are this browser's own and are remembered here; they change nothing on stream. Everything is run by the overlay server: this page can be closed or minimised and the stream carries on.</div></div>
     <div class="card" id="nextCard" style="display:none"><h2><span class="tag next">Next</span> <span id="nextName"></span> <span class="spacer"></span><span id="nextState" class="muted"></span></h2>
       <div class="preview"><iframe id="pvNext"></iframe></div>
       <div class="btns"><button class="take" id="take2">Go live ▶</button><button id="discard2">Discard</button></div>
       <div class="hint">What goes on air when you press Go live: the staged scene with the staged texts, on the live match data. Its video boxes are dark.</div></div>
     <div id="errors"></div>
     <div class="card"><h2>OBS</h2>
-      <p>Browser Source, 1920 × 1080, tick <b>Control audio via OBS</b>, URL:</p>
+      <p>Browser Source, 1920 × 1080, tick <b>Control audio via OBS</b>, URL (with OBS's own key in it: keep this one to yourself):</p>
       <div class="row"><input id="obsUrl" readonly><button class="shrink" id="copy">Copy</button></div></div>
     <div class="card"><h2>Events</h2><div class="log" id="log"></div></div>
   </div>

@@ -7,11 +7,13 @@ const debug = params.has("debug");
 // &staged: a preview of the STAGED state (the panel's "Next" side): the staged scene and texts instead of what is on
 // air. It never runs replay viewers: its video holes stay dark.
 const staged = params.has("staged");
-// &mute: the panel's preview. It shows the scene with the video boxes dark and plays nothing: the replays are drawn by
-// whoever shows the stream (OBS), and a panel that is open on someone's desk, mostly minimised, should cost nothing.
+// &mute: the panel's preview. On its own it shows the scene with the video boxes dark and plays nothing, so it costs
+// nothing. The panel adds what its operator has switched on (both are that browser's own choice, kept there):
+//   &replays  draw the replays in the boxes (small, 30 fps), without sound
+//   &listen   draw them and play their sound
 const mute = params.has("mute") || staged;
-// &listen (the panel's "Replays and sound here"): the preview draws the replays itself (small) and plays their sound
 const listen = params.has("listen") && !staged;
+const replays = (params.has("replays") || listen) && !staged;
 // &viewer=http://127.0.0.1:4000: this page takes its replay viewers from there instead of the address the overlay
 // server gives (a stream PC that runs its own viewer, each box then in a browser process of its own)
 const viewerOverride = (() => { try { return params.get("viewer") ? new URL(params.get("viewer")).origin : ""; } catch { return ""; } })();
@@ -152,7 +154,7 @@ if (params.has("fps") || params.has("report")) {
     if (now - t0 >= 1000) {
       pageFps = Math.round(n * 1000 / (now - t0));
       const shown = pool.filter((f) => f.shown && f.fps != null).map((f) => f.fps);
-            el.textContent = `${pageFps} fps` + (shown.length ? ` · replays ${shown.join(" ")}` : "")
+      el.textContent = `${pageFps} fps` + (shown.length ? ` · replays ${shown.join(" ")}` : "")
         + (liveFreezes ? ` · live freezes ${liveFreezes}` : "");
       n = 0; t0 = now;
     }
@@ -211,8 +213,8 @@ const FADE_MS = 1200;
 // and rarely: every seek is an audible skip. A muted copy (the panel preview) can be kept tighter.
 const DRIFT = { heard: { s: 1.5, wait: 10_000 }, muted: { s: 0.4, wait: 2000 } };
 if (debug) window.msuFeeds = {};                       // hole id -> its viewer, for checking sync from the console
-// A preview without &listen runs no viewers: its video boxes are dark panels (`blanks`), so the layout still reads.
-const noViewers = mute && !listen;
+// A preview without &replays runs no viewers: its video boxes are dark panels (`blanks`), so the layout still reads.
+const noViewers = mute && !replays;
 const blanks = {};                                     // hole id -> its dark panel
 
 /**
@@ -575,7 +577,7 @@ window.addEventListener("message", (e) => {
     const d = e.data;
     if (!f.alive) {                                    // the page is up: give it its replay
       f.alive = true;
-      f.sent = -1; f.camSent = ""; f.picSent = -1;
+      f.sent = -1; f.camSent = "";
       if (f.want) { f.loadSentAt = 0; sendLoad(f); }
     }
     if (Number(d.token) !== f.token) return;           // still showing an earlier replay
@@ -682,7 +684,6 @@ function connect() {
   // no key is needed to watch; a page that has the key (optional, for OBS) is the one whose replay reports count
   const q = new URLSearchParams();
   if (key) q.set("key", key);
-  if (mute) q.set("role", "preview");
   if (staged) q.set("staged", "1");
   ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?${q}`);
   ws.onopen = () => document.body.classList.remove("offline");

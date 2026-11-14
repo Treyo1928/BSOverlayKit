@@ -2,9 +2,25 @@
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Overlay panel · sign in</title>
 <link rel="stylesheet" href="/panel.css"></head>
 <body class="login">
-  <form id="f" class="card"><h1>Overlay panel</h1>
-    <input id="code" autocomplete="off" autofocus placeholder="Login code"><button>Sign in</button><p id="err" class="err"></p></form>
+  <div class="card"><h1>Overlay panel</h1>
+    <a id="site" class="sitebtn" href="/auth/start" hidden></a>
+    <p id="or" class="muted" hidden style="text-align:center;margin:0">or with the login code</p>
+    <form id="f" style="display:grid;gap:10px"><input id="code" autocomplete="off" autofocus placeholder="Login code"><button>Sign in</button></form>
+    <p id="err" class="err"></p></div>
 <script>
+  // why a sign-in with the site did not finish (it says nothing about who was refused, or why, beyond this)
+  const WHY = {
+    again: "That sign-in did not finish. Try once more.",
+    refused: "BSCompStats did not sign you in here. Ask whoever runs this overlay to let you in.",
+    unavailable: "Signing in with BSCompStats is not set up for this address. Use the login code.",
+  };
+  const why = new URLSearchParams(location.search).get("signin");
+  if (why) { err.textContent = WHY[why] ?? ""; history.replaceState(null, "", "/"); }
+  fetch("/api/me").then((r) => r.json()).then((me) => {
+    if (!me.site) return;
+    site.textContent = `Sign in with BSCompStats (${me.site})`;
+    site.hidden = or.hidden = false;
+  }).catch(() => {});
   f.onsubmit = async (e) => {
     e.preventDefault();
     const r = await fetch("/api/login", { method: "POST", body: JSON.stringify({ code: code.value.trim() }) });

@@ -14,7 +14,9 @@ services:
       BSCS_TOURNAMENT: ${BSCS_TOURNAMENT:-}
       BSCS_KEY: ${BSCS_KEY:-}
       CHROVIEWER_URL: ${CHROVIEWER_URL:?set CHROVIEWER_URL in .env}
-      TRUST_PROXY: '1'
+      # how many proxies stand between a visitor and this container (see DEPLOY.md, 3)
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      PUBLIC_URL: ${PUBLIC_URL:-}
     volumes:
       - overlay-data:/app/data
     ports:

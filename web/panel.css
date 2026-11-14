@@ -66,3 +66,19 @@ body.staging .scenes button.air::after { content: " · on air"; color: #ff9d94; 
 body.staging .card.staged-edit { border-left: 3px solid #e0a020; }
 label.check { display: flex; gap: 8px; align-items: center; margin: 10px 0 2px; color: #eee; }
 .pl-team { display: inline-block; padding: 0 6px; border-radius: 4px; background: #5a1626; color: #f2ead8; font-size: 11px; letter-spacing: .3px; vertical-align: 1px; }
+
+/* the preview's own switches (this browser only) */
+.pvopt { display: flex; gap: 5px; align-items: center; margin: 0 10px 0 0; font-weight: 400; text-transform: none; letter-spacing: 0; color: #eee; cursor: pointer; }
+
+/* sign in with a site account; who is signed in */
+.sitebtn { display: block; text-align: center; padding: 10px 12px; border-radius: 8px; background: #5b3fd0; color: #fff; font-weight: 600; text-decoration: none; }
+.sitebtn:hover { filter: brightness(1.12); }
+.sitebtn[hidden] { display: none; }
+#who { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #bbb; }
+#who button { height: 26px; padding: 0 8px; font-size: 12px; }
+/* "are you sure?" and errors, drawn by the page (a browser may silently stop showing its own boxes) */
+dialog.ask { border: 1px solid var(--line); border-radius: 12px; background: #1b1b26; color: #eee; padding: 18px; width: min(26rem, 92vw); }
+dialog.ask::backdrop { background: #000b; }
+dialog.ask p { margin: 0 0 16px; white-space: pre-line; }
+dialog.ask .btns { display: flex; justify-content: flex-end; gap: 8px; }
+dialog.ask button.danger { border-color: #c0392b; color: #ffb4a8; }

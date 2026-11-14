@@ -245,8 +245,6 @@ export interface ShowState {
      *  it; ChroViewer's own default is -0.55). World space: it does not turn with where the player looks */
     z?: number;
     renderScale: number; maxFps: number;
-    /** the panel preview's replays: "program" = pictures of the on-air overlay's own (light), "live" = its own viewers */
-    preview: "program" | "live";
     /** the resolution replays are drawn for, whatever screen or window the overlay is on: an output height (720,
      *  1080, 1440, 2160) or 0 = the screen's own pixels (a 4K screen at 150 % then draws 1.5× the 1080p pixels) */
     output: number;

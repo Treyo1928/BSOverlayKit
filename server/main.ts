@@ -96,7 +96,8 @@ show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? "")
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
 show.mix = { music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, ...(show.mix?.scenes ?? {}) } };
 for (const k of Object.keys(show.mix.scenes)) show.mix.scenes[k] = Math.min(1, show.mix.scenes[k]);
-show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, preview: "program", output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
+delete (show.viewer as Record<string, unknown>).preview;   // the picture relay it chose between is gone
 // one limit for both directions (older show.json files) becomes the two; a hold never outlives a restart
 if (show.viewer.pitchLimit !== undefined) { show.viewer.pitchUp = show.viewer.pitchDown = show.viewer.pitchLimit; delete show.viewer.pitchLimit; }
 show.viewer.pitchHold = null;
@@ -157,12 +158,19 @@ let liveData: OverlayData | null = null;
 const playlist = new PlaylistControl(show.playlist, (structural) => { dirty = true; if (structural) saveShow(); });
 if (show.replays?.length && !show.playlist.items.length) playlist.set(show.replays);
 delete show.replays;
-// the match being followed is remembered across restarts (the panel picks it)
-const follow = await readJson("bscompstats.json", { match: config.bscompstats.match ?? "" });
+// The match being followed, and the tournament when the panel chose another, are remembered across restarts. The
+// tournament in the configuration (BSCS_TOURNAMENT) is where it starts; if that setting is changed later, the new
+// setting wins over what the panel had chosen under the old one.
+const configured = config.bscompstats.tournament ?? "";
+const follow = await readJson<{ match: string; tournament?: string; configured?: string }>("bscompstats.json", { match: config.bscompstats.match ?? "" });
+const keptTournament = follow.tournament && follow.configured === configured ? follow.tournament : configured;
 const source: DataSource & { panel?: () => unknown } = config.source === "bscompstats"
-  ? new BscsSource({ ...config.bscompstats, match: follow.match }, Deno.env.get("BSCS_KEY") ?? (secrets as any).bscsKey ?? "",
-      (id) => Deno.writeTextFile(dataAt("bscompstats.json"), JSON.stringify({ match: id })))
+  ? new BscsSource({ ...config.bscompstats, tournament: keptTournament, match: keptTournament === (follow.tournament ?? configured) ? follow.match : "" },
+      Deno.env.get("BSCS_KEY") ?? (secrets as any).bscsKey ?? "",
+      (match, tournament) => Deno.writeTextFile(dataAt("bscompstats.json"), JSON.stringify({ match, tournament, configured })))
   : new SimSource(at("data/pool.json"), config.sim);
+/** The site this overlay follows, when it follows one: also where people may sign in from. */
+const site = source instanceof BscsSource ? source : null;
 await source.start(
   (d) => {
     liveData = d;
@@ -531,35 +539,61 @@ async function file(dir: string, rel: string) {
   } catch { return new Response("not found", { status: 404 }); }
 }
 // ------------------------------------------------------------------ signing in to the panel
-// One shared code (HOST_CODE). The cookie is a keyed hash of it, so nothing is kept in memory: a restart signs
-// nobody out, and changing the code signs everybody out. The overlay page itself needs no sign-in.
+// Two ways in. The overlay page itself needs neither.
+//  - The shared code (HOST_CODE). Its cookie is a keyed hash of the code, so nothing is kept in memory: a restart
+//    signs nobody out, and changing the code signs everybody out. Scripts and the caster bot send the code itself.
+//  - A BSCompStats account, when the overlay follows the site with a key that names this overlay as its sign-in
+//    address. The site sends an approved person back with a code (sources/bscompstats.ts); their cookie names them
+//    and is signed here. Whether they may still be here is asked of the site's list on every request, so someone
+//    taken off it is out within the minute.
 async function sha256(text: string) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 const SESSION = await sha256(`${secrets.sessionKey}|${secrets.hostCode}`);
 const same = (a: string, b: string) => { let d = a.length ^ b.length; for (let i = 0; i < a.length && i < b.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; };
-const authed = (req: Request) => {
-  const sid = /(?:^|;\s*)kit_sid=(\w+)/.exec(req.headers.get("cookie") ?? "")?.[1];
-  return (!!sid && same(sid, SESSION)) || same(req.headers.get("authorization") ?? "", `Bearer ${secrets.hostCode}`);
+const hmacKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(secrets.sessionKey), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+const sign = async (text: string) => [...new Uint8Array(await crypto.subtle.sign("HMAC", hmacKey, new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+const cookieOf = (req: Request, name: string) => new RegExp(`(?:^|;\\s*)${name}=([\\w.-]+)`).exec(req.headers.get("cookie") ?? "")?.[1] ?? "";
+const SESSION_S = 2592000;   // 30 days
+const secure = (req: Request) => (req.headers.get("x-forwarded-proto") === "https" ? "; Secure" : "");
+const cookie = (req: Request) => `kit_sid=${SESSION}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_S}${secure(req)}`;
+const personCookie = async (req: Request, id: string) => {
+  const body = `${id}.${Date.now() + SESSION_S * 1000}`;
+  return `kit_user=${body}.${await sign(body)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_S}${secure(req)}`;
 };
-const cookie = (req: Request) =>
-  `kit_sid=${SESSION}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${req.headers.get("x-forwarded-proto") === "https" ? "; Secure" : ""}`;
+const dropCookie = (req: Request, name: string) => `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure(req)}`;
+
+type Who = { via: "code" } | { via: "site"; id: string; name: string };
+/** Who is asking, or null: the shared code (cookie or header), or a person the site still lets in. */
+async function who(req: Request): Promise<Who | null> {
+  const sid = cookieOf(req, "kit_sid");
+  if ((sid && same(sid, SESSION)) || same(req.headers.get("authorization") ?? "", `Bearer ${secrets.hostCode}`)) return { via: "code" };
+  const [id, until, mac] = cookieOf(req, "kit_user").split(".");
+  if (!site || !id || !until || !mac || !same(mac, await sign(`${id}.${until}`)) || !(Number(until) > Date.now())) return null;
+  const person = site.person(id);
+  return person ? { via: "site", id, name: person.name ?? "Someone" } : null;
+}
 // Wrong codes are counted per address: 8 in ten minutes and that address waits out the rest of the ten minutes.
-// Behind a proxy the address is the first one in X-Forwarded-For (trusted only when TRUST_PROXY=1).
-const TRUST_PROXY = Deno.env.get("TRUST_PROXY") === "1";
+// TRUST_PROXY says how many proxies stand in front (1: the usual one). Each proxy adds the address it saw to the
+// END of X-Forwarded-For, so the visitor is that many from the end; whatever a visitor wrote in the header
+// themselves sits further left and is never read. Without TRUST_PROXY the header is ignored.
+const PROXIES = Math.max(0, Math.floor(Number(Deno.env.get("TRUST_PROXY") ?? 0)) || 0);
+const TRUST_PROXY = PROXIES > 0;
 const failures = new Map<string, { n: number; since: number }>();
 const WINDOW_MS = 600_000, MAX_FAILURES = 8;
-const addressOf = (req: Request, info: Deno.ServeHandlerInfo) =>
-  (TRUST_PROXY && req.headers.get("x-forwarded-for")?.split(",")[0].trim()) || (info.remoteAddr as Deno.NetAddr).hostname;
+const addressOf = (req: Request, info: Deno.ServeHandlerInfo) => {
+  const hops = TRUST_PROXY ? (req.headers.get("x-forwarded-for") ?? "").split(",").map((h) => h.trim()).filter(Boolean) : [];
+  return hops[hops.length - PROXIES] ?? hops[0] ?? (info.remoteAddr as Deno.NetAddr).hostname;
+};
 function blocked(addr: string) {
   const f = failures.get(addr);
   if (f && Date.now() - f.since > WINDOW_MS) failures.delete(addr);
   return (failures.get(addr)?.n ?? 0) >= MAX_FAILURES;
 }
 /** For what needs a sign-in: null when signed in, else the refusal. A wrong code in the header counts like a wrong code typed in. */
-function refuse(req: Request, info: Deno.ServeHandlerInfo): Response | null {
-  if (authed(req)) return null;
+async function refuse(req: Request, info: Deno.ServeHandlerInfo): Promise<Response | null> {
+  if (await who(req)) return null;
   const addr = addressOf(req, info);
   if (blocked(addr)) return Response.json({ ok: false, error: "Too many wrong codes. Try again in ten minutes." }, { status: 429 });
   if (req.headers.has("authorization")) failed(addr);
@@ -569,8 +603,35 @@ function failed(addr: string) {
   const f = failures.get(addr) ?? { n: 0, since: Date.now() };
   f.n++;
   failures.set(addr, f);
-  if (failures.size > 5000) for (const [k, v] of failures) if (Date.now() - v.since > WINDOW_MS) failures.delete(k);
+  if (failures.size > 5000) {
+    for (const [k, v] of failures) if (Date.now() - v.since > WINDOW_MS) failures.delete(k);
+    // still full (a flood of addresses): the oldest go, so this list has a ceiling whatever is thrown at it
+    for (const k of failures.keys()) { if (failures.size <= 4000) break; failures.delete(k); }
+  }
 }
+// A page on another site must not drive the panel with a signed-in visitor's cookie (a sibling address under the
+// same domain is "same site" to the browser, so SameSite does not stop it). Browsers name the page a request comes
+// from in Origin; scripts and the caster bot send none.
+const PUBLIC_HOST = (() => { try { return new URL(Deno.env.get("PUBLIC_URL") ?? "").host; } catch { return ""; } })();
+function foreign(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  let host = "";
+  try { host = new URL(origin).host; } catch { return true; }
+  const returnTo = site?.signIn()?.returnTo;
+  const mine = [req.headers.get("host"), TRUST_PROXY ? req.headers.get("x-forwarded-host") : null, PUBLIC_HOST, returnTo ? new URL(returnTo).host : ""];
+  return !mine.includes(host);
+}
+const elsewhere = () => Response.json({ ok: false, error: "This request came from another site." }, { status: 403 });
+/** This overlay's own address as the visitor's browser has it ("https://overlay.example"). */
+const originOf = (req: Request) => {
+  const proto = (TRUST_PROXY && req.headers.get("x-forwarded-proto")) || new URL(req.url).protocol.replace(":", "");
+  return `${proto}://${(TRUST_PROXY && req.headers.get("x-forwarded-host")) || req.headers.get("host") || new URL(req.url).host}`;
+};
+/** "Sign in with BSCompStats" is offered when the key names the address this visitor is on as its sign-in address. */
+const siteSignIn = (req: Request) => { const s = site?.signIn(); return s && s.returnTo === originOf(req) ? s : null; };
+const perAddress = new Map<string, number>();    // keyless overlay pages open, by address
+const MAX_PER_ADDRESS = 40;
 
 Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
   const url = new URL(req.url), p = url.pathname;
@@ -579,30 +640,42 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
   if (p === "/healthz") return new Response("ok");
   if (p === "/ws/overlay" && upgrade) {
     // Watching needs no key: OBS, or anyone with the address. It only ever receives. What a page SENDS is believed
-    // by degree: any page may say its replay has loaded (that only starts a replay a moment sooner); a replay's
-    // real length and its end are taken only from a page that gave the key.
-    if (overlays.size >= MAX_OVERLAYS) return new Response("too many viewers", { status: 503 });
+    // by degree (see PlaylistControl.viewer): any page may say its replay has loaded, or give a length where none
+    // is known; a known length is corrected and a replay's end believed only from a page that gave the key.
+    // The ceilings are for pages nobody vouches for: OBS (the key) and a signed-in panel's previews always get in,
+    // so a crowd of strangers cannot take the stream's own place.
+    const keyed = same(url.searchParams.get("key") ?? "", secrets.overlayKey);
+    const known = keyed || !!(await who(req));
+    const addr = addressOf(req, info);
+    if (!known && (overlays.size >= MAX_OVERLAYS || (perAddress.get(addr) ?? 0) >= MAX_PER_ADDRESS)) return new Response("too many viewers", { status: 503 });
     const { socket, response } = Deno.upgradeWebSocket(req);
-    const isStaged = url.searchParams.has("staged");
-    if (same(url.searchParams.get("key") ?? "", secrets.overlayKey)) trusted.add(socket);
+    // what is staged is not on stream yet: only the panel's own preview (signed in) or a keyed page is shown it
+    const isStaged = known && url.searchParams.has("staged");
+    if (keyed) trusted.add(socket);
+    let counted = false;
     socket.onopen = () => {
       overlays.add(socket);
+      if (!known) { counted = true; perAddress.set(addr, (perAddress.get(addr) ?? 0) + 1); }
       if (isStaged) stagedViews.add(socket);
       send(socket, stateMsg(isStaged));
     };
-    socket.onclose = () => { overlays.delete(socket); stagedViews.delete(socket); };
+    socket.onclose = () => {
+      overlays.delete(socket); stagedViews.delete(socket);
+      if (counted) { counted = false; const n = (perAddress.get(addr) ?? 1) - 1; n > 0 ? perAddress.set(addr, n) : perAddress.delete(addr); }
+    };
     socket.onmessage = (e) => {
       if (typeof e.data !== "string" || e.data.length > 2000) return;
       try {
         const m = JSON.parse(e.data);
         if (m?.type !== "viewer" || typeof m.id !== "string") return;
-        playlist.viewer(m.id, trusted.has(socket) ? m : { ready: m.ready === true });
+        playlist.viewer(m.id, { ready: m.ready === true, duration: m.duration, ended: m.ended === true }, trusted.has(socket));
       } catch { /* ignore */ }
     };
     return response;
   }
   if (p === "/ws/panel" && upgrade) {
-    const no = refuse(req, info);
+    if (foreign(req)) return elsewhere();
+    const no = await refuse(req, info);
     if (no) return no;
     const { socket, response } = Deno.upgradeWebSocket(req);
     socket.onopen = async () => { panels.add(socket); send(socket, await panelMsg()); };
@@ -615,19 +688,59 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     return response;
   }
   if (p === "/api/action" && req.method === "POST") {
-    const no = refuse(req, info);
+    if (foreign(req)) return elsewhere();
+    const no = await refuse(req, info);
     if (no) return no;
     try { await runAction(await req.json()); return Response.json({ ok: true }); }
     catch (e) { return Response.json({ ok: false, error: (e as Error).message }, { status: 400 }); }
   }
   if (p === "/api/state") {
-    const no = refuse(req, info);
+    const no = await refuse(req, info);
     if (no) return no;
     return Response.json({ data: liveData, show: { ...show, staged: undefined }, staging: !!show.staging, staged: show.staged ?? null,
       stagedDiffers: stagedDiffers(), source: source.status() });
   }
   if (p === "/api/design") return Response.json({ version: designVersion, scenes: await designList(), fonts: await fontList() });
+  // who is signed in here (the panel shows it), and what the login page can offer
+  if (p === "/api/me") {
+    const me = await who(req);
+    return Response.json({ signedIn: !!me, name: me?.via === "site" ? me.name : "", via: me?.via ?? "", site: siteSignIn(req) ? new URL(site!.signIn()!.site).host : "" });
+  }
+  if (p === "/api/signout" && req.method === "POST") {
+    if (foreign(req)) return elsewhere();
+    const out = new Headers();
+    out.append("set-cookie", dropCookie(req, "kit_sid")); out.append("set-cookie", dropCookie(req, "kit_user"));
+    return new Response(JSON.stringify({ ok: true }), { headers: out });
+  }
+  // Sign in with a BSCompStats account: off to the site with something only this browser holds (`state`), and back
+  // with a code. A code that comes back to a browser which did not start the sign-in is not used.
+  if (p === "/auth/start") {
+    const s = siteSignIn(req);
+    if (!s) return new Response(null, { status: 303, headers: { location: "/?signin=unavailable" } });
+    const state = rand(24);
+    const to = `${s.site}/connect/authorize?${new URLSearchParams({ key: s.keyId, redirect_uri: `${s.returnTo}/auth/callback`, state })}`;
+    return new Response(null, { status: 303, headers: { location: to, "set-cookie": `kit_state=${state}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600${secure(req)}` } });
+  }
+  if (p === "/auth/callback") {
+    const back = (why: string, extra: string[] = []) => {
+      const h = new Headers({ location: why ? `/?signin=${why}` : "/" });
+      h.append("set-cookie", `kit_state=; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=0${secure(req)}`);
+      for (const c of extra) h.append("set-cookie", c);
+      return new Response(null, { status: 303, headers: h });
+    };
+    const state = cookieOf(req, "kit_state"), code = url.searchParams.get("code") ?? "";
+    if (!site || !state || !same(state, url.searchParams.get("state") ?? "") || !code) return back("again");
+    try {
+      const person = await site.exchange(code);
+      broadcastPanels({ type: "log", text: `${person.name ?? "Someone"} signed in with BSCompStats` });
+      return back("", [await personCookie(req, person.id)]);
+    } catch (e) {
+      console.log(`sign-in with BSCompStats refused: ${(e as Error).message}`);
+      return back("refused");
+    }
+  }
   if (p === "/api/login" && req.method === "POST") {
+    if (foreign(req)) return elsewhere();
     const addr = addressOf(req, info);
     if (blocked(addr)) return Response.json({ ok: false, error: "Too many wrong codes. Try again in ten minutes." }, { status: 429 });
     const { code } = await req.json().catch(() => ({}));
@@ -641,7 +754,7 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     return new Response(null, { status: 303, headers: { location: "/", "set-cookie": cookie(req) } });
   }
 
-  if (p === "/" || p === "/panel") return file("web", authed(req) ? "panel.html" : "login.html");
+  if (p === "/" || p === "/panel") return file("web", (await who(req)) ? "panel.html" : "login.html");
   if (p === "/overlay") return file("web", "overlay.html");
   if (p.startsWith("/design/")) return file("design", decodeURIComponent(p.slice(8)));
   if (p.startsWith("/covers/")) return file("data/covers", decodeURIComponent(p.slice(8)));

@@ -13,7 +13,7 @@ COPY overlay.yaml overlay.starter.yaml ./
 # the simulator's sample pool (source: sim); the rest of data/ is runtime state, on a volume
 COPY data/pool.json ./pool.sample.json
 
-ENV HOST=0.0.0.0 PORT=8095 KIT_DATA=data TRUST_PROXY=1
+ENV HOST=0.0.0.0 PORT=8095 KIT_DATA=data
 EXPOSE 8095
 VOLUME /app/data
 # state (sign-in secrets, the show as set in the panel, cached covers) lives in /app/data: keep it on a volume

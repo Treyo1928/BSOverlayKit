@@ -17,6 +17,8 @@
 import { TUG_FULL, blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side, type TeamInfo } from "../model.ts";
 
 export interface BscsOptions { url?: string; tournament?: string; match?: string }
+/** Someone who may sign in to this overlay with their account on the site. */
+export interface SitePerson { id: string; name: string | null; image: string | null }
 
 // The parts of the BSCompStats match JSON this source reads.
 interface PoolMap {
@@ -87,7 +89,15 @@ export class BscsSource implements DataSource {
   #platformIds = new Map<string, string>();
   #teams: TeamInfo[] = [];                // every team entered in the tournament   // playerId -> TA platform id, as seen in live events
 
-  constructor(opts: BscsOptions, key: string, private onFollow: (matchId: string) => void = () => {}) {
+  // signing in with a site account (see signIn below): this key's id and sign-in address, and who is let in
+  #keyId = "";
+  #signInUrl = "";
+  #people = new Map<string, SitePerson>();
+  #tournaments: { slug: string; name: string }[] = [];
+  #accessTimer?: ReturnType<typeof setInterval>;
+
+  /** `onFollow`: the match picked in the panel ("" = automatic) and the tournament, to be remembered over a restart. */
+  constructor(opts: BscsOptions, key: string, private onFollow: (matchId: string, tournament: string) => void = () => {}) {
     this.#url = (opts.url ?? "http://127.0.0.1:3100").replace(/\/+$/, "");
     this.#tournament = opts.tournament ?? "";
     this.#matchId = opts.match ?? "";
@@ -100,16 +110,56 @@ export class BscsSource implements DataSource {
     this.#event = event;
     if (live) this.#live = live;
     if (!this.#key) this.#status = "no API key: set BSCS_KEY or bscsKey in data/secrets.json";
-    await this.#refreshLists();
+    await Promise.all([this.#refreshLists(), this.#refreshAccess()]);
     this.#timer = setInterval(() => this.#refreshLists(), 5_000);
+    this.#accessTimer = setInterval(() => this.#refreshAccess(), 30_000);
     if (this.#matchId) this.#follow(this.#matchId);
     this.#push();
   }
-  async stop() { clearInterval(this.#timer); this.#abort?.abort(); }
+  async stop() { clearInterval(this.#timer); clearInterval(this.#accessTimer); this.#abort?.abort(); }
   status() { return `BSCompStats · ${this.#status}`; }
 
   /** The panel: which matches exist, and which one is followed. */
-  panel() { return { following: this.#matchId, auto: this.#auto, matches: this.#matches }; }
+  panel() { return { following: this.#matchId, auto: this.#auto, matches: this.#matches, tournament: this.#tournament, tournaments: this.#tournaments }; }
+
+  // ---------------------------------------------------------------- signing in with a site account
+  // The site sends a visitor back to this overlay with a code; this overlay trades the code for who they are, with
+  // its key. Only someone the key's owner approved gets a code at all, and the list is read again every 30 s, so
+  // a person taken off it is out of the panel within the minute.
+  /** What the login page needs to offer "Sign in with BSCompStats", or null when the key is not set up for it. */
+  signIn(): { site: string; keyId: string; returnTo: string } | null {
+    return this.#keyId && this.#signInUrl ? { site: this.#url, keyId: this.#keyId, returnTo: this.#signInUrl } : null;
+  }
+  /** The person a sign-in code names. Throws with the site's own words when the code is not accepted. */
+  async exchange(code: string): Promise<SitePerson> {
+    const r = await fetch(`${this.#url}/api/v1/connect/token`, {
+      method: "POST", headers: { authorization: `Bearer ${this.#key}`, "content-type": "application/json" }, body: JSON.stringify({ code }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok || !body?.user?.id) throw new Error(body?.error ?? `the site answered ${r.status}`);
+    this.#people.set(body.user.id, body.user);
+    return body.user;
+  }
+  /** Whether this person may (still) use the panel; and their name as the site has it now. */
+  person(id: string): SitePerson | null { return this.#people.get(id) ?? null; }
+
+  async #refreshAccess() {
+    if (!this.#key) return;
+    try {
+      const me = await this.#api("/me");
+      this.#keyId = me.key?.id ?? "";
+      this.#signInUrl = String(me.key?.signInUrl ?? "").replace(/\/+$/, "");
+      // a site from before sign-in and tournament lists existed answers 404 to these: then there is neither
+      const [people, list] = await Promise.all([
+        this.#signInUrl ? this.#api("/connect/people") : { people: [] },
+        this.#api("/tournaments").catch(() => ({ tournaments: [] })),
+      ]);
+      this.#people = new Map((people.people ?? []).map((u: SitePerson) => [u.id, u]));
+      this.#tournaments = (list.tournaments ?? []).map((t: { slug: string; name: string }) => ({ slug: t.slug, name: t.name }));
+    } catch {
+      // The site did not answer: keep what was last known. Nobody is signed out, or let in, by an outage.
+    }
+  }
 
   control(action: string, args: Record<string, unknown>) {
     if (action === "follow") {
@@ -117,7 +167,21 @@ export class BscsSource implements DataSource {
       this.#auto = !id;
       if (id) this.#follow(id);
       else this.#refreshLists();
-      this.onFollow(id);
+      this.onFollow(id, this.#tournament);
+    }
+    if (action === "tournament") {
+      const slug = String(args.slug ?? "").trim().split("/").pop() ?? "";   // a tournament's address name, or a link to it
+      if (!slug || slug === this.#tournament) return;
+      // another tournament: nothing of the old one stays on screen, and its newest unfinished match is followed
+      this.#tournament = slug;
+      this.#auto = true;
+      this.#matches = [];
+      this.#teams = [];
+      this.#bracket = null;
+      this.#status = "not connected";
+      this.#follow("");
+      this.onFollow("", slug);
+      this.#refreshLists();
     }
   }
 
@@ -130,8 +194,10 @@ export class BscsSource implements DataSource {
 
   async #refreshLists() {
     if (!this.#key || !this.#tournament) return;
+    const asked = this.#tournament;
     try {
-      const t = await this.#api(`/tournaments/${encodeURIComponent(this.#tournament)}`);
+      const t = await this.#api(`/tournaments/${encodeURIComponent(asked)}`);
+      if (asked !== this.#tournament) return;                 // the panel switched tournament while this was on its way
       this.#teams = (t.teams ?? []).map((team: Team) => this.#teamInfo(team));
       this.#matches = (t.matches ?? []).map((m: any) => ({ id: m.id, label: `${m.name || `${m.teamA?.name} vs ${m.teamB?.name}`}`, state: m.state }));
       // nothing picked in the panel: follow the newest match that isn't finished
@@ -151,7 +217,7 @@ export class BscsSource implements DataSource {
       }
       this.#push();
     } catch (e) {
-      this.#status = `tournament: ${(e as Error).message}`;
+      if (asked === this.#tournament) this.#status = `tournament: ${(e as Error).message}`;
     }
   }
 
@@ -189,7 +255,7 @@ export class BscsSource implements DataSource {
             this.#status = "followed match no longer exists, following the newest";
             this.#auto = true;
             this.#matchId = "";
-            this.onFollow("");
+            this.onFollow("", this.#tournament);
             this.#refreshLists();
             return;
           }
