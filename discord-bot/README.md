@@ -16,10 +16,9 @@ that sound packets are arriving from someone, and that is all "talking" means he
 3. **Invite it to the server.** **OAuth2** → **URL Generator**: scope **bot**; bot permissions **View Channels**
    and **Connect** (nothing else). Open the link it makes, pick the server, **Authorize**. (You need "Manage Server"
    there, or ask an admin to open the link.)
-4. **Give the overlay the token.**
-   - On the server (docker compose): put `DISCORD_TOKEN=<the token>` in the overlay's `.env`, then
-     `docker compose up -d`.
-   - On your own PC with `start.sh`: `cp .env.example .env` in this folder and set `DISCORD_TOKEN` there.
+4. **Give the bot the token.** In this folder: `cp .env.example .env`, and set `DISCORD_TOKEN` in `.env`. Then
+   start it: on the server `docker compose up -d` in the overlay folder; on your own PC, `start.sh`. (On the server
+   `OVERLAY_URL` and `OVERLAY_CODE` in the file are not used: compose fills them in.)
 
 That is all. In the overlay panel, the **Casters** card now says the bot is connected and lists the voice channels
 it can see: **pick the casting channel there**. Until you do, the bot follows the first voice channel with "cast"

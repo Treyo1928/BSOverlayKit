@@ -26,15 +26,16 @@ services:
     cpus: 1.0
 
   # The caster bot: whoever is in the Discord voice channel is on the Casters scene (discord-bot/README.md). With no
-  # DISCORD_TOKEN in .env it starts, says so and waits: nothing else is affected.
+  # token it starts, says so and waits: nothing else is affected. Its settings (DISCORD_TOKEN, and optionally
+  # CASTER_CHANNEL_ID, IGNORE_USER_IDS) are in discord-bot/.env: copy discord-bot/.env.example.
   casters:
     build: ./discord-bot
     restart: unless-stopped
     depends_on: [overlay]
-    environment:
-      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
-      CASTER_CHANNEL_ID: ${CASTER_CHANNEL_ID:-}
-      IGNORE_USER_IDS: ${IGNORE_USER_IDS:-}
+    env_file:
+      - path: ./discord-bot/.env
+        required: false
+    environment:        # these two always win over the file: in compose the overlay is next door
       OVERLAY_URL: http://overlay:8095
       OVERLAY_CODE: ${HOST_CODE:?set HOST_CODE in .env}
     mem_limit: 256m
