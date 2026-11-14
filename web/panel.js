@@ -26,6 +26,18 @@ function connect() {
   };
 }
 connect();
+// What is wrong with the designs, in red: the server's word (a rules file, overlay.yaml) and the preview's own (a
+// scene file the browser cannot read as SVG shows its message inside the small preview, where it is easy to miss).
+let previewError = "";
+function showErrors() {
+  const all = [...(S?.errors ?? []), ...(previewError ? previewError.split("\n") : [])].filter((e, i, a) => e && a.indexOf(e) === i);
+  $("#errors").innerHTML = all.length ? `<div class="errors">${all.map(esc).join("\n")}</div>` : "";
+}
+setInterval(() => {
+  let now = "";
+  try { now = $("#pv").contentDocument?.querySelector("#debug")?.textContent ?? ""; } catch { /* the preview is loading */ }
+  if (now !== previewError) { previewError = now; showErrors(); }
+}, 1000);
 // who this is, when they signed in with a site account (the shared code has no name)
 fetch("/api/me").then((r) => r.json()).then((me) => {
   $("#who").innerHTML = `${me.name ? `Signed in as <b>${esc(me.name)}</b>` : "Signed in with the code"} <button id="signOut" title="Sign out of the panel on this browser. The stream carries on">Sign out</button>`;
@@ -108,7 +120,7 @@ function render() {
   const names = new Set([S.live?.a?.name, S.live?.b?.name, ...[...(br?.rounds ?? []), ...(br?.losers ?? [])].flatMap((r) => r.matches.flatMap((m) => [m.a, m.b]))].filter((n) => n && n !== "TBD"));
   const opts = [...names].map((n) => `<option value="${esc(n)}">`).join("");
   if ($("#teamNames").innerHTML !== opts) $("#teamNames").innerHTML = opts;
-  $("#errors").innerHTML = S.errors.length ? `<div class="errors">${S.errors.map(esc).join("\n")}</div>` : "";
+  showErrors();
   if (editing()) return;
   $("#speed").value = /(\d+)× speed/.exec(S.source.status)?.[1] ?? 4;
   const fromDiscord = sh.castersFrom === "discord";
