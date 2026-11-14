@@ -26,12 +26,33 @@ if (params.has("bg")) document.body.classList.add("preview-bg");
 // ---------------------------------------------------------------- the whiteboard (drawn in the panel)
 const boardEl = document.querySelector("#board");
 const whiteboard = makeBoard(boardEl.querySelector("canvas"));
+let boardBox = { x: 40, y: 420, width: 1140, height: 600 }, boardOpen = false;
 function showBoard(m) {
-  const b = m.box ?? { x: 50, y: 575, width: 890, height: 470 }, c = boardEl.querySelector("canvas");
-  Object.assign(boardEl.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.width}px`, height: `${b.height}px` });
-  if (c.width !== b.width || c.height !== b.height) { c.width = b.width; c.height = b.height; }
+  boardBox = m.box ?? boardBox;
+  const c = boardEl.querySelector("canvas"), changed = boardOpen !== !!m.open;
+  if (c.width !== boardBox.width || c.height !== boardBox.height) { c.width = boardBox.width; c.height = boardBox.height; }
   whiteboard.set(m.strokes);
-  boardEl.classList.toggle("open", !!m.open);
+  boardOpen = !!m.open;
+  // a scene may lay itself out differently while the board is up (show:whiteboard.open): draw it again, then put
+  // the board where that layout wants it
+  if (changed && state) { try { apply(state); } catch (err) { showError(`render: ${err.message}`); } }
+  placeBoard();
+  boardEl.classList.toggle("open", boardOpen);
+}
+/**
+ * Where the board sits: in the rectangle the scene on stream sets aside for it (a shape named #whiteboard that is
+ * showing), else where overlay.yaml puts it. The board keeps its own shape (a drawing must not be stretched from one
+ * scene to the next): it is fitted inside the rectangle, centred.
+ */
+function placeBoard() {
+  let r = { left: boardBox.x, top: boardBox.y, width: boardBox.width, height: boardBox.height };
+  const own = active && [...document.querySelectorAll("#front svg.scene-svg.active *")]
+    .find((e) => /(^|\s)#whiteboard(\s|$)/.test(e.getAttribute("inkscape:label") ?? "") && shownInScene(e));
+  if (own) {
+    const b = own.getBoundingClientRect(), k = Math.min(b.width / boardBox.width, b.height / boardBox.height);
+    r = { width: boardBox.width * k, height: boardBox.height * k, left: b.left + (b.width - boardBox.width * k) / 2, top: b.top + (b.height - boardBox.height * k) / 2 };
+  }
+  Object.assign(boardEl.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
 }
 
 let scenes = {}, active = null, state = null, designVersion = null, loading = null;
@@ -115,6 +136,8 @@ function ctxFrom(st) {
     ...d,
     replay: replayCtx(st.replay),
     caster: show.casters ?? [],
+    // the whiteboard is up: a scene can make room for it with show:whiteboard.open / hide:whiteboard.open
+    whiteboard: { open: boardOpen },
     header: show.header || d.tournament?.round || "",
     // the Casters scene's "up next" block, typed in the panel: hidden until something is set
     nextUp: (() => {
@@ -152,6 +175,7 @@ function switchTo(id, fresh) {
   scenes[id].enter();
   scenes[id].startLoops();
   if (was !== id && state) assignViewers();
+  placeBoard();
 }
 
 // &fps on the URL: the frame rate in the corner: this page's, then each replay on screen (frames each viewer draws)

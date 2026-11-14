@@ -11,7 +11,7 @@ enter:
   - { target: nowplaying, play: slideUp, delay: 450 }
 
 on:
-  # the replay playlist: the card over the video between songs, and the card under it about the one playing
+  # the replay playlist: the card over the video between songs, and the one about the replay that is playing
   becomes:replay.switching:
     - { target: replay-card, keyframes: [ { opacity: 0 }, { opacity: 1 } ], duration: 450, easing: ease-out }
     - { target: replay-card-content, play: slideRight, delay: 150 }
@@ -19,6 +19,14 @@ on:
     - { target: replay-card, to: { opacity: 0 }, duration: 650, easing: ease-in }
   change:replay.song:
     - { target: nowplaying, play: slideUp }
+  # the whiteboard comes up or goes away: the scene rearranges itself, so bring the pieces in again
+  change:whiteboard.open:
+    - { target: frame, play: fadeIn, duration: 500 }
+    - { target: nowplaying, play: slideUp, delay: 150 }
+    - { target: caster-1, play: popIn }
+    - { target: caster-2, play: popIn, delay: 80 }
+    - { target: caster-3, play: popIn, delay: 160 }
+    - { target: caster-4, play: popIn, delay: 240 }
   becomes:nextUp.set:            # "up next" was set in the panel
     - { target: upnext, play: slideUp }
   change:caster.length:          # someone joined or left the voice channel

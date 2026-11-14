@@ -33,12 +33,13 @@
     <clipPath id="av4_2"><circle cx="760" cy="400" r="118"/></clipPath>
     <clipPath id="av4_3"><circle cx="1160" cy="400" r="118"/></clipPath>
     <clipPath id="av4_4"><circle cx="1560" cy="400" r="118"/></clipPath>
-    <!-- the replay box and its "now playing" card: Intermission's, drawn smaller (see the "screen" and "nowplaying" layers) -->
+    <!-- the replay box and what goes with it: Intermission's shapes, in Intermission's own coordinates (the box is drawn scaled) -->
     <linearGradient id="frameGrad" gradientUnits="userSpaceOnUse" x1="0" y1="163" x2="0" y2="915"><stop offset="0" stop-color="#5e0c23"/><stop offset=".85" stop-color="#000"/></linearGradient>
     <clipPath id="upCover"><rect x="700" y="379" width="320" height="320" rx="14"/></clipPath>
     <clipPath id="upAvatar"><circle cx="1101" cy="690" r="30"/></clipPath>
     <clipPath id="holeRound"><rect x="595" y="171" width="1234" height="737" rx="16"/></clipPath>
     <clipPath id="npCover"><rect x="66" y="668" width="128" height="128" rx="10"/></clipPath>
+    <clipPath id="npWide"><rect x="626" y="918.5" width="96" height="96" rx="9"/></clipPath>
     <filter id="coverBlur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="28"/></filter>
   </defs>
   <g inkscape:groupmode="layer" inkscape:label="back">
@@ -46,10 +47,15 @@
     <rect inkscape:label="fx:dust" x="0" y="0" width="1920" height="1080" fill="none"/>
   </g>
 
-  <!-- A replay from the playlist plays here the whole time the casters are on (it has its own level in the panel's
-       mixer). The box is Intermission's, scaled: move or resize it with the transform on this group. -->
+  <!-- A replay from the playlist plays the whole time the casters are on (it has its own level in the panel's mixer).
+       Two arrangements of the scene, and the whiteboard decides which is shown:
+         hide:whiteboard.open   the board is away: a big replay, the casters in a column beside it
+         show:whiteboard.open   the board is up: it takes the left (the rectangle named #whiteboard), the replay
+                                is small at the top right, the casters sit in a row along the top
+       The replay box is Intermission's, scaled: move or resize one with the transform on its group. -->
   <g inkscape:groupmode="layer" inkscape:label="screen">
-    <g transform="translate(560.87 26.67) scale(0.72123)">
+    <g inkscape:label="hide:whiteboard.open">
+    <g transform="translate(-17.18 -57.37) scale(1.03728)">
     <rect inkscape:label="feed:main" x="595" y="171" width="1234" height="737" rx="16"/>
     <!-- between songs: covers the video while the next replay loads (show: replay.switching, animated in the rules) -->
     <g inkscape:label="replay-card show:replay.switching" clip-path="url(#holeRound)">
@@ -78,10 +84,64 @@
     </g>
     <path inkscape:label="frame" d="M611,167 H1813 A20,20 0 0 1 1833,187 V892 A20,20 0 0 1 1813,912 H611 A20,20 0 0 1 591,892 V187 A20,20 0 0 1 611,167 Z" fill="none" stroke="url(#frameGrad)" stroke-width="8"/>
     </g>
+    </g>
+    <g inkscape:label="show:whiteboard.open" style="display:none">
+    <g transform="translate(901.77 58.54) scale(0.53485)">
+    <rect inkscape:label="feed:main" x="595" y="171" width="1234" height="737" rx="16"/>
+    <!-- between songs: covers the video while the next replay loads (show: replay.switching, animated in the rules) -->
+    <g inkscape:label="replay-card show:replay.switching" clip-path="url(#holeRound)">
+      <rect x="595" y="171" width="1234" height="737" fill="#12020a"/>
+      <image inkscape:label="img:replay.cover" x="595" y="171" width="1234" height="737" preserveAspectRatio="xMidYMid slice" filter="url(#coverBlur)" opacity=".5"/>
+      <rect x="595" y="171" width="1234" height="737" fill="url(#dots)" opacity=".3"/>
+      <g inkscape:label="replay-card-content">
+        <rect x="700" y="379" width="320" height="320" rx="14" fill="#12020a"/>
+        <image inkscape:label="img:replay.cover" x="700" y="379" width="320" height="320" preserveAspectRatio="xMidYMid slice" clip-path="url(#upCover)"/>
+        <rect x="700" y="379" width="320" height="320" rx="14" fill="none" stroke="url(#cream)" stroke-width="3"/>
+        <text x="1066" y="430" style="font-family:Geom Graphic;fill:url(#cream);font-size:24px;letter-spacing:8px" filter="url(#textShadow)">UP NEXT</text>
+        <text inkscape:label="{replay.song | upper} fit:700" x="1064" y="498" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:54px" filter="url(#textShadow)">SONG NAME</text>
+        <text inkscape:label="{replay.byline} fit:700" x="1066" y="544" style="font-family:Geom Graphic;fill:url(#cream);font-size:26px" filter="url(#textShadow)">Artist · mapped by Mapper</text>
+        <text inkscape:label="{replay.diffline} fit:700" x="1066" y="586" style="font-family:Geom Graphic;fill:url(#cream);font-size:24px;opacity:.85" filter="url(#textShadow)">Expert+ · ★ 7.69</text>
+        <rect x="1066" y="616" width="420" height="2" fill="url(#cream)" opacity=".45"/>
+        <text x="1066" y="652" style="font-family:Geom Graphic;fill:url(#cream);font-size:18px;letter-spacing:6px;opacity:.8">PLAYED BY</text>
+        <g inkscape:label="show:replay.playerAvatar">
+          <circle cx="1101" cy="690" r="32" fill="url(#cream)"/>
+          <image inkscape:label="img:replay.playerAvatar" x="1071" y="660" width="60" height="60" clip-path="url(#upAvatar)"/>
+          <text inkscape:label="{replay.player | upper} fit:600" x="1148" y="704" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:40px" filter="url(#textShadow)">PLAYER</text>
+        </g>
+        <g inkscape:label="hide:replay.playerAvatar">
+          <text inkscape:label="{replay.player | upper} fit:680" x="1064" y="704" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-width:1.1;stroke-linejoin:miter;paint-order:stroke;font-size:40px" filter="url(#textShadow)">PLAYER</text>
+        </g>
+      </g>
+    </g>
+    <path inkscape:label="frame" d="M611,167 H1813 A20,20 0 0 1 1833,187 V892 A20,20 0 0 1 1813,912 H611 A20,20 0 0 1 591,892 V187 A20,20 0 0 1 611,167 Z" fill="none" stroke="url(#frameGrad)" stroke-width="8"/>
+    </g>
+      <!-- where the whiteboard goes while it is shown on this scene (it keeps its own shape and is centred in here) -->
+      <rect inkscape:label="#whiteboard" x="40" y="420" width="1140" height="600" fill="none"/>
+    </g>
   </g>
-  <!-- the replay that is playing: Intermission's card, under the box on the right -->
+  <!-- the replay that is playing: a strip the width of the big box; Intermission's card under the small one -->
   <g inkscape:groupmode="layer" inkscape:label="nowplaying show:replay.loaded">
-    <g transform="translate(1200.80 -36.00) scale(1.2)">
+    <g inkscape:label="hide:whiteboard.open">
+    <g>
+      <path inkscape:label="glass" d="M614,902.4732576985413 H1880 L1866,1030.4732576985411 H600 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <rect x="626" y="918.4732576985413" width="96" height="96" rx="9" fill="#12020a"/>
+      <image inkscape:label="img:replay.cover" x="626" y="918.4732576985413" width="96" height="96" preserveAspectRatio="xMidYMid slice" clip-path="url(#npWide)"/>
+      <rect x="626" y="918.4732576985413" width="96" height="96" rx="9" fill="none" stroke="url(#cream)" stroke-width="2"/>
+      <text x="740" y="932.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:14px;letter-spacing:5px;opacity:.8">NOW PLAYING</text>
+      <text inkscape:label="{replay.song | upper} fit:625" x="738" y="968.4732576985413" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-linejoin:miter;paint-order:stroke;stroke-width:1.1;font-size:30px" filter="url(#textShadow)">SONG NAME</text>
+      <text inkscape:label="{replay.byline} fit:625" x="740" y="994.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:19px" filter="url(#textShadow)">Artist · mapped by Mapper</text>
+      <text inkscape:label="{replay.diffline} fit:625" x="740" y="1016.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:16px;opacity:.8" filter="url(#textShadow)">Expert+ · ★ 7.69</text>
+      <rect x="1394" y="922.4732576985413" width="1.5" height="88" fill="url(#cream)" opacity=".4"/>
+      <text x="1416" y="932.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:14px;letter-spacing:5px;opacity:.8">PLAYED BY</text>
+      <text inkscape:label="{replay.player | upper} fit:286" x="1414" y="972.4732576985413" style="font-family:Shader;fill:url(#cream);stroke:url(#cream);stroke-linejoin:miter;paint-order:stroke;stroke-width:1.1;font-size:30px" filter="url(#textShadow)">PLAYER</text>
+      <text inkscape:label="{replay.acc | acc}" x="1850" y="972.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:30px;text-anchor:end" filter="url(#textShadow)">97.79%</text>
+      <text inkscape:label="show:replay.fc" x="1850" y="932.4732576985413" style="font-family:Geom Graphic;fill:url(#cream);font-size:14px;letter-spacing:4px;text-anchor:end;opacity:.8">FULL COMBO</text>
+      <rect x="1416" y="1002.4732576985411" width="434" height="4" rx="2" fill="#12020a"/>
+      <rect inkscape:label="bar:replay.progress" x="1416" y="1002.4732576985411" width="434" height="4" rx="2" fill="url(#cream)"/>
+    </g>
+    </g>
+    <g inkscape:label="show:whiteboard.open" style="display:none">
+    <g transform="translate(1164.37 -191.73) scale(1.2644)">
     <text x="50" y="636" style="font-family:Geom Graphic;fill:url(#cream);font-size:20px;letter-spacing:6px" filter="url(#textShadow)">NOW PLAYING</text>
     <path inkscape:label="glass" d="M60,648 H566 L550,904 H44 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
     <rect x="66" y="668" width="128" height="128" rx="10" fill="#12020a"/>
@@ -99,6 +159,7 @@
     <rect x="52" y="895" width="496" height="4" rx="2" fill="#12020a"/>
     <rect inkscape:label="bar:replay.progress" x="52" y="895" width="496" height="4" rx="2" fill="url(#cream)"/>
     </g>
+    </g>
   </g>
 
   <g inkscape:groupmode="layer" inkscape:label="brand">
@@ -106,141 +167,276 @@
   </g>
 
   <g inkscape:groupmode="layer" inkscape:label="casters">
-    <g inkscape:label="state:caster.length">
-      <g inkscape:label="when:1" style="display:none">
-        <g transform="translate(-138.60 71.00) scale(0.66)"><g inkscape:label="caster-1">
-          <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="196" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="960" cy="400" r="180" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.1.avatar"><path transform="translate(892.5 320.8) scale(0.29194)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av1_1)"><image inkscape:label="img:caster.1.avatar" x="780" y="220" width="360" height="360"/></g>
-          <circle cx="960" cy="400" r="186" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="188" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="960" cy="400" r="194" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M710,626 H1210 L1194,692 H694 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.1.name | upper} fit:460" x="952" y="672" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.1.handle} fit:480" x="960" y="726" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
+    <g inkscape:label="hide:whiteboard.open">
+      <g inkscape:label="state:caster.length">
+        <g inkscape:label="when:1" style="display:none">
+          <g transform="translate(-276.00 180.00) scale(0.6)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="196" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="960" cy="400" r="180" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(892.5 320.8) scale(0.29194)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av1_1)"><image inkscape:label="img:caster.1.avatar" x="780" y="220" width="360" height="360"/></g>
+            <circle cx="960" cy="400" r="186" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="188" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="960" cy="400" r="194" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M710,626 H1210 L1194,692 H694 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:460" x="952" y="672" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:480" x="960" y="726" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:2">
+          <g transform="translate(-52.00 110.00) scale(0.55)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="640" cy="400" r="160" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(580.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av2_1)"><image inkscape:label="img:caster.1.avatar" x="480" y="240" width="320" height="320"/></g>
+            <circle cx="640" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="640" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M390,606 H890 L874,672 H374 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:460" x="632" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:480" x="640" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-404.00 470.00) scale(0.55)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1280" cy="400" r="160" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(1220.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av2_2)"><image inkscape:label="img:caster.2.avatar" x="1120" y="240" width="320" height="320"/></g>
+            <circle cx="1280" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1280" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1030,606 H1530 L1514,672 H1014 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:460" x="1272" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:480" x="1280" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:3" style="display:none">
+          <g transform="translate(60.00 90.00) scale(0.5)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="480" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(427.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_1)"><image inkscape:label="img:caster.1.avatar" x="340" y="260" width="280" height="280"/></g>
+            <circle cx="480" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="480" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M252,586 H708 L692,652 H236 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:416" x="472" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:436" x="480" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-180.00 360.00) scale(0.5)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="960" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(907.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_2)"><image inkscape:label="img:caster.2.avatar" x="820" y="260" width="280" height="280"/></g>
+            <circle cx="960" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="960" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M732,586 H1188 L1172,652 H716 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:416" x="952" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:436" x="960" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-420.00 630.00) scale(0.5)"><g inkscape:label="caster-3">
+            <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1440" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1387.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_3)"><image inkscape:label="img:caster.3.avatar" x="1300" y="260" width="280" height="280"/></g>
+            <circle cx="1440" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1440" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1212,586 H1668 L1652,652 H1196 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.3.name | upper} fit:416" x="1432" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.3.handle} fit:436" x="1440" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:4|5|6|7|8" style="display:none">
+          <g transform="translate(148.80 92.00) scale(0.42)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="360" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(315.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_1)"><image inkscape:label="img:caster.1.avatar" x="242" y="282" width="236" height="236"/></g>
+            <circle cx="360" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="360" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M172,564 H548 L532,630 H156 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:336" x="352" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:356" x="360" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-19.20 292.00) scale(0.42)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="760" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(715.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_2)"><image inkscape:label="img:caster.2.avatar" x="642" y="282" width="236" height="236"/></g>
+            <circle cx="760" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="760" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M572,564 H948 L932,630 H556 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:336" x="752" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:356" x="760" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-187.20 492.00) scale(0.42)"><g inkscape:label="caster-3">
+            <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1160" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1115.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_3)"><image inkscape:label="img:caster.3.avatar" x="1042" y="282" width="236" height="236"/></g>
+            <circle cx="1160" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1160" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M972,564 H1348 L1332,630 H956 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.3.name | upper} fit:336" x="1152" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.3.handle} fit:356" x="1160" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(-355.20 692.00) scale(0.42)"><g inkscape:label="caster-4">
+            <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1560" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.4.avatar"><path transform="translate(1515.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_4)"><image inkscape:label="img:caster.4.avatar" x="1442" y="282" width="236" height="236"/></g>
+            <circle cx="1560" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1560" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1372,564 H1748 L1732,630 H1356 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.4.name | upper} fit:336" x="1552" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.4.handle} fit:356" x="1560" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
       </g>
-      <g inkscape:label="when:2">
-        <g transform="translate(-126.80 82.00) scale(0.62)"><g inkscape:label="caster-1">
-          <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="640" cy="400" r="160" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.1.avatar"><path transform="translate(580.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av2_1)"><image inkscape:label="img:caster.1.avatar" x="480" y="240" width="320" height="320"/></g>
-          <circle cx="640" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="640" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M390,606 H890 L874,672 H374 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.1.name | upper} fit:460" x="632" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.1.handle} fit:480" x="640" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(-73.60 82.00) scale(0.62)"><g inkscape:label="caster-2">
-          <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="1280" cy="400" r="160" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.2.avatar"><path transform="translate(1220.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av2_2)"><image inkscape:label="img:caster.2.avatar" x="1120" y="240" width="320" height="320"/></g>
-          <circle cx="1280" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="1280" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M1030,606 H1530 L1514,672 H1014 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.2.name | upper} fit:460" x="1272" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.2.handle} fit:480" x="1280" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-      </g>
-      <g inkscape:label="when:3" style="display:none">
-        <g transform="translate(-74.00 100.00) scale(0.55)"><g inkscape:label="caster-1">
-          <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="480" cy="400" r="140" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.1.avatar"><path transform="translate(427.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av3_1)"><image inkscape:label="img:caster.1.avatar" x="340" y="260" width="280" height="280"/></g>
-          <circle cx="480" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="480" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M252,586 H708 L692,652 H236 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.1.name | upper} fit:416" x="472" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.1.handle} fit:436" x="480" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(-33.00 100.00) scale(0.55)"><g inkscape:label="caster-2">
-          <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="960" cy="400" r="140" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.2.avatar"><path transform="translate(907.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av3_2)"><image inkscape:label="img:caster.2.avatar" x="820" y="260" width="280" height="280"/></g>
-          <circle cx="960" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="960" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M732,586 H1188 L1172,652 H716 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.2.name | upper} fit:416" x="952" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.2.handle} fit:436" x="960" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(8.00 100.00) scale(0.55)"><g inkscape:label="caster-3">
-          <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="1440" cy="400" r="140" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1387.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av3_3)"><image inkscape:label="img:caster.3.avatar" x="1300" y="260" width="280" height="280"/></g>
-          <circle cx="1440" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="1440" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M1212,586 H1668 L1652,652 H1196 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.3.name | upper} fit:416" x="1432" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.3.handle} fit:436" x="1440" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-      </g>
-      <g inkscape:label="when:4|5|6|7|8" style="display:none">
-        <g transform="translate(-30.00 110.00) scale(0.5)"><g inkscape:label="caster-1">
-          <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="360" cy="400" r="118" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.1.avatar"><path transform="translate(315.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av4_1)"><image inkscape:label="img:caster.1.avatar" x="242" y="282" width="236" height="236"/></g>
-          <circle cx="360" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="360" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M172,564 H548 L532,630 H156 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.1.name | upper} fit:336" x="352" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.1.handle} fit:356" x="360" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(0.00 110.00) scale(0.5)"><g inkscape:label="caster-2">
-          <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="760" cy="400" r="118" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.2.avatar"><path transform="translate(715.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av4_2)"><image inkscape:label="img:caster.2.avatar" x="642" y="282" width="236" height="236"/></g>
-          <circle cx="760" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="760" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M572,564 H948 L932,630 H556 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.2.name | upper} fit:336" x="752" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.2.handle} fit:356" x="760" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(30.00 110.00) scale(0.5)"><g inkscape:label="caster-3">
-          <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="1160" cy="400" r="118" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1115.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av4_3)"><image inkscape:label="img:caster.3.avatar" x="1042" y="282" width="236" height="236"/></g>
-          <circle cx="1160" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="1160" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M972,564 H1348 L1332,630 H956 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.3.name | upper} fit:336" x="1152" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.3.handle} fit:356" x="1160" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
-        <g transform="translate(60.00 110.00) scale(0.5)"><g inkscape:label="caster-4">
-          <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
-          <circle cx="1560" cy="400" r="118" fill="#1a0309"/>
-          <g inkscape:label="hide:caster.4.avatar"><path transform="translate(1515.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
-          <g clip-path="url(#av4_4)"><image inkscape:label="img:caster.4.avatar" x="1442" y="282" width="236" height="236"/></g>
-          <circle cx="1560" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
-          <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
-          <circle cx="1560" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
-          <path inkscape:label="glass" d="M1372,564 H1748 L1732,630 H1356 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
-          <text inkscape:label="{caster.4.name | upper} fit:336" x="1552" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
-          <text inkscape:label="{caster.4.handle} fit:356" x="1560" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
-        </g></g>
+    </g>
+    <g inkscape:label="show:whiteboard.open" style="display:none">
+      <g inkscape:label="state:caster.length">
+        <g inkscape:label="when:1" style="display:none">
+          <g transform="translate(272.00 -20.00) scale(0.55)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="196" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="960" cy="400" r="180" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(892.5 320.8) scale(0.29194)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av1_1)"><image inkscape:label="img:caster.1.avatar" x="780" y="220" width="360" height="360"/></g>
+            <circle cx="960" cy="400" r="186" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="960" cy="400" r="188" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="960" cy="400" r="194" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M710,626 H1210 L1194,692 H694 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:460" x="952" y="672" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:480" x="960" y="726" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:2">
+          <g transform="translate(300.00 0.00) scale(0.5)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="640" cy="400" r="160" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(580.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av2_1)"><image inkscape:label="img:caster.1.avatar" x="480" y="240" width="320" height="320"/></g>
+            <circle cx="640" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="640" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="640" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M390,606 H890 L874,672 H374 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:460" x="632" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:480" x="640" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(340.00 0.00) scale(0.5)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="176" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1280" cy="400" r="160" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(1220.0 329.6) scale(0.25950)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av2_2)"><image inkscape:label="img:caster.2.avatar" x="1120" y="240" width="320" height="320"/></g>
+            <circle cx="1280" cy="400" r="166" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="1280" cy="400" r="168" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1280" cy="400" r="174" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1030,606 H1530 L1514,672 H1014 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:460" x="1272" y="652" style="font-family:Shader;font-size:38px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:480" x="1280" y="706" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:3" style="display:none">
+          <g transform="translate(324.00 20.00) scale(0.45)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="480" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(427.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_1)"><image inkscape:label="img:caster.1.avatar" x="340" y="260" width="280" height="280"/></g>
+            <circle cx="480" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="480" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="480" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M252,586 H708 L692,652 H236 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:416" x="472" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:436" x="480" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(368.00 20.00) scale(0.45)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="960" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(907.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_2)"><image inkscape:label="img:caster.2.avatar" x="820" y="260" width="280" height="280"/></g>
+            <circle cx="960" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="960" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="960" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M732,586 H1188 L1172,652 H716 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:416" x="952" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:436" x="960" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(412.00 20.00) scale(0.45)"><g inkscape:label="caster-3">
+            <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="156" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1440" cy="400" r="140" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1387.5 338.4) scale(0.22706)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av3_3)"><image inkscape:label="img:caster.3.avatar" x="1300" y="260" width="280" height="280"/></g>
+            <circle cx="1440" cy="400" r="146" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.3.speaking" cx="1440" cy="400" r="148" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1440" cy="400" r="154" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1212,586 H1668 L1652,652 H1196 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.3.name | upper} fit:416" x="1432" y="632" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.3.handle} fit:436" x="1440" y="686" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
+        <g inkscape:label="when:4|5|6|7|8" style="display:none">
+          <g transform="translate(356.00 40.00) scale(0.4)"><g inkscape:label="caster-1">
+            <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="360" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.1.avatar"><path transform="translate(315.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_1)"><image inkscape:label="img:caster.1.avatar" x="242" y="282" width="236" height="236"/></g>
+            <circle cx="360" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.1.speaking" cx="360" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="360" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M172,564 H548 L532,630 H156 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.1.name | upper} fit:336" x="352" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.1.handle} fit:356" x="360" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(396.00 40.00) scale(0.4)"><g inkscape:label="caster-2">
+            <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="760" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.2.avatar"><path transform="translate(715.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_2)"><image inkscape:label="img:caster.2.avatar" x="642" y="282" width="236" height="236"/></g>
+            <circle cx="760" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.2.speaking" cx="760" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="760" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M572,564 H948 L932,630 H556 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.2.name | upper} fit:336" x="752" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.2.handle} fit:356" x="760" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(436.00 40.00) scale(0.4)"><g inkscape:label="caster-3">
+            <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1160" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.3.avatar"><path transform="translate(1115.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_3)"><image inkscape:label="img:caster.3.avatar" x="1042" y="282" width="236" height="236"/></g>
+            <circle cx="1160" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.3.speaking" cx="1160" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1160" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M972,564 H1348 L1332,630 H956 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.3.name | upper} fit:336" x="1152" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.3.handle} fit:356" x="1160" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+          <g transform="translate(476.00 40.00) scale(0.4)"><g inkscape:label="caster-4">
+            <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="134" fill="none" stroke="#ffe7b0" stroke-width="14" filter="url(#glow)" style="display:none"/>
+            <circle cx="1560" cy="400" r="118" fill="#1a0309"/>
+            <g inkscape:label="hide:caster.4.avatar"><path transform="translate(1515.75 348.08) scale(0.19138)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g>
+            <g clip-path="url(#av4_4)"><image inkscape:label="img:caster.4.avatar" x="1442" y="282" width="236" height="236"/></g>
+            <circle cx="1560" cy="400" r="124" fill="none" stroke="url(#ringGrad)" stroke-width="12"/>
+            <circle inkscape:label="show:caster.4.speaking" cx="1560" cy="400" r="126" fill="none" stroke="url(#cream)" stroke-width="5" style="display:none"/>
+            <circle cx="1560" cy="400" r="132" fill="none" stroke="url(#cream)" stroke-width="2" opacity=".55"/>
+            <path inkscape:label="glass" d="M1372,564 H1748 L1732,630 H1356 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+            <text inkscape:label="{caster.4.name | upper} fit:336" x="1552" y="610" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.3;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>CASTER</tspan></text>
+            <text inkscape:label="{caster.4.handle} fit:356" x="1560" y="664" style="font-family:Geom Graphic;font-size:20px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);opacity:0.85"><tspan>@handle</tspan></text>
+          </g></g>
+        </g>
       </g>
     </g>
   </g>
 
   <!-- "up next": hidden until the panel's Up next card sets it (nextUp.set). Two team names = the plates; one line of text = the line -->
   <g inkscape:groupmode="layer" inkscape:label="upnext show:nextUp.set" style="display:none">
-    <g transform="translate(667.00 -606.00) scale(0.8)">
+    <g inkscape:label="hide:whiteboard.open">
+      <g transform="translate(568.00 -537.00) scale(0.7)">
     <text inkscape:label="hide:nextUp.label" x="960" y="830" style="font-family:Shader;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>UP NEXT</tspan></text>
     <text inkscape:label="show:nextUp.label fit:1000" x="960" y="830" style="font-family:Shader;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>UP NEXT · {nextUp.label | upper}</tspan></text>
     <g inkscape:label="show:nextUp.teams">
@@ -260,6 +456,30 @@
       <path inkscape:label="glass" d="M432,852 H1502 L1488,920 H418 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
       <text inkscape:label="{nextUp.line | upper} fit:1000" x="960" y="899" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.15;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>WHAT IS NEXT</tspan></text>
     </g>
+      </g>
+    </g>
+    <g inkscape:label="show:whiteboard.open" style="display:none">
+      <g transform="translate(974.00 -436.00) scale(0.6)">
+    <text inkscape:label="hide:nextUp.label" x="960" y="830" style="font-family:Shader;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>UP NEXT</tspan></text>
+    <text inkscape:label="show:nextUp.label fit:1000" x="960" y="830" style="font-family:Shader;font-size:20px;letter-spacing:6px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:0.7;stroke-linejoin:miter;paint-order:stroke;opacity:0.85" filter="url(#textShadow)"><tspan>UP NEXT · {nextUp.label | upper}</tspan></text>
+    <g inkscape:label="show:nextUp.teams">
+      <g inkscape:label="team-a">
+        <path inkscape:label="glass" d="M432,852 H912 L898,920 H418 Z" fill="url(#glassMaroon)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+        <g inkscape:label="state:nextUp.aLogoKind"><g inkscape:label="when:msu"><path transform="translate(452.00 862.00) scale(0.08897)" fill="url(#cream)" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g><g inkscape:label="when:image" style="display:none"><image inkscape:label="img:nextUp.aLogo" x="448.7" y="862.0" width="48.0" height="48.0" preserveAspectRatio="xMidYMid meet"/></g><g inkscape:label="when:else" style="display:none"><polygon points="472.7,863.4 478.3,879.7 495.5,880.0 481.8,890.4 486.8,906.9 472.7,897.1 458.6,906.9 463.5,890.4 449.8,880.0 467.0,879.7" fill="url(#cream)"/></g></g>
+        <text inkscape:label="{nextUp.a | upper} fit:340" x="880" y="899" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.15;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>TEAM ONE</tspan></text>
+      </g>
+      <text x="960" y="898" style="font-family:Shader;font-size:30px;letter-spacing:2px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.08;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>VS</tspan></text>
+      <g inkscape:label="team-b">
+        <path inkscape:label="glass" d="M1022,852 H1502 L1488,920 H1008 Z" fill="url(#glassCream)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+        <text inkscape:label="{nextUp.b | upper} fit:340" x="1040" y="899" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:start;fill:#2a0510;stroke:#2a0510;stroke-width:1.15;stroke-linejoin:miter;paint-order:stroke"><tspan>TEAM TWO</tspan></text>
+        <g inkscape:label="state:nextUp.bLogoKind"><g inkscape:label="when:msu"><path transform="translate(1439.05 862.68) scale(0.08148)" fill="#2a0510" fill-rule="evenodd" d="M-0.5,-0.5 L-0.5,408.5 L232,539 L464.5,408.5 L464.5,-0.5 L422,-0.5 L422,383.5 L232,490 L42,383.5 L42,-0.5 Z M68,-0.5 L68,206.5 L305.5,340.5 L232,381.5 L152,337 L152,288.5 L68,241.5 L68,373.5 L232,465 L396,374 L396,304.5 L152,168.5 L152,135 L232,179 L309,136.5 L309,222.5 L396,271 L396,-0.5 L232,90.5 Z"/></g><g inkscape:label="when:image" style="display:none"><image inkscape:label="img:nextUp.bLogo" x="1436.0" y="862.7" width="44.0" height="44.0" preserveAspectRatio="xMidYMid meet"/></g><g inkscape:label="when:else" style="display:none"><polygon points="1458.0,864.0 1463.2,878.9 1478.9,879.2 1466.4,888.7 1470.9,903.8 1458.0,894.8 1445.1,903.8 1449.6,888.7 1437.1,879.2 1452.8,878.9" fill="#2a0510"/></g></g>
+      </g>
+    </g>
+    <g inkscape:label="next-line hide:nextUp.teams" style="display:none">
+      <path inkscape:label="glass" d="M432,852 H1502 L1488,920 H418 Z" fill="url(#glassTint)" stroke="url(#glassEdge)" stroke-width="1.5"/>
+      <text inkscape:label="{nextUp.line | upper} fit:1000" x="960" y="899" style="font-family:Shader;font-size:32px;letter-spacing:1px;text-anchor:middle;fill:url(#cream);stroke:url(#cream);stroke-width:1.15;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>WHAT IS NEXT</tspan></text>
+    </g>
+      </g>
     </g>
   </g>
 </svg>

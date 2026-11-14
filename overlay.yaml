@@ -49,9 +49,9 @@ sim:
   rosterA: [Erin, Trey, Mia, Will]
   rosterB: [Kaiden, Kadence, Alex, Wyatt]
 
-# The whiteboard the casters draw on from the panel: where it sits on the 1920 x 1080 stream. It is over every scene;
-# this place is under the casters on the Casters scene, beside the replay.
-whiteboard: { x: 50, y: 575, width: 890, height: 470 }
+# The whiteboard the casters draw on from the panel: its shape, and where it sits on the 1920 x 1080 stream on a scene
+# that has no place of its own for it. (Casters has one: the rectangle named #whiteboard in its design.)
+whiteboard: { x: 40, y: 420, width: 1140, height: 600 }
 
 # Automatic scene switching (the panel's Auto-switch box). when: = only from these scenes; after: = wait first;
 # fade: = this switch's own crossfade.

@@ -153,6 +153,7 @@ Numbers in paths count from **1**: `pool.1` is the first map, `upNext.2` the sec
 | `replay.…` | the replay playlist's song in the `feed:main` box (Starting Soon, Intermission, Be Right Back): `song`, `artist`, `mapper`, `cover`, `difficulty`, `stars`, `player`, `playerAvatar`, `acc`, `fc`, `misses`, ready-made lines `byline` ("Artist · mapped by Mapper") and `diffline` ("Expert+ · ★ 7.69"), the clock `time`, `length`, `progress` (0–1, for `bar:replay.progress`), `index`/`count` in the list, and `replay.next.song` / `replay.next.player` (what plays after it, empty in shuffle) |
 | `replay.switching` | true while the "up next" card should cover the video: from a song's end until the next one starts (it loads underneath). `replay.revealing` is true for the card's last 0.7 s, for its exit animation. See `becomes:replay.switching` in `msu/intermission.rules.yaml` |
 | `brb.title`, `brb.message`, `brb.endsAt` | BRB info (use `{brb.endsAt \| countdown}`) |
+| `whiteboard.open` | true while the whiteboard (drawn in the panel) is shown. A scene can rearrange itself for it with `show:whiteboard.open` / `hide:whiteboard.open` (Casters does). A shape named `#whiteboard` in the scene is where the board goes on that scene; without one it sits where `whiteboard:` in overlay.yaml puts it |
 | `ticker` | the ticker lines joined into one string |
 
 **Scene variables:** in `overlay.yaml`, `focus-a: { svg: focus, vars: { big: a, small: b } }` makes

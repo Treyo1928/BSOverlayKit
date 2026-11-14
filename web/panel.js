@@ -376,7 +376,7 @@ function boardTools() {
 }
 boardTools();
 function boardSet(m) {
-  const b = m.box ?? { width: 890, height: 470 };
+  const b = m.box ?? { width: 1140, height: 600 };
   $(".board-pad").style.aspectRatio = `${b.width} / ${b.height}`;
   if (padCanvas.width !== b.width || padCanvas.height !== b.height) { padCanvas.width = b.width; padCanvas.height = b.height; }
   pad.set(m.strokes);
