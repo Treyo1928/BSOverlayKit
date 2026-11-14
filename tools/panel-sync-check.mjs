@@ -16,7 +16,7 @@ try {
   console.log('both are the panel:', await one.eval('document.title'), '/', await two.eval('document.title'), '| connected:', await one.eval(`document.querySelector('#conn').textContent`), '/', await two.eval(`document.querySelector('#conn').textContent`));
   // every plain control, one way then the other
   const plain = [['#auto', true], ['#auto', false], ['#header', 'SYNC TEST ONE'], ['#signOff', true], ['#signOff', false], ['#brbTitle', 'Back soon'], ['#brbMsg', 'Short break'], ['#ticker', 'line one\nline two'],
-    ['#mixMusic', 37], ['#mixHits', 62], ['#delay', 1500], ['#fov', 48], ['#camZ', -0.3], ['#lockPitch', false], ['#lockPitch', true], ['#pitchUp', 20], ['#pitchDown', 8],
+    ['#mixMusic', 37], ['#mixHits', 62], ['#mixVoices', 140], ['#mixVoicesOn', false], ['#mixVoicesOn', true], ['#delay', 1500], ['#fov', 48], ['#camZ', -0.3], ['#lockPitch', false], ['#lockPitch', true], ['#pitchUp', 20], ['#pitchDown', 8],
     ['#renderScale', '0.75'], ['#maxFps', '30'], ['#quality', 'low'], ['#distortion', false], ['#plMode', null], ['#plFollow', false]];
   let dir2 = 0;
   for (let [sel, v] of plain) {

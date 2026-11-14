@@ -49,11 +49,11 @@ fetch("/api/me").then((r) => r.json()).then((me) => {
 
 // What this browser's preview draws: the replays in the video boxes (on unless switched off), and their sound (off
 // unless switched on: a browser will not start sound on a page nobody has clicked in anyway).
-let pvPrefs = { replays: true, sound: false };
+let pvPrefs = { replays: true, sound: false, voices: false };      // voices: the casters', off so nobody in the call hears themselves
 try { pvPrefs = { ...pvPrefs, ...JSON.parse(localStorage.getItem("kit.preview") ?? "{}") }; } catch { /* keep the defaults */ }
 if (!pvPrefs.replays) pvPrefs.sound = false;
 // checkered = transparent on stream
-const previewUrl = () => `${S.overlayUrl}?debug&bg&mute${pvPrefs.sound ? "&listen" : pvPrefs.replays ? "&replays" : ""}`;
+const previewUrl = () => `${S.overlayUrl}?debug&bg&mute${pvPrefs.sound ? "&listen" : pvPrefs.replays ? "&replays" : ""}${pvPrefs.voices ? "&voices" : ""}`;
 let previewSet = false, upShown = "", airList = "";
 function render() {
   const sh = cur(), air = S.show;
@@ -93,7 +93,7 @@ function render() {
   $("#simStatus").textContent = S.live ? `${S.live.match.phase} · ${S.live.a.name} ${S.live.a.points}–${S.live.b.points} ${S.live.b.name}${S.live.map ? ` · ${S.live.map.name} ${S.live.map.time}` : ""}` : "";
   if (!previewSet) {
     previewSet = true;
-    $("#pvReplays").checked = pvPrefs.replays; $("#pvSound").checked = pvPrefs.sound;
+    $("#pvReplays").checked = pvPrefs.replays; $("#pvSound").checked = pvPrefs.sound; $("#pvVoices").checked = pvPrefs.voices;
     $("#pv").src = previewUrl();
     $("#open").href = `${S.overlayUrl}?bg&debug`;
     // with its key: the page OBS runs is the one whose word on a replay's end is taken (a page without the key
@@ -169,6 +169,27 @@ function render() {
   $("#mixMusicValue").textContent = $("#mixMusic").value;
   if (document.activeElement?.id !== "mixHits") $("#mixHits").value = Math.round((mix.hits ?? 1) * 100);
   $("#mixHitsValue").textContent = $("#mixHits").value;
+  // the casters' voices: everyone the bot sees in the channel and who is on stream, a slider each (built when the
+  // list changes, not every time: rebuilding would drop a slider mid-drag)
+  $("#mixVoicesOn").checked = mix.voicesOn !== false;
+  if (document.activeElement?.id !== "mixVoices") $("#mixVoices").value = Math.round((mix.voices ?? 1) * 100);
+  $("#mixVoicesValue").textContent = $("#mixVoices").value;
+  const heard = (S.discord?.people ?? []).filter((c) => !c.hidden);
+  const heardKey = heard.map((c) => `${c.id}:${c.name}`).join("|");
+  if ($("#mixPeople").dataset.for !== heardKey) {
+    $("#mixPeople").dataset.for = heardKey;
+    $("#mixPeople").innerHTML = heard.map((c) =>
+      `<div class="row" style="align-items:center;gap:8px"><label style="flex:0 0 9.5em;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.name)} ${esc(c.handle)}">${esc(c.name)}</label><input data-person="${esc(c.id)}" type="range" min="0" max="200" step="1" style="flex:1"><b data-person-value="${esc(c.id)}" style="flex:0 0 3.2em;text-align:right"></b></div>`).join("");
+  }
+  for (const el of $("#mixPeople").querySelectorAll("[data-person]")) {
+    if (document.activeElement !== el) el.value = Math.round((mix.people?.[el.dataset.person] ?? 1) * 100);
+    el.nextElementSibling.textContent = `${el.value}%`;
+  }
+  const line = S.discord?.voice ?? {};
+  $("#voicesHint").textContent = (!S.discord?.seenAt ? "The caster bot is not running, so there are no voices to mix. "
+      : !line.bot ? "The caster bot is not sending sound (it says why in its log). "
+      : heard.length ? "" : "Nobody is in the voice channel. ")
+    + "100 % is each voice as Discord sends it; up to 200 % lifts a quiet one. Someone not \"On stream\" in the Casters card is not heard either. To hear the voices here, tick Casters above the preview: that is this browser only.";
   const sceneIds = Object.keys(S.scenes).join();
   if ($("#mixScenes").dataset.for !== sceneIds) {
     $("#mixScenes").dataset.for = sceneIds;
@@ -246,19 +267,23 @@ let mixSent = 0, mixLater;
 function mixInput(el) {
   if (el.id === "mixMusic") $("#mixMusicValue").textContent = el.value;
   else if (el.id === "mixHits") $("#mixHitsValue").textContent = el.value;
+  else if (el.id === "mixVoices") $("#mixVoicesValue").textContent = el.value;
+  else if (el.dataset.person) el.nextElementSibling.textContent = `${el.value}%`;
   else if (el.dataset.mix) $(`[data-mix-value="${el.dataset.mix}"]`).textContent = `${el.value}%`;
   clearTimeout(mixLater);
   const wait = Math.max(0, 100 - (performance.now() - mixSent));
   mixLater = setTimeout(() => {
     mixSent = performance.now();
-    send("mix", el.id === "mixMusic" ? { music: Number(el.value) / 100 } : el.id === "mixHits" ? { hits: Number(el.value) / 100 } : { scene: el.dataset.mix, level: Number(el.value) / 100 });
+    send("mix", el.id === "mixMusic" ? { music: Number(el.value) / 100 } : el.id === "mixHits" ? { hits: Number(el.value) / 100 }
+      : el.id === "mixVoices" ? { voices: Number(el.value) / 100 } : el.dataset.person ? { person: el.dataset.person, level: Number(el.value) / 100 }
+      : { scene: el.dataset.mix, level: Number(el.value) / 100 });
   }, wait);
 }
 // the camera sliders act while they are dragged (at most ten times a second), not only when they are let go
 function zText(v) { return Number(v) === 0 ? "at the head" : `${Math.abs(Number(v)).toFixed(2)} m ${Number(v) < 0 ? "back" : "forward"}`; }
 let camSent = 0, camLater;
 document.addEventListener("input", (e) => {
-  if (e.target.id === "mixMusic" || e.target.id === "mixHits" || e.target.dataset?.mix) return mixInput(e.target);
+  if (e.target.id === "mixMusic" || e.target.id === "mixHits" || e.target.id === "mixVoices" || e.target.dataset?.mix || e.target.dataset?.person) return mixInput(e.target);
   if (e.target.id !== "fov" && e.target.id !== "camZ") return;
   $("#fovValue").textContent = $("#fov").value;
   $("#camZValue").textContent = zText($("#camZ").value);
@@ -292,6 +317,7 @@ document.addEventListener("change", (e) => {
     ask(`Switch the overlay to ${to}?\n\nIt stops showing the current tournament and follows the newest unfinished match of ${to}. The stream changes straight away.`, `Switch to ${to}`)
       .then((yes) => yes && send("source", { control: "tournament", slug }));
   }
+  if (el.id === "mixVoicesOn") send("mix", { voicesOn: el.checked });
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
   if (el.id === "discordChannel") send("discordChannel", { channelId: el.value });
   if (el.dataset.discordShow) send("discordHide", { id: el.dataset.discordShow, hidden: !el.checked });
@@ -305,10 +331,10 @@ document.addEventListener("change", (e) => {
   if (el.id === "delay") send("streamDelay", { ms: Number(el.value) });
   if (el.id === "lockPitch") send("viewer", { lockPitch: el.checked });
   // the preview's own switches: this browser only, remembered here; the preview is loaded again with them
-  if (el.id === "pvReplays" || el.id === "pvSound") {
+  if (el.id === "pvReplays" || el.id === "pvSound" || el.id === "pvVoices") {
     if (el.id === "pvSound" && el.checked) $("#pvReplays").checked = true;      // sound comes from the replays
     if (el.id === "pvReplays" && !el.checked) $("#pvSound").checked = false;
-    pvPrefs = { replays: $("#pvReplays").checked, sound: $("#pvSound").checked };
+    pvPrefs = { replays: $("#pvReplays").checked, sound: $("#pvSound").checked, voices: $("#pvVoices").checked };
     try { localStorage.setItem("kit.preview", JSON.stringify(pvPrefs)); } catch { /* private window: not remembered */ }
     $("#pv").src = previewUrl();
   }

@@ -1,6 +1,7 @@
 // The OBS page. Loads the scene SVGs, keeps them bound to live data, switches scenes, plays rules.
 import { Scene } from "/engine/scene.js";
 import { makeBoard } from "/engine/board.js";
+import { makeVoices } from "/engine/voices.js";
 
 const params = new URLSearchParams(location.search);
 const key = params.get("key");
@@ -19,6 +20,11 @@ const replays = (params.has("replays") || listen) && !staged;
 // server gives (a stream PC that runs its own viewer, each box then in a browser process of its own)
 const viewerOverride = (() => { try { return params.get("viewer") ? new URL(params.get("viewer")).origin : ""; } catch { return ""; } })();
 const silent = (mute && !listen) || params.has("silent");   // no sound at full quality (testing)
+// The casters' voices (from the Discord voice channel, see engine/voices.js) play on the stream's page. The panel's
+// preview plays them only with &voices: a caster with the panel open is already in the call and must not hear
+// themselves a moment late. That is this browser's own choice and changes nothing on stream.
+const voices = !staged && !params.has("silent") && (!mute || params.has("voices")) ? makeVoices() : null;
+if (voices) window.kitVoices = voices;
 // how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
 let previewScale = 1;
 if (params.has("bg")) document.body.classList.add("preview-bg");
@@ -721,13 +727,16 @@ function connect() {
   const q = new URLSearchParams();
   if (key) q.set("key", key);
   if (staged) q.set("staged", "1");
+  if (voices) q.set("voices", "1");
   ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/overlay?${q}`);
+  ws.binaryType = "arraybuffer";
   ws.onopen = () => document.body.classList.remove("offline");
   ws.onclose = () => {
     document.body.classList.add("offline");
     setTimeout(connect, 1000);
   };
   ws.onmessage = async (e) => {
+    if (typeof e.data !== "string") return voices?.feed(e.data);       // sound: a caster's voice
     const m = JSON.parse(e.data);
     if (m.type === "board") return showBoard(m);
     if (m.type === "boardStroke") return whiteboard.add(m.stroke);
@@ -736,6 +745,7 @@ function connect() {
       loadHsv(m.hsv || "", m.designVersion);
       if (m.now) clockOffset = m.now - Date.now();
       state = m;
+      voices?.levels(m.show?.mix);
       if (designVersion !== m.designVersion) {
         designVersion = m.designVersion;
         loading = loadDesign();

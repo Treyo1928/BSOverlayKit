@@ -105,7 +105,10 @@ show.discord = { channelId: String(show.discord?.channelId ?? ""), hidden: Array
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
-show.mix = { music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, casters: 0.35, ...(show.mix?.scenes ?? {}) } };   // casters talk over theirs
+show.mix = {
+  music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, casters: 0.35, ...(show.mix?.scenes ?? {}) },   // casters talk over theirs
+  voicesOn: show.mix?.voicesOn ?? true, voices: Math.max(0, Math.min(2, Number(show.mix?.voices ?? 1))), people: { ...(show.mix?.people ?? {}) },
+};
 for (const k of Object.keys(show.mix.scenes)) show.mix.scenes[k] = Math.min(1, show.mix.scenes[k]);
 show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
 delete (show.viewer as Record<string, unknown>).preview;   // the picture relay it chose between is gone
@@ -321,6 +324,20 @@ const broadcastAll = (m: unknown) => { broadcastOverlays(m); broadcastPanels(m);
 const stagedViews = new Set<WebSocket>();     // previews of the staged state (&staged)
 /** Overlay pages that gave the key (optional): the ones whose reports about a replay's length and end are believed. */
 const trusted = new WeakSet<WebSocket>();
+// The casters' voices. The caster bot sends each Opus packet it hears in the voice channel (/ws/voice); they go on,
+// as they are, to the overlay pages that asked for them (&voices on the socket: OBS, and a panel preview whose
+// operator switched voices on) and that someone vouches for (the key, or signed in). Nothing is kept or decoded here.
+const voiceTo = new Set<WebSocket>();
+const voiceStats = { packets: 0, from: 0 };
+function relayVoice(data: ArrayBuffer) {
+  const b = new Uint8Array(data);
+  if (b.length < 3 || b.length > 1400 || b[0] < 5 || b[0] > 25 || b.length <= 1 + b[0]) return;
+  if (!show.mix!.voicesOn) return;
+  const id = new TextDecoder().decode(b.subarray(1, 1 + b[0]));
+  if (show.discord!.hidden.includes(id)) return;       // in the channel, not a caster: not heard either
+  voiceStats.packets++;
+  for (const ws of voiceTo) if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 256_000) ws.send(b);
+}
 const MAX_OVERLAYS = 200;                     // watching needs no key, so there is a ceiling
 // ------------------------------------------------------------------ live gameplay (TA bridge / mock TA)
 let live: LiveState | null = null;
@@ -461,7 +478,7 @@ const panelMsg = async () => ({
   playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
-  discord: { bot: discordBot.tag, seenAt: discordBot.seenAt, following: discordBot.following, channels: discordBot.channels, chosen: show.discord!.channelId,
+  discord: { voice: { bot: voiceStats.from > 0, hearing: voiceTo.size }, bot: discordBot.tag, seenAt: discordBot.seenAt, following: discordBot.following, channels: discordBot.channels, chosen: show.discord!.channelId,
     people: discordBot.people.map((c) => ({ id: c.id, name: c.name, handle: c.handle, avatar: c.avatar, hidden: show.discord!.hidden.includes(c.id) })) },
 });
 setInterval(async () => {
@@ -561,6 +578,15 @@ const actions: Record<string, (a: any) => unknown> = {
     if (a.music !== undefined) mix.music = level(a.music);
     if (a.hits !== undefined) mix.hits = level(a.hits);
     if (a.scene !== undefined && a.level !== undefined && String(a.scene) in config.scenes) mix.scenes[String(a.scene)] = level(a.level);
+    // the casters' voices: up to 2 (twice as loud as Discord sent them), each person's own level by Discord id
+    const loud = (x: unknown) => Math.max(0, Math.min(2, Math.round((Number(x) || 0) * 100) / 100));
+    if (a.voicesOn !== undefined) mix.voicesOn = !!a.voicesOn;
+    if (a.voices !== undefined) mix.voices = loud(a.voices);
+    if (a.person !== undefined && a.level !== undefined && /^\d{5,25}$/.test(String(a.person))) {
+      mix.people![String(a.person)] = loud(a.level);
+      const ids = Object.keys(mix.people!);
+      if (ids.length > 200) delete mix.people![ids[0]];
+    }
   },
   brb: (a) => {
     Object.assign(target.brb, a.brb ?? {});
@@ -764,16 +790,18 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     // what is staged is not on stream yet: only the panel's own preview (signed in) or a keyed page is shown it
     const isStaged = known && url.searchParams.has("staged");
     if (keyed) trusted.add(socket);
+    const hears = known && !isStaged && url.searchParams.has("voices");
     let counted = false;
     socket.onopen = () => {
       overlays.add(socket);
       if (!known) { counted = true; perAddress.set(addr, (perAddress.get(addr) ?? 0) + 1); }
       if (isStaged) stagedViews.add(socket);
+      if (hears) voiceTo.add(socket);
       send(socket, stateMsg(isStaged));
       send(socket, boardMsg());
     };
     socket.onclose = () => {
-      overlays.delete(socket); stagedViews.delete(socket);
+      overlays.delete(socket); stagedViews.delete(socket); voiceTo.delete(socket);
       if (counted) { counted = false; const n = (perAddress.get(addr) ?? 1) - 1; n > 0 ? perAddress.set(addr, n) : perAddress.delete(addr); }
     };
     socket.onmessage = (e) => {
@@ -784,6 +812,26 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
         playlist.viewer(m.id, { ready: m.ready === true, duration: m.duration, ended: m.ended === true }, trusted.has(socket));
       } catch { /* ignore */ }
     };
+    return response;
+  }
+  if (p === "/ws/voice" && upgrade) {
+    // the caster bot's line for sound. Its first message is the panel login code (text); after that, one binary
+    // message per Opus packet: [length of the id][the speaker's Discord id][the packet].
+    const addr = addressOf(req, info);
+    if (blocked(addr)) return new Response("try again later", { status: 429 });
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    socket.binaryType = "arraybuffer";
+    let ok = false;
+    const giveUp = setTimeout(() => { if (!ok) socket.close(); }, 5000);
+    socket.onmessage = (e) => {
+      if (!ok) {
+        if (typeof e.data === "string" && same(e.data, secrets.hostCode)) { ok = true; voiceStats.from++; send(socket, { ok: true }); }
+        else { failed(addr); socket.close(); }
+        return;
+      }
+      if (e.data instanceof ArrayBuffer) relayVoice(e.data);
+    };
+    socket.onclose = () => { clearTimeout(giveUp); if (ok) voiceStats.from--; };
     return response;
   }
   if (p === "/ws/panel" && upgrade) {

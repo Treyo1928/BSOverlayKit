@@ -141,7 +141,8 @@ The `data/` folder is your own preview's settings and is never part of what you 
   in the bracket; Getting Ready plays someone who is about to play. Needs a replay viewer (ChroViewer) for the
   video; see `DEPLOY.md`.
 - **Casters from Discord:** with the caster bot ([`discord-bot/`](discord-bot/README.md)) whoever is in the casting
-  voice channel is on the Casters scene, and their ring glows while they talk. The panel's Casters card picks the
+  voice channel is on the Casters scene, their ring glows while they talk, and their voices are on stream (mixed in
+  the panel's Sound card). The panel's Casters card picks the
   channel and who is shown; without the bot, casters are typed in there.
 - **Generic starter scenes** (not MSU): `OVERLAY=overlay.starter.yaml ./run.sh`.
 

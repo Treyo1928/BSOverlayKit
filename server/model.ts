@@ -247,7 +247,12 @@ export interface ShowState {
   // stream PC drawing replays on the CPU (OBS on Linux + NVIDIA) needs lower
   /** Sound: how loud the replays' music is. `music` for everything (1 = as recorded), times the on-air scene's own
    *  figure in `scenes` (a scene not listed is 1): Getting Ready is quieter, a breather before the song. */
-  mix?: { music: number; /** the hitsounds' level, apart from the music's */ hits?: number; scenes: Record<string, number> };
+  mix?: {
+    music: number; /** the hitsounds' level, apart from the music's */ hits?: number; scenes: Record<string, number>;
+    /** The casters' voices from the Discord voice channel (the caster bot relays them): on stream or not, the level
+     *  of all of them (0 to 2: a quiet channel can be lifted), and each person's own by Discord id (0 to 2). */
+    voicesOn?: boolean; voices?: number; people?: Record<string, number>;
+  };
   viewer: { lockPitch: boolean;
     /** how far the replay camera may look up and down from level, in degrees (they need not be the same) */
     pitchUp: number; pitchDown: number;

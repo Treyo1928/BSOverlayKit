@@ -7,14 +7,15 @@
 //   it can see). Until one is picked there: CASTER_CHANNEL_ID if set, else the first voice channel with "cast" in
 //   its name.
 //
-//   The bot sits in the channel muted. It never records or decodes anyone's audio: Discord's voice library only
-//   notices that packets are arriving from someone, and that is all "talking" means here.
+//   The bot sits in the channel muted. What it hears there it passes to the overlay as it arrives, so the casters'
+//   voices are on stream (mixed in the panel: Sound). Nothing is recorded, kept or decoded here: each packet goes
+//   straight on and is gone. VOICE_AUDIO=off: no sound is passed on at all, only who is talking.
 //
 //   Settings (environment, or .env beside this file): DISCORD_TOKEN, OVERLAY_URL, OVERLAY_CODE; optional
-//   CASTER_CHANNEL_ID, IGNORE_USER_IDS. See README.md.
+//   CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO. See README.md.
 import { readFileSync } from 'node:fs';
 import { Client, Events, GatewayIntentBits } from 'discord.js';
-import { entersState, generateDependencyReport, joinVoiceChannel, VoiceConnectionStatus } from '@discordjs/voice';
+import { EndBehaviorType, entersState, generateDependencyReport, joinVoiceChannel, VoiceConnectionStatus } from '@discordjs/voice';
 
 const env = (k, d = '') => (process.env[k] ?? d).trim();
 const TOKEN = env('DISCORD_TOKEN');
@@ -57,6 +58,41 @@ async function overlay(action) {
     overlay.down = e.message;
     return null;
   }
+}
+
+// ---------------------------------------------------------------- the casters' voices, to the overlay
+const AUDIO = !/^(off|0|no|false)$/i.test(env('VOICE_AUDIO', 'on'));
+let line = null, lineOk = false, lineSaid = '';
+/** The line the sound goes down: a WebSocket to the overlay, opened again whenever it drops. */
+function openLine() {
+  if (!AUDIO) return;
+  const ws = line = new WebSocket(`${OVERLAY.replace(/^http/, 'ws')}/ws/voice`);
+  ws.binaryType = 'arraybuffer';
+  ws.onopen = () => ws.send(OVERLAY_CODE);
+  ws.onmessage = () => { lineOk = true; if (lineSaid !== 'up') console.log('voices: connected to the overlay'); lineSaid = 'up'; };
+  ws.onerror = () => {};
+  ws.onclose = () => {
+    if (lineSaid !== 'down') console.warn('voices: no line to the overlay (trying again every 3 s)');
+    lineSaid = 'down'; lineOk = false;
+    if (line === ws) setTimeout(openLine, 3000);
+  };
+}
+const idBytes = new Map();
+/** One Opus packet from one person: [length of their id][id][packet], unless the line is down or backed up. */
+function sendVoice(uid, packet) {
+  if (!lineOk || line.readyState !== 1 || line.bufferedAmount > 64_000 || IGNORE.has(uid)) return;
+  let id = idBytes.get(uid);
+  if (!id) idBytes.set(uid, id = Buffer.from(uid, 'latin1'));
+  const out = new Uint8Array(1 + id.length + packet.length);
+  out[0] = id.length; out.set(id, 1); out.set(packet, 1 + id.length);
+  line.send(out);
+}
+/** Start passing on what this person says (once per person per stay in the channel). */
+function hear(mine, uid) {
+  if (!AUDIO || mine.receiver.subscriptions.has(uid) || uid === client.user?.id) return;
+  const stream = mine.receiver.subscribe(uid, { end: { behavior: EndBehaviorType.Manual } });
+  stream.on('data', (packet) => sendVoice(uid, packet));
+  stream.on('error', (e) => console.warn(`voices: ${uid}: ${e.message}`));
 }
 
 // ---------------------------------------------------------------- which channel, and who is in it
@@ -117,7 +153,7 @@ function join(id) {
   const steps = [];        // how far the voice link got, for the message when it does not get there
   mine.on('stateChange', (was, now) => { if (was.status !== now.status) steps.push(now.status); });
   mine.on('error', (e) => steps.push(`error: ${e.message}`));
-  mine.receiver.speaking.on('start', (uid) => { if (!talking.has(uid)) { talking.add(uid); overlay({ action: 'speaking', id: uid, on: true }); } });
+  mine.receiver.speaking.on('start', (uid) => { hear(mine, uid); if (!talking.has(uid)) { talking.add(uid); overlay({ action: 'speaking', id: uid, on: true }); } });
   mine.receiver.speaking.on('end', (uid) => { talking.delete(uid); overlay({ action: 'speaking', id: uid, on: false }); });
   mine.on(VoiceConnectionStatus.Disconnected, async () => {
     try {
@@ -167,6 +203,7 @@ async function heartbeat() {
 client.once(Events.ClientReady, async () => {
   console.log(`logged in as ${client.user.tag}; in ${client.guilds.cache.size} server(s), ${voiceChannels().length} voice channel(s) visible`);
   if (!client.guilds.cache.size) console.warn('the bot is in no server yet: invite it (see README.md)');
+  openLine();
   await heartbeat();
   setInterval(heartbeat, 8_000);
 });
