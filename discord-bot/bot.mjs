@@ -25,6 +25,11 @@ if (!OVERLAY_CODE) {
   try { OVERLAY_CODE = JSON.parse(readFileSync(new URL(`../${env('KIT_DATA', 'data')}/secrets.json`, import.meta.url))).hostCode; } catch { /* not beside an overlay */ }
 }
 
+// asked to stop before there is anything to close (as a container's first process, Node ignores these otherwise)
+const quit = () => process.exit(0);
+process.on('SIGINT', quit);
+process.on('SIGTERM', quit);
+
 if (!TOKEN) {
   // Not set up: stay quiet and stay up (a container that exits is started again, over and over).
   console.log('caster bot: no DISCORD_TOKEN, so nothing to do. Set it (see discord-bot/README.md) and start this again.');
@@ -159,9 +164,8 @@ client.on(Events.VoiceStateUpdate, (before, after) => {
 client.on(Events.GuildMemberUpdate, () => sendCasters());      // a name or picture changed while in the channel
 client.on(Events.Error, (e) => console.error(`discord: ${e.message}`));
 
-const stop = async () => { leave(); await client.destroy(); process.exit(0); };
-process.on('SIGINT', stop);
-process.on('SIGTERM', stop);
+const stop = async () => { leave(); await client.destroy().catch(() => {}); process.exit(0); };
+for (const sig of ['SIGINT', 'SIGTERM']) { process.off(sig, quit); process.on(sig, stop); }
 
 console.log(generateDependencyReport().split('\n').filter((l) => /davey|aes-256-gcm|voice:/.test(l)).join(' | '));
 client.login(TOKEN).catch((e) => {
