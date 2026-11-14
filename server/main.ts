@@ -100,6 +100,8 @@ const show: ShowState = await readJson("show.json", {
 const cleanCaster = (c: any) => ({ id: String(c?.id ?? ""), name: String(c?.name ?? ""), handle: String(c?.handle ?? ""), avatar: String(c?.avatar ?? ""), speaking: false });
 show.casters = (show.casters ?? []).map(cleanCaster);
 show.castersFrom ??= "panel";
+// the caster bot: which voice channel the panel picked for it, and who in that channel is not shown as a caster
+show.discord = { channelId: String(show.discord?.channelId ?? ""), hidden: Array.isArray(show.discord?.hidden) ? show.discord!.hidden.map(String) : [] };
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
@@ -301,6 +303,7 @@ function take() {
   // a list the Discord bot keeps is live already: don't put a stale copy of it back
   if (!(st.castersFrom === "discord" && show.castersFrom === "discord")) show.casters = st.casters;
   show.castersFrom = st.castersFrom;
+  applyDiscordCasters();       // staged "from Discord" going on air: whoever is in the channel now
   show.staged = null;
   setScene(st.scene);
 }
@@ -458,6 +461,8 @@ const panelMsg = async () => ({
   playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
+  discord: { bot: discordBot.tag, seenAt: discordBot.seenAt, following: discordBot.following, channels: discordBot.channels, chosen: show.discord!.channelId,
+    people: discordBot.people.map((c) => ({ id: c.id, name: c.name, handle: c.handle, avatar: c.avatar, hidden: show.discord!.hidden.includes(c.id) })) },
 });
 setInterval(async () => {
   if (!dirty) return;
@@ -477,12 +482,28 @@ const actions: Record<string, (a: any) => unknown> = {
   auto: (a) => { show.auto = !!a.on; },
   // from the panel: typing casters in takes over from the Discord bot until the bot is switched back on
   casters: (a) => { target.casters = (a.casters ?? []).map(cleanCaster); target.castersFrom = "panel"; },
-  castersFrom: (a) => { target.castersFrom = a.from === "discord" ? "discord" : "panel"; },
-  // from the Discord bot (tools/discord-bot): who is in the casting voice channel, and who is talking
-  discordCasters: (a) => {
-    if (show.castersFrom !== "discord") return;
-    const talking = new Set(show.casters.filter((c) => c.speaking).map((c) => c.id));
-    show.casters = (a.casters ?? []).map(cleanCaster).map((c: any) => ({ ...c, speaking: talking.has(c.id) }));
+  castersFrom: (a) => { target.castersFrom = a.from === "discord" ? "discord" : "panel"; if (target === show) applyDiscordCasters(); },
+  // from the caster bot (discord-bot/): who is in the casting voice channel, and who is talking. Everyone in the channel is kept; who is shown is that list less whoever the
+  // panel has hidden (a producer, an observer).
+  discordCasters: (a) => { discordBot.people = (a.casters ?? []).map(cleanCaster).filter((c: any) => c.id); applyDiscordCasters(); },
+  // the bot's sign of life, every few seconds: who it is, the voice channels it can see, the one it follows. The
+  // answer tells it which channel the panel wants.
+  discordBot: (a) => {
+    discordBot.tag = String(a.bot ?? "").slice(0, 80);
+    discordBot.following = String(a.following ?? "");
+    discordBot.channels = (Array.isArray(a.channels) ? a.channels : []).slice(0, 200)
+      .map((c: any) => ({ id: String(c.id), name: String(c.name ?? "").slice(0, 80), guild: String(c.guild ?? "").slice(0, 80), people: Number(c.people) || 0 }));
+    discordBot.seenAt = Date.now();
+    return { channelId: show.discord!.channelId };
+  },
+  // picking a channel is asking for its people: that switches "from Discord" on as well (in Next, while staging)
+  discordChannel: (a) => { show.discord!.channelId = String(a.channelId ?? ""); if (show.discord!.channelId) { (show.staging ? ensureStaged() : show).castersFrom = "discord"; applyDiscordCasters(); } },
+  discordHide: (a) => {
+    const id = String(a.id ?? ""), hidden = new Set(show.discord!.hidden);
+    if (!id) return;
+    a.hidden ? hidden.add(id) : hidden.delete(id);
+    show.discord!.hidden = [...hidden];
+    applyDiscordCasters();
   },
   // live gameplay from a TA bridge or tools/mock-ta (see LiveState in model.ts)
   live: (a) => setLive(a),
@@ -592,15 +613,28 @@ function boardAction(a: any) {
   saveBoard();
 }
 
+// The caster bot as last heard from (nothing here is kept over a restart: the bot says it all again).
+const discordBot = { tag: "", seenAt: 0, following: "", channels: [] as { id: string; name: string; guild: string; people: number }[], people: [] as ReturnType<typeof cleanCaster>[] };
+/** The casters on stream are whoever the bot sees in the channel, less the hidden, while the panel says "from Discord". */
+function applyDiscordCasters() {
+  if (show.castersFrom !== "discord") return;
+  const talking = new Set(show.casters.filter((c) => c.speaking).map((c) => c.id));
+  const hidden = new Set(show.discord!.hidden);
+  show.casters = discordBot.people.filter((c) => !hidden.has(c.id)).map((c) => ({ ...c, speaking: talking.has(c.id) }));
+}
+
 async function runAction(a: any) {
   if (a?.action === "board") return boardAction(a);      // not show state: nothing else to save or send
   const fn = actions[a?.action];
   if (!fn) throw new Error(`unknown action "${a?.action}"`);
   // "staged": true on a scene / text action edits the staged copy (and turns staging on); anything else is on air
   target = a.staged && STAGEABLE.has(a.action) ? ensureStaged() : show;
-  try { await fn(a); } finally { target = show; }
-  if (a.action !== "speaking" && a.action !== "live") saveShow();   // talking flickers on and off; not worth a file write each time
+  let answer: unknown;
+  try { answer = await fn(a); } finally { target = show; }
+  // talking flickers on and off, and the bot says hello every few seconds: not worth a file write each time
+  if (a.action !== "speaking" && a.action !== "live" && a.action !== "discordBot") saveShow();
   dirty = true;
+  return answer;
 }
 
 // ------------------------------------------------------------------ http
@@ -770,7 +804,7 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     if (foreign(req)) return elsewhere();
     const no = await refuse(req, info);
     if (no) return no;
-    try { await runAction(await req.json()); return Response.json({ ok: true }); }
+    try { const answer = await runAction(await req.json()); return Response.json({ ok: true, ...(answer && typeof answer === "object" ? answer : {}) }); }
     catch (e) { return Response.json({ ok: false, error: (e as Error).message }, { status: 400 }); }
   }
   if (p === "/api/state") {

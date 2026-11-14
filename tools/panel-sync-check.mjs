@@ -35,7 +35,7 @@ try {
   // per-scene music slider and casters
   await one.eval(`(() => { const e = document.querySelector('#mixScenes input'); e.value = 44; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); })()`); await sleep(700);
   check('first per-scene music slider (1→2)', await two.eval(`document.querySelector('#mixScenes input').value`), 44);
-  await two.eval(`(() => { const e = document.querySelector('#casters input'); if (!e) return; e.focus(); e.value = 'Casey'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); e.blur(); })()`); await sleep(700);
+  await one.eval(`(() => { const b = document.querySelector('#castersFrom'); if (b.checked) b.click(); })()`); await sleep(700); await two.eval(`(() => { const e = document.querySelector('#casters input'); if (!e) return; e.focus(); e.value = 'Casey'; e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); e.blur(); })()`); await sleep(700);
   check('first caster field (2→1)', await one.eval(`document.querySelector('#casters input')?.value`), 'Casey');
   // up next
   await one.eval(set('#upA', 'Alpha')); await one.eval(set('#upB', 'Beta')); await one.eval(`document.querySelector('#upSet').click()`); await sleep(800);

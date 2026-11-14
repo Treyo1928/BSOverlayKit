@@ -140,6 +140,9 @@ The `data/` folder is your own preview's settings and is never part of what you 
 - **Replay playlist:** breaks play a shuffled mix of the replays you add in the panel and those of the players still
   in the bracket; Getting Ready plays someone who is about to play. Needs a replay viewer (ChroViewer) for the
   video; see `DEPLOY.md`.
+- **Casters from Discord:** with the caster bot ([`discord-bot/`](discord-bot/README.md)) whoever is in the casting
+  voice channel is on the Casters scene, and their ring glows while they talk. The panel's Casters card picks the
+  channel and who is shown; without the bot, casters are typed in there.
 - **Generic starter scenes** (not MSU): `OVERLAY=overlay.starter.yaml ./run.sh`.
 
 ### Staging: look before it goes on air
@@ -196,6 +199,7 @@ server/                    the server (Deno): panel, data sources, playlist, aut
 web/                       the overlay page, its engine (layer names → live bindings, animations, particles) and the panel
 tools/                     install-fonts.sh; act.sh (send a panel action); browser checks used while developing
 shots/                     reference screenshots of the scenes
+discord-bot/               the caster bot (Node): Discord voice channel → the Casters scene
 DEPLOY.md, Dockerfile, docker-compose.yml, docker/      hosting it on a server
 data/                      made when it runs: your panel settings and login code. Never committed
 ```

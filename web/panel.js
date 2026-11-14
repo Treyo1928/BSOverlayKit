@@ -128,12 +128,29 @@ function render() {
   if (editing()) return;
   $("#speed").value = /(\d+)× speed/.exec(S.source.status)?.[1] ?? 4;
   const fromDiscord = sh.castersFrom === "discord";
+  const dc = S.discord ?? { channels: [], people: [] };
   $("#castersFrom").checked = fromDiscord;
-  $("#castersHint").textContent = fromDiscord ? "Following the Discord voice channel (the caster bot). Editing a caster below switches this off." : "Typed in here. Tick the box to follow the casting voice channel instead.";
-  $("#casters").innerHTML = sh.casters.map((c, i) => `<div class="row">
-      <div><label>Caster ${i + 1}</label><input data-c="${i}" data-k="name" value="${esc(c.name)}"></div>
-      <div><label>Handle</label><input data-c="${i}" data-k="handle" value="${esc(c.handle)}"></div></div>
-    <label>Discord avatar (in Discord: right-click their picture → Copy Image Link)</label><input data-c="${i}" data-k="avatar" value="${esc(c.avatar)}" placeholder="https://cdn.discordapp.com/avatars/…">`).join("<hr style='border-color:#2a2a40'>");
+  $("#discordBox").style.display = fromDiscord ? "" : "none";
+  $("#casters").style.display = fromDiscord ? "none" : "";
+  botState();
+  if (document.activeElement?.id !== "discordChannel") {
+    const following = dc.channels.find((c) => c.id === dc.following);
+    $("#discordChannel").innerHTML = `<option value="">${following && !dc.chosen ? `The bot's own pick: ${esc(following.name)}` : "The bot's own pick (a channel with \"cast\" in its name)"}</option>`
+      + dc.channels.map((c) => `<option value="${esc(c.id)}" ${c.id === dc.chosen ? "selected" : ""}>${esc(c.name)} · ${esc(c.guild)} (${c.people} in it)</option>`).join("")
+      + (dc.chosen && !dc.channels.some((c) => c.id === dc.chosen) ? `<option value="${esc(dc.chosen)}" selected>A channel the bot cannot see now</option>` : "");
+  }
+  $("#discordPeople").innerHTML = dc.people.length
+    ? dc.people.map((c) => `<div class="who ${c.hidden ? "off" : ""}">${c.avatar ? `<img src="${esc(c.avatar)}" alt="">` : `<span class="noimg"></span>`}<span class="n">${esc(c.name)} <small>${esc(c.handle)}</small></span>
+        <label title="Off: they stay in the channel but are not shown as a caster (a producer, someone listening in)"><input type="checkbox" data-discord-show="${esc(c.id)}" ${c.hidden ? "" : "checked"}> On stream</label></div>`).join("")
+    : `<div class="muted">${dc.seenAt ? "Nobody is in the channel." : ""}</div>`;
+  $("#castersHint").textContent = fromDiscord
+    ? "Whoever joins the voice channel appears on the Casters scene in the order they joined, with their Discord name and picture; their ring lights up while they talk. Nobody needs setting up."
+    : "Typed in here, for when the bot is not running. Tick the box above to go back to the voice channel.";
+  // always four places (the scene holds up to four): an empty one is simply nobody
+  if (!fromDiscord) $("#casters").innerHTML = [...sh.casters, {}, {}, {}, {}].slice(0, Math.max(4, sh.casters.length)).map((c, i) => `<div class="row">
+      <div><label>Caster ${i + 1}</label><input data-c="${i}" data-k="name" value="${esc(c.name ?? "")}" placeholder="empty: nobody"></div>
+      <div><label>Handle</label><input data-c="${i}" data-k="handle" value="${esc(c.handle ?? "")}"></div></div>
+    <label>Picture (a link to an image)</label><input data-c="${i}" data-k="avatar" value="${esc(c.avatar ?? "")}" placeholder="https://…">`).join("<hr style='border-color:#2a2a40'>");
   $("#header").value = sh.header ?? "";
   $("#signOff").checked = !!S.show.signOff;
   const up = sh.upNext ?? {};
@@ -262,9 +279,9 @@ document.addEventListener("change", (e) => {
   }
   if (el.id === "speed") send("source", { control: "speed", value: Number(el.value) });
   if (el.dataset.c !== undefined) {
-    const casters = structuredClone(cur().casters);
-    casters[Number(el.dataset.c)][el.dataset.k] = el.value;
-    send("casters", { casters });
+    const rows = {};
+    for (const i of document.querySelectorAll("#casters input[data-c]")) (rows[i.dataset.c] ??= {})[i.dataset.k] = i.value.trim();
+    send("casters", { casters: Object.values(rows).filter((c) => c.name || c.handle || c.avatar) });
   }
   if (el.id === "brbTitle" || el.id === "brbMsg") send("brb", { brb: { title: $("#brbTitle").value, message: $("#brbMsg").value } });
   if (el.id === "bscsMatch") send("source", { control: "follow", matchId: el.value });
@@ -276,6 +293,8 @@ document.addEventListener("change", (e) => {
       .then((yes) => yes && send("source", { control: "tournament", slug }));
   }
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
+  if (el.id === "discordChannel") send("discordChannel", { channelId: el.value });
+  if (el.dataset.discordShow) send("discordHide", { id: el.dataset.discordShow, hidden: !el.checked });
   if (el.id === "header") send("header", { header: el.value.trim() });
   if (el.id === "plMode") send("playlist", { op: "mode", mode: el.value });
   if (el.id === "signOff") send("signOff", { on: el.checked });
@@ -421,3 +440,16 @@ padCanvas.addEventListener("pointermove", (e) => {
 });
 const endStroke = () => { if (!drawing) return; clearInterval(drawing.timer); flushStroke(); drawing = null; };
 for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) padCanvas.addEventListener(type, endStroke);
+
+// ---------------------------------------------------------------- the caster bot's sign of life
+// It says hello every 8 s. The line by the card's title is worked out here, on a clock, so that it goes stale by
+// itself when the bot stops (nothing arrives to say that it has).
+function botState() {
+  const dc = S?.discord;
+  if (!dc) return;
+  const ago = dc.seenAt ? Math.round((Date.now() + clockOffset - dc.seenAt) / 1000) : null;
+  const el = $("#botState");
+  el.textContent = ago === null ? "caster bot not connected" : ago < 25 ? `${dc.bot || "caster bot"} connected` : `caster bot not heard from for ${ago < 120 ? `${ago} s` : `${Math.round(ago / 60)} min`}`;
+  el.style.color = ago !== null && ago < 25 ? "#7be0a0" : "";
+}
+setInterval(botState, 5000);

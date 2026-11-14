@@ -227,6 +227,8 @@ export interface ShowState {
   signOff?: boolean;
   casters: Caster[];
   castersFrom: "panel" | "discord";       // discord = the caster bot keeps the list in sync with the voice channel
+  /** The caster bot: the voice channel picked for it in the panel ("" = its own choice), and people in it who are not shown. */
+  discord?: { channelId: string; hidden: string[] };
   brb: { title: string; message: string; endsAt: number };
   ticker: string[];
   feeds: Record<string, string>;          // feed:a / feed:main … -> a URL set in the panel (overrides the data's)

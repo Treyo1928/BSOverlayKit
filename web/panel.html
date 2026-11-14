@@ -49,8 +49,14 @@
       <div class="row" id="bscsTournamentRow" style="display:none"><div><label>Tournament</label><select id="bscsTournament"></select></div></div>
       <div class="row"><div><label>Follow</label><select id="bscsMatch"></select></div></div>
       <div class="hint">The match the overlay shows. Pick it here when the next match starts. The tournament list is what the overlay's API key works in.</div></div>
-    <div class="card staged-edit"><h2>Casters <span class="spacer"></span><label style="margin:0;display:flex;gap:6px;color:#eee"><input type="checkbox" id="castersFrom"> From Discord</label></h2>
-      <div class="hint" id="castersHint"></div><div id="casters"></div></div>
+    <div class="card staged-edit" id="castersCard"><h2>Casters <span class="spacer"></span><span id="botState" class="muted"></span></h2>
+      <label class="check" title="On: whoever is in the Discord voice channel is on the Casters scene, with nothing to set up. Off: type the casters in below"><input type="checkbox" id="castersFrom"> Take the casters from the Discord voice channel</label>
+      <div id="discordBox">
+        <div class="row"><div><label>Voice channel</label><select id="discordChannel"></select></div></div>
+        <div id="discordPeople" class="people"></div>
+      </div>
+      <div id="casters"></div>
+      <div class="hint" id="castersHint"></div></div>
     <div class="card staged-edit"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
       <div class="row"><div><label>Team (left)</label><input id="upA" list="teamNames" placeholder="pick or type a team"></div>
         <div><label>Team (right)</label><input id="upB" list="teamNames" placeholder="pick or type a team"></div></div>

@@ -1,0 +1,16 @@
+{
+  "name": "msu-caster-bot",
+  "private": true,
+  "type": "module",
+  "description": "Puts whoever is in the casting voice channel on the overlay's Casters scene, and lights up whoever is talking.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env bot.mjs"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.19.2",
+    "discord.js": "^14.27.0"
+  }
+}

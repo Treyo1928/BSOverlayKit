@@ -5,3 +5,5 @@ data/*
 *.log
 # server settings with the login code and API key
 .env
+# packages installed for the caster bot
+node_modules/

@@ -25,6 +25,22 @@ services:
     memswap_limit: 512m
     cpus: 1.0
 
+  # The caster bot: whoever is in the Discord voice channel is on the Casters scene (discord-bot/README.md). With no
+  # DISCORD_TOKEN in .env it starts, says so and waits: nothing else is affected.
+  casters:
+    build: ./discord-bot
+    restart: unless-stopped
+    depends_on: [overlay]
+    environment:
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      CASTER_CHANNEL_ID: ${CASTER_CHANNEL_ID:-}
+      IGNORE_USER_IDS: ${IGNORE_USER_IDS:-}
+      OVERLAY_URL: http://overlay:8095
+      OVERLAY_CODE: ${HOST_CODE:?set HOST_CODE in .env}
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+
   viewer:
     # an image built elsewhere and loaded here (docker save | docker load) is used as it is: `docker compose up -d`
     # builds only what is missing, `--build overlay` rebuilds only the overlay

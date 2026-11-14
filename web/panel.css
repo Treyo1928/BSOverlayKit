@@ -99,3 +99,12 @@ dialog.ask button.danger { border-color: #c0392b; color: #ffb4a8; }
 .board-tools .swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid #0008; }
 .board-pad { position: relative; width: 100%; background: linear-gradient(#2a0711, #12020a); border: 3px solid #d9c9a3; border-radius: 10px; overflow: hidden; touch-action: none; cursor: crosshair; }
 .board-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+/* the casters taken from Discord: who is in the channel, and whether each is on stream */
+.people { display: grid; gap: 6px; margin: 8px 0; }
+.people .who { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.people .who img, .people .who .noimg { width: 32px; height: 32px; border-radius: 50%; background: #0d0d16; flex: none; }
+.people .who .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.people .who small { color: var(--muted); }
+.people .who.off { opacity: .55; }
+.people .who label { margin: 0; display: flex; gap: 6px; align-items: center; color: #eee; flex: none; }
