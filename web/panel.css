@@ -7,7 +7,9 @@ h1 { margin: 0; font-size: 18px; }
 header { display: flex; gap: 12px; align-items: center; padding: 10px 16px; background: #12121f; border-bottom: 1px solid var(--line); }
 header .spacer { flex: 1; }
 main { display: grid; grid-template-columns: minmax(420px, 1fr) minmax(480px, 1.3fr); gap: 16px; padding: 16px; align-items: start; }
-.col { display: grid; gap: 16px; }
+/* minmax(0, …) and min-width: 0: a card with a long unbroken line (a song title) is cut short, not allowed to push
+   its column out under the other one */
+.col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
 .card { background: #161626; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .card h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; gap: 8px; align-items: center; }
 .card h2 .spacer { flex: 1; }

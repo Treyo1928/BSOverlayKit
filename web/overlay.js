@@ -26,7 +26,7 @@ let scenes = {}, active = null, state = null, designVersion = null, loading = nu
 const $ = (s) => document.querySelector(s);
 
 function showError(msg) {
-  console.error(msg);
+  if (msg) console.error(msg);        // called with nothing to clear what was shown: that is not an error
   if (!debug) return;                 // never put errors on the real stream
   const d = $("#debug");
   d.textContent = msg;
