@@ -114,6 +114,9 @@ function join(id) {
     selfDeaf: false,      // must receive packets to know who is talking
     selfMute: true,
   });
+  const steps = [];        // how far the voice link got, for the message when it does not get there
+  mine.on('stateChange', (was, now) => { if (was.status !== now.status) steps.push(now.status); });
+  mine.on('error', (e) => steps.push(`error: ${e.message}`));
   mine.receiver.speaking.on('start', (uid) => { if (!talking.has(uid)) { talking.add(uid); overlay({ action: 'speaking', id: uid, on: true }); } });
   mine.receiver.speaking.on('end', (uid) => { talking.delete(uid); overlay({ action: 'speaking', id: uid, on: false }); });
   mine.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -130,7 +133,16 @@ function join(id) {
     .then(() => console.log(`listening in #${channel.name} (${channel.guild.name})`))
     // without voice the list of who is there still works (that comes from the server, not the voice link): only the
     // talking rings do not
-    .catch((e) => console.error(`could not join voice in #${channel.name}: ${e.message}. Casters still show; their rings will not light up.`));
+    .catch(() => {
+      if (connection !== mine) return;
+      const can = channel.permissionsFor(client.user);
+      const missing = ['ViewChannel', 'Connect'].filter((p) => !can?.has(p));
+      const why = missing.length ? `the bot lacks ${missing.join(' and ')} in that channel (channel or role permissions in Discord)`
+        : channel.full ? 'the channel is full'
+        : `it got as far as: ${steps.join(' -> ') || 'nothing'} (stuck at "signalling": Discord never answered; at "connecting": the voice link itself, UDP out of this machine or the encryption library)`;
+      console.error(`could not join voice in #${channel.name}: ${why}. Casters still show; their rings will not light up. Trying again in 60 s.`);
+      setTimeout(() => connection === mine && join(channelId), 60_000);
+    });
 }
 
 // ---------------------------------------------------------------- keeping the overlay and the bot in step
