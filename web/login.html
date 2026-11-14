@@ -18,7 +18,8 @@
   if (why) { err.textContent = WHY[why] ?? ""; history.replaceState(null, "", "/"); }
   fetch("/api/me").then((r) => r.json()).then((me) => {
     if (!me.site) return;
-    site.textContent = `Sign in with BSCompStats (${me.site})`;
+    site.textContent = "Sign in with BSCompStats";
+    site.title = `With your account on ${me.site}`;
     site.hidden = or.hidden = false;
   }).catch(() => {});
   f.onsubmit = async (e) => {

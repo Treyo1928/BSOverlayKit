@@ -73,7 +73,7 @@ label.check { display: flex; gap: 8px; align-items: center; margin: 10px 0 2px; 
 .pvopt { display: flex; gap: 5px; align-items: center; margin: 0 10px 0 0; font-weight: 400; text-transform: none; letter-spacing: 0; color: #eee; cursor: pointer; }
 
 /* sign in with a site account; who is signed in */
-.sitebtn { display: block; text-align: center; padding: 10px 12px; border-radius: 8px; background: #5b3fd0; color: #fff; font-weight: 600; text-decoration: none; }
+.sitebtn { display: block; text-align: center; white-space: nowrap; padding: 10px 12px; border-radius: 8px; background: #5b3fd0; color: #fff; font-weight: 600; text-decoration: none; }
 .sitebtn:hover { filter: brightness(1.12); }
 .sitebtn[hidden] { display: none; }
 #who { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #bbb; }
