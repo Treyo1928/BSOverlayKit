@@ -13,6 +13,9 @@ overlay.yaml           ← which scenes exist, side colours, automatic scene swi
 
 Save in Inkscape and the panel preview updates within a second. No restart, no refresh.
 
+**New here?** The README's "Editing the designs" gets you from nothing to a live preview in three steps (fonts,
+`./run.sh`, open the panel). This page is the reference you come back to.
+
 ---
 
 ## 1. Workflow in Inkscape
@@ -28,9 +31,10 @@ Save in Inkscape and the panel preview updates within a second. No restart, no r
    group per look, named `when:banned`, `when:picked`… Hide the ones you're not working on with the 👁
    eye icon; the engine still shows the right one on stream.
 6. **Save as Inkscape SVG** (the normal Save). Keep text as text: don't use *Object to Path* on live text.
-7. **Fonts:** use fonts that are in `design/fonts/` (Oxanium and Inter to start with, already installed for
-   you). To add one: drop the `.ttf` in `design/fonts/` and install it on your PC. Use the font's real
-   family name for the file name (`Rajdhani-Bold.ttf`, or `Rajdhani.ttf` for a variable font).
+7. **Fonts:** use fonts that are in `design/fonts/`, and install them on your computer so Inkscape shows them
+   (`tools/install-fonts.sh`, or on Windows select the `.ttf` files and Install). To add one: drop the `.ttf` in
+   `design/fonts/` and install it too. Use the font's real family name for the file name (`Rajdhani-Bold.ttf`, or
+   `Rajdhani.ttf` for a variable font).
 8. **Images that never change** (logos, sponsor art): put them in `design/` and *link* (not embed) them
    when importing, or embed if you prefer. Both work.
 9. **A set of scenes in its own folder** (like `design/msu/`): list them as `svg: msu/match` in
@@ -293,23 +297,35 @@ Data changes: `increase:path`, `decrease:path`, `change:path`, `becomes:conditio
 
 ```yaml
 automation:
-  - { on: mapStart, scene: match, when: "casters, brb, picks" }   # only from these scenes
+  - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket, final" }
+  - { on: mapNext, why: pick, scene: ready, after: 3s, when: "picks" }                 # 3 s after the pick
+  - { on: mapNext, why: result, scene: ready, after: 3s, stay: 6s, when: "picks" }     # the last result shown 6 s first
   - { on: mapStart, scene: match, when: "ready", fade: 200ms }    # this switch with its own (quick) crossfade
-  - { on: songEnd, scene: picks, after: 12s, when: "match" }
-  - { on: mapEnd, scene: picks, after: 10s, when: "match" }
-  - { on: matchEnd, scene: picks, after: 10s, when: "match" }     # Picks & Bans shows the winner and final score
+  - { on: songEnd, scene: picks, after: 3s, when: "match" }
+  - { on: matchEnd, scene: final, after: 12s, when: "match, picks, ready" }
 ```
 
-`on:` an event from §6, `scene:` where to go, `when:` only if one of these scenes is on, `after:` wait first,
-`fade:` this switch's own crossfade instead of the `crossfade:` setting. The panel's **Auto-switch** box turns all of
-them on or off. Rules always act on what is on air, never on what is staged in the panel's Staging mode (README,
-*Staging*); to look at a design with staged values, add `&staged=1` to the overlay link.
+| Key | Means |
+|---|---|
+| `on:` | an event from §6 |
+| `scene:` | where to go |
+| `when:` | only if one of these scenes is on |
+| `after:` | wait this long after the event |
+| `stay:` | the scene being left must have been up at least this long (so what it shows is not cut off) |
+| `fade:` | this switch's own crossfade instead of the `crossfade:` setting |
+| `why:` | for `mapNext` only: `pick` (the map was picked just now) or `result` (it was already chosen when the map before it ended) |
 
-How the MSU show runs with these: the overlay never leaves a scene because the organiser *asked* for a map to start
-or because the map is loading; `mapStart` only comes once the players are really playing. So switch to **Getting
-Ready** by hand while everyone puts their headset on (it shows the replay playlist, the match-up and the next map),
-and it cuts to **Match** by itself. After the last map the overlay goes back to **Picks & Bans**, which then shows
-the winner; **Final** is switched to by hand (or add `{ on: matchEnd, scene: final, after: 60s, when: "picks" }`).
+The panel's **Auto-switch** box turns all of them on or off. Rules always act on what is on air, never on what is
+staged in the panel's Staging mode (README, *Staging*); to look at a design with staged values, add `&staged=1` to
+the overlay link while signed in to the panel.
+
+How the MSU show runs with these: a match starting brings up **Picks & Bans**; once a map is up next, **Getting
+Ready** follows (the lineups, the map, a replay of someone about to play); the overlay cuts to **Match** only when
+the players are really playing, never because a map was asked for or is loading; when the song ends it goes back to
+**Picks & Bans**, which shows the result; once the match is decided, **Final**.
+
+A scene in the `scenes:` list can also carry `replays: players` (Getting Ready does): its replay box then shows
+someone about to play instead of the break mix.
 
 ---
 
@@ -326,3 +342,16 @@ the winner; **Final** is switched to by hand (or add `{ on: matchEnd, scene: fin
   cream with dark text: plates, video frames, score pips, the tug bar. `color:a` / `color:b` use the same two colours
   from `overlay.yaml`. Keep to it when you add something, so viewers can tell the sides apart at a glance.
 - **Errors** (a typo in a rules file, a broken SVG) show in red in the panel, never on stream.
+- **Moving a video hole:** a `feed:` rectangle is where the video goes; the coloured frame around it is a separate
+  path, so move both. In the MSU scenes the `back` layer is also clipped with holes where the videos sit (so a stream
+  that puts something of its own behind the overlay shows it there). The video covers that area anyway, so you can
+  leave the clip alone; to move it too, select the `back` layer, *Object → Clip → Release Clip*, edit the shape,
+  select both again and *Object → Clip → Set Clip*.
+- **Inkscape saving is safe:** every MSU scene has been opened and saved by Inkscape 1.4 and compared before and
+  after in the overlay: same texts, pictures, shapes and video boxes. Inkscape adds its own bookkeeping to the file
+  (it grows a little); that changes nothing on stream.
+- **Do not** save as *Plain SVG* or *Optimized SVG*: both can drop the layer names. Plain **Save** (Inkscape SVG).
+- **Copying a named object copies its name**, which is usually what you want (a second score, a second card). Two
+  objects with the same `#name` are both found by a rule that names it.
+- **Losing a name:** ungrouping a named group throws its name away. Regroup and type the name back. If you use
+  git, `git diff design/msu/match.svg` shows the name that went missing.

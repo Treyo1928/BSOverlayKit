@@ -1,4 +1,4 @@
-import { launch, sleep } from '/home/treyb/DevStuff/MSU-BeatSaber/ta-server/tools/cdp.mjs';
+import { launch, sleep } from './cdp.mjs';
 import { mkdtempSync, rmSync } from 'node:fs';
 // Two open panels stay in step: every control is changed in one and read back in the other, both ways.
 //   B=http://127.0.0.1:8095 CODE=<panel code> node tools/panel-sync-check.mjs      (it changes the show: not on a live stream)

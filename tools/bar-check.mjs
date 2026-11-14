@@ -6,7 +6,7 @@
 // case measures the fill, the bright edge, the lead text, the middle mark, the end boxes and the centre column.
 // Prints one line per case and every rule broken; exits 1 if any was. out.png: every case's bar, one under another.
 // Run it under a memory cap: one headless Chromium (systemd-run --user --scope -p MemoryMax=3G …).
-import { launch, sleep } from "../../ta-server/tools/cdp.mjs";
+import { launch, sleep } from "./cdp.mjs";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 

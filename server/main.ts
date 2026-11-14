@@ -139,15 +139,17 @@ async function findReplayScenes() {
 await findReplayScenes();
 (async () => {
   let t: ReturnType<typeof setTimeout> | undefined;
-  for await (const ev of Deno.watchFs([at("design").pathname, at(CONFIG_FILE).pathname])) {
-    if (ev.paths.every((p) => /\.(swp|tmp|~)$|\/\.#/.test(p))) continue;
+  // a file: address as a path the system understands ("/C:/kit/design" is "C:\\kit\\design" on Windows)
+  const fsPath = (u: URL) => { const p = decodeURIComponent(u.pathname); return Deno.build.os === "windows" ? p.replace(/^\//, "").replaceAll("/", "\\") : p; };
+  for await (const ev of Deno.watchFs([fsPath(at("design")), fsPath(at(CONFIG_FILE))])) {
+    if (ev.paths.every((p) => /\.(swp|tmp|~)$|[\/\\]\.#/.test(p))) continue;
     clearTimeout(t);
     t = setTimeout(async () => {        // editors write files in several steps; wait for the last one
       await loadConfig();
       await findReplayScenes();
       designVersion = Date.now();
       broadcastAll({ type: "design", version: designVersion });
-      console.log("design changed:", ev.paths.map((p) => p.split("/").pop()).join(", "));
+      console.log("design changed:", ev.paths.map((p) => p.split(/[\/\\]/).pop()).join(", "));
     }, 250);
   }
 })();

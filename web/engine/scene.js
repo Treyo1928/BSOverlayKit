@@ -42,7 +42,8 @@ export class Scene {
       for (const attr of ["href", "xlink:href"]) {
         const v = img.getAttribute(attr);
         if (!v || /^(https?:|data:|\/design\/|\/covers\/)/.test(v)) continue;
-        const path = decodeURIComponent(v.replace(/^file:\/\//, ""));
+        // Windows writes "C:\\Users\\…\\design\\msu\\logo.png" (or file:///C:/…): the same thing with other slashes
+        const path = decodeURIComponent(v.replace(/^file:\/\//, "")).replace(/\\/g, "/");
         // an absolute path inside the design folder, else relative to this SVG (design/msu/x.svg -> design/msu/)
         const url = path.includes("/design/") ? `/design/${path.split("/design/").pop()}` : new URL(path, location.origin + this.def.svg).pathname;
         img.setAttribute(attr, url);
