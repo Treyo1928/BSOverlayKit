@@ -394,7 +394,7 @@ function assignViewers() {
   // starts, while the playlist's replay still plays on Getting Ready.
   const poolMax = POOL + (Object.values(wanted).some((w) => w.link?.taLive) ? 1 : 0);
   // what other scenes will show: a match's players first, the playlist's paused replay last
-  const later = Object.keys(wanted).filter((id) => wanted[id].link && !visible.has(id) && mine(id))
+  const later = Object.keys(wanted).filter((id) => wanted[id].link && !visible.has(id))
     .sort((x, y) => (x === "feed:main") - (y === "feed:main"));
   // 1. viewers already on a visible hole with the right replay stay; 2. a viewer that has the replay moves to it
   for (const id of need) {
