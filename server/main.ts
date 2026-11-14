@@ -35,6 +35,8 @@ type Config = {
   scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string; replays?: string }>;
   /** how far behind the players the live (TA) replays are shown, in ms: the buffer that rides out late data */
   liveDelay: number;
+  /** Where the whiteboard sits on the 1920 × 1080 stream (overlay.yaml, whiteboard:). */
+  whiteboard: { x: number; y: number; width: number; height: number };
   automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string; why?: string; stay?: number | string }[];
   sim: SimOptions;
   bscompstats: BscsOptions;
@@ -52,7 +54,7 @@ async function loadConfig() {
       if (typeof s === "string") scenes[s] = { svg: s };
       else for (const [k, v] of Object.entries(s)) scenes[k] = { svg: (v as any).svg ?? k, vars: (v as any).vars, label: (v as any).label, replays: (v as any).replays };
     }
-    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? ""),
+    config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], whiteboard: boardBox(raw.whiteboard), sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? ""),
       liveDelay: Math.max(300, Math.min(15_000, raw.liveDelay === undefined ? 2500 : typeof raw.liveDelay === "number" ? raw.liveDelay : parseDuration(String(raw.liveDelay)))) };
     // the start script points a test stack somewhere else without editing this file
     const e = (k: string) => Deno.env.get(k) || undefined;
@@ -62,11 +64,17 @@ async function loadConfig() {
   } catch (e) {
     configError = `${CONFIG_FILE}: ${(e as Error).message}`;
     console.error(configError);
-    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], sim: {}, bscompstats: {}, header: "", hsv: "", liveDelay: 2500 };
+    config ??= { title: "Overlay", colors: {}, crossfade: 400, source: "sim", scenes: {}, automation: [], whiteboard: boardBox(null), sim: {}, bscompstats: {}, header: "", hsv: "", liveDelay: 2500 };
   }
 }
 await loadConfig();
 
+/** The whiteboard's place on stream: what overlay.yaml says, kept inside the picture; bottom right otherwise. */
+function boardBox(raw: any) {
+  const n = (v: unknown, d: number, lo: number, hi: number) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Math.min(hi, Math.max(lo, Number(v))) : d);
+  const width = n(raw?.width, 760, 200, 1920), height = n(raw?.height, 470, 150, 1080);
+  return { x: n(raw?.x, 1130, 0, 1920 - width), y: n(raw?.y, 580, 0, 1080 - height), width, height };
+}
 async function readJson<T>(p: string, fallback: T): Promise<T> {
   try { return { ...fallback, ...JSON.parse(await Deno.readTextFile(dataAt(p))) }; } catch { return fallback; }
 }
@@ -95,7 +103,7 @@ show.castersFrom ??= "panel";
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
-show.mix = { music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, ...(show.mix?.scenes ?? {}) } };
+show.mix = { music: Math.min(1, Number(show.mix?.music ?? 1)), hits: Math.min(1, Number(show.mix?.hits ?? 1)), scenes: { ready: 0.5, casters: 0.35, ...(show.mix?.scenes ?? {}) } };   // casters talk over theirs
 for (const k of Object.keys(show.mix.scenes)) show.mix.scenes[k] = Math.min(1, show.mix.scenes[k]);
 show.viewer = Object.assign({ lockPitch: true, pitchUp: 12, pitchDown: 12, fov: 70, z: -0.55, renderScale: 1, maxFps: 60, output: 1080, quality: "medium", distortion: true }, show.viewer as Partial<ShowState["viewer"]> | undefined);
 delete (show.viewer as Record<string, unknown>).preview;   // the picture relay it chose between is gone
@@ -149,6 +157,7 @@ await findReplayScenes();
       await findReplayScenes();
       designVersion = Date.now();
       broadcastAll({ type: "design", version: designVersion });
+      broadcastAll(boardMsg());      // the whiteboard's place is in overlay.yaml too
       console.log("design changed:", ev.paths.map((p) => p.split(/[\/\\]/).pop()).join(", "));
     }, 250);
   }
@@ -543,7 +552,48 @@ const actions: Record<string, (a: any) => unknown> = {
   streamDelay: (a) => { show.streamDelayMs = Math.max(0, Number(a.ms) || 0); },
   source: (a) => source.control?.(a.control, a),
 };
+// ------------------------------------------------------------------ whiteboard
+// Drawn in the panel, shown on stream on top of whatever scene is on, so it stays through scene changes. It is
+// not part of the show state: a stroke in progress sends a few points many times a second, and the whole show must
+// not be sent again each time. It has its own messages (the whole board to a page that connects or after undo /
+// clear; one stroke, or a few more points of one, while someone draws) and its own file.
+interface Stroke { id: string; color: string; width: number; erase?: boolean; points: number[] }
+const board = await readJson<{ open: boolean; strokes: Stroke[] }>("board.json", { open: false, strokes: [] });
+board.strokes = Array.isArray(board.strokes) ? board.strokes : [];
+const MAX_STROKES = 600, MAX_STROKE_NUMBERS = 8000;
+let boardTimer: ReturnType<typeof setTimeout> | undefined;
+const saveBoard = () => { clearTimeout(boardTimer); boardTimer = setTimeout(() => Deno.writeTextFile(dataAt("board.json"), JSON.stringify(board)).catch(() => {}), 700); };
+const boardMsg = () => ({ type: "board", open: board.open, strokes: board.strokes, box: config.whiteboard });
+/** Points as the panel sent them, made safe: pairs of numbers from 0 to 1, a few decimals. */
+const boardPoints = (raw: unknown, room: number) =>
+  (Array.isArray(raw) ? raw : []).slice(0, Math.max(0, room - (room % 2))).map((v) => Math.round(Math.min(1, Math.max(0, Number(v) || 0)) * 10000) / 10000);
+function boardAction(a: any) {
+  if (a.op === "open") { board.open = !!a.on; broadcastAll(boardMsg()); }
+  else if (a.op === "stroke") {
+    const st = a.stroke ?? {};
+    const id = String(st.id ?? "").slice(0, 40);
+    if (!id || !/^#[0-9a-f]{6}$/i.test(String(st.color)) || board.strokes.some((x) => x.id === id)) return;
+    const points = boardPoints(st.points, MAX_STROKE_NUMBERS);
+    if (points.length < 2 || points.length % 2) return;
+    const stroke: Stroke = { id, color: String(st.color).toLowerCase(), width: Math.min(80, Math.max(1, Number(st.width) || 6)), ...(st.erase ? { erase: true } : {}), points };
+    board.strokes.push(stroke);
+    if (board.strokes.length > MAX_STROKES) { board.strokes.splice(0, board.strokes.length - MAX_STROKES); broadcastAll(boardMsg()); }
+    else broadcastAll({ type: "boardStroke", stroke });
+  } else if (a.op === "append") {
+    const stroke = board.strokes.findLast((x) => x.id === String(a.id));
+    if (!stroke) return;
+    const points = boardPoints(a.points, MAX_STROKE_NUMBERS - stroke.points.length);
+    if (points.length < 2) return;
+    stroke.points.push(...points);
+    broadcastAll({ type: "boardAppend", id: stroke.id, points });
+  } else if (a.op === "undo") { board.strokes.pop(); broadcastAll(boardMsg()); }
+  else if (a.op === "clear") { board.strokes = []; broadcastAll(boardMsg()); }
+  else throw new Error(`unknown board op "${a.op}"`);
+  saveBoard();
+}
+
 async function runAction(a: any) {
+  if (a?.action === "board") return boardAction(a);      // not show state: nothing else to save or send
   const fn = actions[a?.action];
   if (!fn) throw new Error(`unknown action "${a?.action}"`);
   // "staged": true on a scene / text action edits the staged copy (and turns staging on); anything else is on air
@@ -686,6 +736,7 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
       if (!known) { counted = true; perAddress.set(addr, (perAddress.get(addr) ?? 0) + 1); }
       if (isStaged) stagedViews.add(socket);
       send(socket, stateMsg(isStaged));
+      send(socket, boardMsg());
     };
     socket.onclose = () => {
       overlays.delete(socket); stagedViews.delete(socket);
@@ -706,7 +757,7 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     const no = await refuse(req, info);
     if (no) return no;
     const { socket, response } = Deno.upgradeWebSocket(req);
-    socket.onopen = async () => { panels.add(socket); send(socket, await panelMsg()); };
+    socket.onopen = async () => { panels.add(socket); send(socket, await panelMsg()); send(socket, boardMsg()); };
     socket.onclose = () => panels.delete(socket);
     socket.onmessage = async (e) => {
       const a = JSON.parse(e.data);

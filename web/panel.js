@@ -1,3 +1,4 @@
+import { makeBoard } from "/engine/board.js";
 // Caster / producer panel.
 const $ = (s) => document.querySelector(s);
 let S = null, ws, reqId = 0;
@@ -22,6 +23,9 @@ function connect() {
     if (m.type === "state" && m.scenes) { S = m; render(); }
     if (m.type === "log") $("#log").insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString()}  ${esc(m.text)}</div>`);
     if (m.type === "ack" && !m.ok) tell(m.error);
+    if (m.type === "board") boardSet(m);
+    if (m.type === "boardStroke" && !mine.has(m.stroke.id)) pad.add(m.stroke);
+    if (m.type === "boardAppend" && !mine.has(m.id)) pad.append(m.id, m.points);
     if (m.type === "design") $("#log").insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString()}  design reloaded</div>`);
   };
 }
@@ -356,3 +360,64 @@ function tickPlaylist() {
 }
 setInterval(tickPlaylist, 500);
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+// ---------------------------------------------------------------- whiteboard
+// What is drawn here goes to the server a few points at a time and from there to the stream and to every other open
+// panel. This panel draws its own strokes itself, at once (it does not wait to hear them back), and other people's
+// as they arrive.
+const BOARD_COLORS = ["#f2ead8", "#ffd23f", "#ff5a6e", "#b3233f", "#5ee0a0", "#4db8ff", "#c9a0ff", "#111111"];
+const padCanvas = $("#boardPad"), pad = makeBoard(padCanvas), mine = new Set();
+const pen = { color: BOARD_COLORS[0], width: 10, erase: false };
+$("#boardColors").innerHTML = BOARD_COLORS.map((c) => `<button class="swatch" data-board-color="${c}" style="background:${c}" title="Draw in this colour" aria-label="Colour ${c}"></button>`).join(" ");
+function boardTools() {
+  for (const b of document.querySelectorAll("[data-board-color]")) b.classList.toggle("on", !pen.erase && b.dataset.boardColor === pen.color);
+  for (const b of document.querySelectorAll("[data-board-size]")) b.classList.toggle("on", Number(b.dataset.boardSize) === pen.width);
+  $("#boardEraser").classList.toggle("on", pen.erase);
+}
+boardTools();
+function boardSet(m) {
+  const b = m.box ?? { width: 760, height: 470 };
+  $(".board-pad").style.aspectRatio = `${b.width} / ${b.height}`;
+  if (padCanvas.width !== b.width || padCanvas.height !== b.height) { padCanvas.width = b.width; padCanvas.height = b.height; }
+  pad.set(m.strokes);
+  mine.clear();
+  if (document.activeElement?.id !== "boardOpen") $("#boardOpen").checked = !!m.open;
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button");
+  if (!t) return;
+  if (t.dataset.boardColor) { pen.color = t.dataset.boardColor; pen.erase = false; boardTools(); }
+  if (t.dataset.boardSize) { pen.width = Number(t.dataset.boardSize); boardTools(); }
+  if (t.id === "boardEraser") { pen.erase = !pen.erase; boardTools(); }
+  if (t.id === "boardUndo") send("board", { op: "undo" });
+  if (t.id === "boardClear") ask("Wipe the whole whiteboard? This cannot be undone.", "Clear board").then((yes) => yes && send("board", { op: "clear" }));
+});
+$("#boardOpen").addEventListener("change", (e) => send("board", { op: "open", on: e.target.checked }));
+let drawing = null;       // the stroke under the pointer: { id, unsent: [x, y, …], timer }
+const padPoint = (e) => { const r = padCanvas.getBoundingClientRect(); return [Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))].map((v) => Math.round(v * 10000) / 10000); };
+const flushStroke = () => { if (drawing?.unsent.length) { send("board", { op: "append", id: drawing.id, points: drawing.unsent }); drawing.unsent = []; } };
+padCanvas.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 && e.pointerType === "mouse") return;
+  e.preventDefault();
+  padCanvas.setPointerCapture(e.pointerId);
+  const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`, p = padPoint(e);
+  // an eraser is wider than the pen it replaces: rubbing out with a thin line is fiddly
+  const stroke = { id, color: pen.color, width: pen.erase ? pen.width * 3 : pen.width, ...(pen.erase ? { erase: true } : {}), points: p };
+  mine.add(id);
+  pad.add(stroke);
+  send("board", { op: "stroke", stroke });
+  drawing = { id, unsent: [], last: p, timer: setInterval(flushStroke, 45) };
+});
+padCanvas.addEventListener("pointermove", (e) => {
+  if (!drawing) return;
+  // every point the device reported since the last frame, not only the latest: a fast line stays a curve
+  for (const ev of e.getCoalescedEvents?.() ?? [e]) {
+    const p = padPoint(ev);
+    if (Math.hypot(p[0] - drawing.last[0], p[1] - drawing.last[1]) < 0.0015) continue;
+    drawing.last = p;
+    drawing.unsent.push(...p);
+    pad.append(drawing.id, p);
+  }
+});
+const endStroke = () => { if (!drawing) return; clearInterval(drawing.timer); flushStroke(); drawing = null; };
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) padCanvas.addEventListener(type, endStroke);

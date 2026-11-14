@@ -1,5 +1,6 @@
 // The OBS page. Loads the scene SVGs, keeps them bound to live data, switches scenes, plays rules.
 import { Scene } from "/engine/scene.js";
+import { makeBoard } from "/engine/board.js";
 
 const params = new URLSearchParams(location.search);
 const key = params.get("key");
@@ -21,6 +22,17 @@ const silent = (mute && !listen) || params.has("silent");   // no sound at full 
 // how big the panel shows this page (it tells us, also on resize): the preview's replays draw at that size, not 1080p
 let previewScale = 1;
 if (params.has("bg")) document.body.classList.add("preview-bg");
+
+// ---------------------------------------------------------------- the whiteboard (drawn in the panel)
+const boardEl = document.querySelector("#board");
+const whiteboard = makeBoard(boardEl.querySelector("canvas"));
+function showBoard(m) {
+  const b = m.box ?? { x: 1130, y: 580, width: 760, height: 470 }, c = boardEl.querySelector("canvas");
+  Object.assign(boardEl.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.width}px`, height: `${b.height}px` });
+  if (c.width !== b.width || c.height !== b.height) { c.width = b.width; c.height = b.height; }
+  whiteboard.set(m.strokes);
+  boardEl.classList.toggle("open", !!m.open);
+}
 
 let scenes = {}, active = null, state = null, designVersion = null, loading = null;
 const $ = (s) => document.querySelector(s);
@@ -693,6 +705,9 @@ function connect() {
   };
   ws.onmessage = async (e) => {
     const m = JSON.parse(e.data);
+    if (m.type === "board") return showBoard(m);
+    if (m.type === "boardStroke") return whiteboard.add(m.stroke);
+    if (m.type === "boardAppend") return whiteboard.append(m.id, m.points);
     if (m.type === "state") {
       loadHsv(m.hsv || "", m.designVersion);
       if (m.now) clockOffset = m.now - Date.now();

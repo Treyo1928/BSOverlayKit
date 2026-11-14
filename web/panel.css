@@ -90,3 +90,12 @@ dialog.ask button.danger { border-color: #c0392b; color: #ffb4a8; }
 .pl-mark { font-size: 11px; padding: 1px 6px; border-radius: 9px; background: #2a2a3a; color: #aab; }
 .pl-mark.out { background: #3a2424; color: #e3a9a9; }
 .pl-item.left-out { opacity: .55; }
+
+/* the whiteboard: tools, and the pad drawn on (the same shape as the board on stream) */
+.board-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.board-tools button { padding: 4px 10px; }
+.board-tools button.on { outline: 2px solid #c9b8ff; outline-offset: 1px; }
+.board-tools .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.board-tools .swatch { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid #0008; }
+.board-pad { position: relative; width: 100%; background: linear-gradient(#2a0711, #12020a); border: 3px solid #d9c9a3; border-radius: 10px; overflow: hidden; touch-action: none; cursor: crosshair; }
+.board-pad canvas { display: block; width: 100%; height: 100%; touch-action: none; }
