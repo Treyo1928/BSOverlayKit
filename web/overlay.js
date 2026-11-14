@@ -27,7 +27,7 @@ if (params.has("bg")) document.body.classList.add("preview-bg");
 const boardEl = document.querySelector("#board");
 const whiteboard = makeBoard(boardEl.querySelector("canvas"));
 function showBoard(m) {
-  const b = m.box ?? { x: 1130, y: 580, width: 760, height: 470 }, c = boardEl.querySelector("canvas");
+  const b = m.box ?? { x: 50, y: 575, width: 890, height: 470 }, c = boardEl.querySelector("canvas");
   Object.assign(boardEl.style, { left: `${b.x}px`, top: `${b.y}px`, width: `${b.width}px`, height: `${b.height}px` });
   if (c.width !== b.width || c.height !== b.height) { c.width = b.width; c.height = b.height; }
   whiteboard.set(m.strokes);

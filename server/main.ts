@@ -69,11 +69,11 @@ async function loadConfig() {
 }
 await loadConfig();
 
-/** The whiteboard's place on stream: what overlay.yaml says, kept inside the picture; bottom right otherwise. */
+/** The whiteboard's place on stream: what overlay.yaml says, kept inside the picture; bottom left otherwise (under the casters). */
 function boardBox(raw: any) {
   const n = (v: unknown, d: number, lo: number, hi: number) => (Number.isFinite(Number(v)) && v !== null && v !== "" ? Math.min(hi, Math.max(lo, Number(v))) : d);
-  const width = n(raw?.width, 760, 200, 1920), height = n(raw?.height, 470, 150, 1080);
-  return { x: n(raw?.x, 1130, 0, 1920 - width), y: n(raw?.y, 580, 0, 1080 - height), width, height };
+  const width = n(raw?.width, 890, 200, 1920), height = n(raw?.height, 470, 150, 1080);
+  return { x: n(raw?.x, 50, 0, 1920 - width), y: n(raw?.y, 575, 0, 1080 - height), width, height };
 }
 async function readJson<T>(p: string, fallback: T): Promise<T> {
   try { return { ...fallback, ...JSON.parse(await Deno.readTextFile(dataAt(p))) }; } catch { return fallback; }

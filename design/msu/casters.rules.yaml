@@ -8,17 +8,17 @@ enter:
   - { target: team-b, play: slideLeft, delay: 300 }
   - { target: next-line, play: slideUp, delay: 300 }
   - { target: frame, play: fadeIn, duration: 700 }
-  - { target: nowplaying, play: fadeIn, delay: 450 }
+  - { target: nowplaying, play: slideUp, delay: 450 }
 
 on:
-  # the replay playlist: the card over the video between songs, and the line under it
+  # the replay playlist: the card over the video between songs, and the card under it about the one playing
   becomes:replay.switching:
     - { target: replay-card, keyframes: [ { opacity: 0 }, { opacity: 1 } ], duration: 450, easing: ease-out }
     - { target: replay-card-content, play: slideRight, delay: 150 }
   becomes:replay.revealing:
     - { target: replay-card, to: { opacity: 0 }, duration: 650, easing: ease-in }
   change:replay.song:
-    - { target: nowplaying, play: fadeIn }
+    - { target: nowplaying, play: slideUp }
   becomes:nextUp.set:            # "up next" was set in the panel
     - { target: upnext, play: slideUp }
   change:caster.length:          # someone joined or left the voice channel
