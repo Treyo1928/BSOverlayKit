@@ -34,7 +34,7 @@ type Config = {
   scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string }>;
   /** how far behind the players the live (TA) replays are shown, in ms: the buffer that rides out late data */
   liveDelay: number;
-  automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string }[];
+  automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string; why?: string; stay?: number | string }[];
   sim: SimOptions;
   bscompstats: BscsOptions;
   header: string;
@@ -207,16 +207,38 @@ function onEvent(e: EventMsg) {
   if (!show.auto) return;
   for (const rule of config.automation) {
     if (rule.on !== e.name) continue;
-    const ms = typeof rule.after === "number" ? rule.after : parseDuration(rule.after ?? "0");
-    const timer = setTimeout(() => {
-      pendingSwitches = pendingSwitches.filter((t) => t !== timer);
-      if (!show.auto) return;
-      if (rule.when && !rule.when.split(/\s*,\s*/).includes(show.scene)) return;   // only from these scenes
-      setScene(rule.scene, rule.fade === undefined ? undefined : typeof rule.fade === "number" ? rule.fade : parseDuration(rule.fade));
-    }, ms);
-    pendingSwitches.push(timer);
+    if (rule.why && rule.why !== e.why) continue;            // why: pick / result (see mapNext)
+    const dur = (v: number | string | undefined) => (typeof v === "number" ? v : parseDuration(v ?? "0"));
+    const after = dur(rule.after), stay = dur(rule.stay), from = rule.when?.split(/\s*,\s*/) ?? null;
+    const asked = Date.now();
+    // after: how long after the event. when: only from these scenes. stay: the scene being left must have been up
+    // this long (so what it shows, a map's result, is not cut off). An event can come a moment before the scene it
+    // is meant to leave is on (a map ends: Picks & Bans follows 3 s later, and the next map is known at once): the
+    // rule then waits for that scene, a short while, instead of finding the wrong scene and doing nothing.
+    const wait = (ms: number) => {
+      const timer = setTimeout(() => {
+        pendingSwitches = pendingSwitches.filter((t) => t !== timer);
+        if (!show.auto) return;
+        if (from && !from.includes(show.scene)) {
+          if (stay > 0 && Date.now() - asked < after + 8000) wait(250);
+          return;
+        }
+        const left = stay - sceneAge();
+        if (left > 0) return wait(left);
+        setScene(rule.scene, rule.fade === undefined ? undefined : dur(rule.fade));
+      }, ms);
+      pendingSwitches.push(timer);
+    };
+    wait(after);
   }
 }
+// how long the scene on air has been on air
+let sceneNow = "", sceneSince = Date.now();
+function sceneAge() {
+  if (show.scene !== sceneNow) { sceneNow = show.scene; sceneSince = Date.now(); }
+  return Date.now() - sceneSince;
+}
+setInterval(sceneAge, 100);
 function parseDuration(s: string) {
   const m = /^(\d+(?:\.\d+)?)\s*(ms|s|m)?$/.exec(String(s).trim());
   return m ? Number(m[1]) * ({ ms: 1, s: 1000, m: 60_000 }[m[2] ?? "ms"] ?? 1) : 0;

@@ -52,9 +52,13 @@ sim:
 # fade: = this switch's own crossfade.
 automation:
   - { on: matchStart, scene: picks, when: "starting, intermission, brb, casters, bracket, final" }
-  # a map is up next (picked, and nothing left to pick or ban first): Picks & Bans stays for 10 seconds (the pick,
-  # or the result of the map before it), then Getting Ready with the two lineups while the players load in.
-  - { on: mapNext, scene: ready, after: 10s, when: "picks" }
+  # A map is up next (nothing left to pick or ban before it): on to Getting Ready, which shows the map and the two
+  # lineups while the players load in.
+  #   picked just now: 3 seconds after the pick, long enough to see what was picked.
+  #   already chosen when the map before it ended: once that map's result has been on Picks & Bans for 6 seconds
+  #   (stay: how long the scene being left must have been up).
+  - { on: mapNext, why: pick, scene: ready, after: 3s, when: "picks" }
+  - { on: mapNext, why: result, scene: ready, after: 3s, stay: 6s, when: "picks" }
   # players are actually playing (not the organiser's start request, not "loading")
   - { on: mapStart, scene: match, when: "starting, intermission, brb, casters, picks, bracket, final" }
   - { on: mapStart, scene: match, when: "ready", fade: 200ms }   # Getting Ready: a quick cut the moment they play

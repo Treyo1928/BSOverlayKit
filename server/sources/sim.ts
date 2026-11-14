@@ -163,13 +163,13 @@ export class SimSource implements DataSource {
     if (this.#phase === "idle") { this.#phase = "picks"; this.#event({ name: "matchStart" }); return this.#push(); }
     if (this.#phase === "picks") {
       const step = this.#order[this.#picks.length];
-      if (!step) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); return this.#push(); }
+      if (!step) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext", why: "pick" }); return this.#push(); }
       const used = new Set(this.#picks.map((p) => p.index));
       const free = this.#pool.map((m, i) => ({ m, i })).filter((x) => !x.m.tiebreaker && !used.has(x.i));
       const pick = free[Math.floor(Math.random() * free.length)];
       this.#picks.push({ ...step, index: pick.i });
       this.#event({ name: step.type === "pick" ? "mapPick" : "mapBan", item: pick.i, side: step.by });
-      if (this.#picks.length === this.#order.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext" }); }
+      if (this.#picks.length === this.#order.length) { this.#phase = "waiting"; this.#event({ name: "picksDone" }); this.#event({ name: "mapNext", why: "pick" }); }
       return this.#push();
     }
     if (this.#phase === "waiting" || this.#phase === "finished") {
@@ -235,6 +235,8 @@ export class SimSource implements DataSource {
     this.#phase = pts.a >= this.#need || pts.b >= this.#need ? "done" : "finished";
     this.#event({ name: "mapEnd", side: winner ?? undefined });
     if (this.#phase === "done") this.#event({ name: "matchEnd", side: pts.a >= this.#need ? "a" : "b" });
+    // every map was picked before the first was played: the next one is already known, as on the site
+    else this.#event({ name: "mapNext", why: "result" });
     this.#push();
   }
 

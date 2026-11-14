@@ -282,6 +282,8 @@ export interface EventMsg {
   name: OverlayEvent;
   item?: number;          // pool index for mapPick/mapBan
   side?: Side;
+  /** mapNext: what made the map "up next": it was just picked, or the map before it ended with this one already chosen. */
+  why?: "pick" | "result";
 }
 
 export interface DataSource {

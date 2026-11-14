@@ -338,7 +338,9 @@ export class BscsSource implements DataSource {
       // pick/ban phase, a pick made between maps, or the map before it closing with this one already picked)
       const upNext = (x: Match) => (!this.#over(x).over && !(x.pending && !x.pending.waitingForPoolMapId)
         ? x.plannedMaps.find((p) => !p.scoresClosed)?.matchMapId ?? null : null);
-      if (upNext(m) && upNext(m) !== upNext(prev)) this.#event({ name: "mapNext" });
+      // "pick": this update carries the pick (or ban) that settled it; "result": nothing was chosen just now, the map
+      // before it ended and this one was already waiting
+      if (upNext(m) && upNext(m) !== upNext(prev)) this.#event({ name: "mapNext", why: m.actions.length > prev.actions.length ? "pick" : "result" });
     }
     this.#prev = m;
     this.#sendLive();
