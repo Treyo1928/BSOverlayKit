@@ -84,3 +84,9 @@ dialog.ask::backdrop { background: #000b; }
 dialog.ask p { margin: 0 0 16px; white-space: pre-line; }
 dialog.ask .btns { display: flex; justify-content: flex-end; gap: 8px; }
 dialog.ask button.danger { border-color: #c0392b; color: #ffb4a8; }
+
+/* the replay list: whose a replay is, whether it has had its turn, whether its team is out */
+.pl-team.own { background: #2c3a2c; color: #bfe3bf; }
+.pl-mark { font-size: 11px; padding: 1px 6px; border-radius: 9px; background: #2a2a3a; color: #aab; }
+.pl-mark.out { background: #3a2424; color: #e3a9a9; }
+.pl-item.left-out { opacity: .55; }

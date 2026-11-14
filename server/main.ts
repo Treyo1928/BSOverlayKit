@@ -31,7 +31,8 @@ const dataAt = (p: string) => new URL(p, new URL(`${DATA}/`, ROOT));
 // ------------------------------------------------------------------ config, secrets, show state
 type Config = {
   title: string; colors: Record<string, string>; crossfade: number; source: string;
-  scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string }>;
+  /** `replays: players` (Getting Ready): the scene's replay box shows someone about to play, not the break mix. */
+  scenes: Record<string, { svg: string; vars?: Record<string, string>; label?: string; replays?: string }>;
   /** how far behind the players the live (TA) replays are shown, in ms: the buffer that rides out late data */
   liveDelay: number;
   automation: { on: string; scene: string; after?: number | string; when?: string; fade?: number | string; why?: string; stay?: number | string }[];
@@ -49,7 +50,7 @@ async function loadConfig() {
     const scenes: Config["scenes"] = {};
     for (const s of raw.scenes ?? []) {
       if (typeof s === "string") scenes[s] = { svg: s };
-      else for (const [k, v] of Object.entries(s)) scenes[k] = { svg: (v as any).svg ?? k, vars: (v as any).vars, label: (v as any).label };
+      else for (const [k, v] of Object.entries(s)) scenes[k] = { svg: (v as any).svg ?? k, vars: (v as any).vars, label: (v as any).label, replays: (v as any).replays };
     }
     config = { title: raw.title ?? "Overlay", colors: raw.colors ?? {}, crossfade: raw.crossfade ?? 400, source: raw.source ?? "sim", scenes, automation: raw.automation ?? [], sim: raw.sim ?? {}, bscompstats: raw.bscompstats ?? {}, header: raw.header ?? "", hsv: String(raw.hsv ?? ""),
       liveDelay: Math.max(300, Math.min(15_000, raw.liveDelay === undefined ? 2500 : typeof raw.liveDelay === "number" ? raw.liveDelay : parseDuration(String(raw.liveDelay)))) };
@@ -251,6 +252,7 @@ function setScene(scene: string, fadeMs?: number) {
   show.scene = scene;
   saveShow();
   dirty = true;
+  queueMicrotask(() => { try { syncTeamReplays(); } catch { /* not started yet */ } });
 }
 
 // ------------------------------------------------------------------ staging (Preview / Program, like OBS's Studio Mode)
@@ -411,22 +413,23 @@ function replayMsg() {
 setInterval(() => playlist.tick(replayScenes.has(show.scene) && overlays.size > 0), 250);
 
 /**
- * Whose replays the playlist plays. The data source lists every team's showcase replays; the teams "up next" are the
- * two of the match being followed while it is unfinished (before it, between its maps, while waiting on players),
- * else two team names typed into the panel's Up next card. With neither (a break with nobody up next) the playlist
- * falls back to the panel's own list, or to every team's replays when that is empty. See server/playlist.ts.
+ * Whose replays the playlist plays. The data source lists every team's showcase replays, whose each one is, and which
+ * teams are out of the bracket. In a break (Starting Soon, Intermission, Be Right Back) the playlist plays its mix:
+ * the panel's own replays and those of every team still in. On a scene marked `replays: players` (Getting Ready),
+ * while a match is under way, it plays someone about to play: the lineups of the map that is up, else their teams.
+ * See server/playlist.ts.
  */
 function syncTeamReplays() {
   const d = liveData;
   if (!d) return;
-  const teams = new Map<string, { name: string; replays: string[] }>();
-  for (const t of d.teams ?? []) teams.set(t.name.toLowerCase(), { name: t.name, replays: t.replays ?? [] });
+  const teams = new Map<string, { name: string; replays: string[]; out?: boolean; players?: { name: string; replays: string[] }[] }>();
+  for (const t of d.teams ?? []) teams.set(t.name.toLowerCase(), { name: t.name, replays: t.replays ?? [], out: t.out, players: t.players });
   // a side put together for this match only is not in the tournament's list
   for (const s of [d.a, d.b]) if (s?.name && s.replays?.length && !teams.has(s.name.toLowerCase())) teams.set(s.name.toLowerCase(), { name: s.name, replays: s.replays });
-  const inMatch = d.match.phase !== "idle" && d.match.phase !== "done" ? [d.a.name, d.b.name] : [];
-  const typed = [show.upNext?.a, show.upNext?.b].map((n) => (n ?? "").trim()).filter((n) => teams.has(n.toLowerCase()));
-  const active = inMatch.length ? inMatch : typed;
-  playlist.setTeams([...teams.values()], active.length ? active : null, replayScenes.has(show.scene) && overlays.size > 0);
+  const inMatch = d.match.phase !== "idle" && d.match.phase !== "done";
+  const focus = inMatch && config.scenes[show.scene]?.replays === "players"
+    ? { teams: [d.a.name, d.b.name], players: [...d.a.players, ...d.b.players].map((p) => p.name) } : null;
+  playlist.setTeams([...teams.values()], focus, replayScenes.has(show.scene) && overlays.size > 0);
 }
 setInterval(syncTeamReplays, 1000);
 
@@ -482,6 +485,7 @@ const actions: Record<string, (a: any) => unknown> = {
       move: () => playlist.move(String(a.id), Number(a.to)), sort: () => playlist.sort(String(a.by)),
       mode: () => playlist.setMode(String(a.mode)), clear: () => playlist.clear(),
       followTeams: () => playlist.setFollowTeams(!!a.on),
+      resetPlayed: () => playlist.resetPlayed(),
     };
     if (!ops[a.op]) throw new Error(`unknown playlist op "${a.op}"`);
     ops[a.op]();

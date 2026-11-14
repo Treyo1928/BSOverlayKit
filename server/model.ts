@@ -162,15 +162,27 @@ export interface ReplayInfo {
   player: string; playerAvatar: string; country: string;
   acc: number | null; fc: boolean; misses: number | null;
 }
-export interface TeamInfo { name: string; logoKind: SideData["logoKind"]; logo: string; replays: string[] }
+/**
+ * `out`: knocked out of the bracket (its replays leave the break mix). `players`: whose each replay is, so that
+ * Getting Ready can show someone who is about to play.
+ */
+export interface TeamInfo { name: string; logoKind: SideData["logoKind"]; logo: string; replays: string[]; out?: boolean; players?: { name: string; replays: string[] }[] }
 /** `team`: the replay came from that team's players (the data source), not from the panel's own list. */
-export interface PlaylistItem { id: string; ref: string; info: ReplayInfo | null; error?: string; team?: string }
+export interface PlaylistItem { id: string; ref: string; info: ReplayInfo | null; error?: string; team?: string; player?: string }
 export interface Playlist {
   items: PlaylistItem[];
-  /** Play the teams' own replays: the two teams that are up next while there are some, else the panel's list. */
+  /** Use the tournament players' own replays (off: only the panel's list is played). */
   followTeams?: boolean;
-  /** What is being played from right now (worked out by the server, for the panel). */
-  scope?: { kind: "teams" | "special" | "all" | "none"; teams: string[] };
+  /**
+   * What is being played from right now (worked out by the server, for the panel):
+   *   lineup  the players about to play (Getting Ready)      teams  their two teams (no replay of the lineup's own)
+   *   mix     the break mix: the panel's list and every team still in the bracket
+   *   special only the panel's list        all  every team's (nobody is left in, and the panel's list is empty)
+   * `names`: whose (lineup: players, teams: teams). `out`: teams knocked out, whose replays are left out of the mix.
+   */
+  scope?: { kind: "lineup" | "teams" | "mix" | "special" | "all" | "none"; names: string[]; out: string[] };
+  /** Replays that have had their turn in a break (ids). When every one in the mix has, they all get another. */
+  played?: string[];
   mode: "order" | "shuffle" | "repeat";   // what plays when a song ends
   current: {
     id: string;
@@ -178,6 +190,8 @@ export interface Playlist {
     pausedAt: number | null;              // song seconds while no replay scene is on stream
     duration: number;                     // seconds
     switchedAt: number;                   // when it became current (the "up next" card shows from here)
+    /** started for Getting Ready (someone about to play): likely to be cut off, so it never counts as played */
+    passing?: boolean;
     ready: boolean;                       // an overlay's viewer has it loaded
   } | null;
 }

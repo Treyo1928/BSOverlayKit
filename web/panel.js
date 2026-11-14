@@ -199,6 +199,7 @@ document.addEventListener("click", (e) => {
   if (t.id === "holdUp" || t.id === "holdDown") send("viewer", { pitchHold: t.id === "holdUp" ? "up" : "down", holdMs: 5000 });
   if (t.id === "plAddBtn") { send("playlist", { op: "add", refs: $("#plAdd").value.split("\n") }); $("#plAdd").value = ""; }
   if (t.id === "plClear") ask("Remove every replay from the playlist?", "Remove them all").then((yes) => yes && send("playlist", { op: "clear" }));
+  if (t.id === "plReset") send("playlist", { op: "resetPlayed" });
   if (t.id === "signOut") fetch("/api/signout", { method: "POST" }).then(() => location.reload());
   const op = t.dataset.pl;
   if (op) {
@@ -296,15 +297,25 @@ function renderPlaylist() {
   clockOffset = S.now - Date.now();
   if (document.activeElement?.id !== "plMode") $("#plMode").value = pl.mode;
   $("#plFollow").checked = pl.followTeams !== false;
-  const sc = pl.scope ?? { kind: "none", teams: [] };
-  const teamCount = pl.items.filter((x) => x.team).length;
-  $("#plScope").textContent = sc.kind === "teams" ? `Playing the replays of the teams up next: ${sc.teams.join(" and ")} (random order).`
-    : sc.kind === "special" ? `Playing your own list below${teamCount && pl.followTeams !== false ? " (no team is up next, or the teams up next have no replays)" : ""}.`
-    : sc.kind === "all" ? "Nobody is up next and your own list is empty: playing every team's replays (random order)."
-    : "Nothing to play yet.";
+  const sc = pl.scope ?? { kind: "none", names: [], out: [] };
+  const out = new Set((sc.out ?? []).map((n) => n.toLowerCase())), played = new Set(pl.played ?? []);
+  const follow = pl.followTeams !== false;
+  // what is in the break mix right now: your own replays, and those of teams still in the bracket
+  const inMix = (it) => !it.team || (follow && !out.has(it.team.toLowerCase()));
+  const mix = pl.items.filter(inMix), seen = mix.filter((x) => played.has(x.id)).length;
+  const turns = mix.length ? ` ${seen} of ${mix.length} in the mix have had their turn${seen === mix.length ? " (they all start over with the next one)" : ""}.` : "";
+  $("#plScope").textContent = (sc.kind === "lineup" ? `Getting Ready: playing a replay of someone about to play (${(sc.names ?? []).join(", ")}). It does not count as played.`
+    : sc.kind === "teams" ? `Getting Ready: nobody in the lineups has a replay, so one of their teams' (${(sc.names ?? []).join(" and ")}). It does not count as played.`
+    : sc.kind === "mix" ? "Playing the break mix in random order: your own replays and those of every team still in the bracket."
+    : sc.kind === "special" ? `Playing your own list${follow ? " (no team that is still in has a replay)" : ""}.`
+    : sc.kind === "all" ? "Every team is out and your own list is empty: playing every team's replays in random order."
+    : "Nothing to play yet.") + (sc.kind === "none" ? "" : turns);
+  $("#plReset").disabled = !played.size;
   const cur = pl.items.find((x) => x.id === pl.current?.id);
   const name = (it) => (it.info?.song ? esc(it.info.song) : esc(it.ref));
-  const tag = (it) => (it.team ? `<span class="pl-team" title="A replay this team's player chose on BSCompStats (Teams page). It is removed there.">${esc(it.team)}</span> ` : "");
+  const tag = (it) => (it.team ? `<span class="pl-team" title="A replay this team's player chose on BSCompStats (Teams page). It is removed there.">${esc(it.team)}</span> ` : `<span class="pl-team own" title="From your own list: always in the break mix">Yours</span> `)
+    + (it.team && out.has(it.team.toLowerCase()) ? `<span class="pl-mark out" title="${esc(it.team)} is out of the bracket: left out of the break mix">Knocked out</span> ` : "")
+    + (played.has(it.id) ? `<span class="pl-mark" title="Has had its turn in a break. It plays again once everything in the mix has">Played</span> ` : "");
   const sub = (it) => it.error ? `<span class="err">${esc(it.error)}</span>` : !it.info ? "looking it up…" :
     [it.info.player && `played by ${esc(it.info.player)}`, it.info.difficulty, it.info.stars ? `★ ${it.info.stars.toFixed(2)}` : "",
       it.info.acc ? `${(it.info.acc * 100).toFixed(2)}%` : "", it.info.duration ? fmt(it.info.duration) : ""].filter(Boolean).join(" · ");
@@ -312,7 +323,7 @@ function renderPlaylist() {
     ? `<img src="${esc(cur.info?.cover ?? "")}" alt=""><div class="t"><div class="muted" id="plWhat"></div><b>${name(cur)}</b><div class="muted">${sub(cur)}</div>
         <div class="pl-bar"><i id="plBar"></i></div></div>`
     : `<div class="muted">${pl.items.length ? "Starts when a scene with the big box (Starting Soon, Intermission, Be Right Back) is on." : "The playlist is empty. Add replay links below."}</div>`;
-  $("#plList").innerHTML = pl.items.length ? pl.items.map((it, i) => `<div class="pl-item ${it.id === pl.current?.id ? "on" : ""}">
+  $("#plList").innerHTML = pl.items.length ? pl.items.map((it, i) => `<div class="pl-item ${it.id === pl.current?.id ? "on" : ""} ${inMix(it) ? "" : "left-out"}">
       <span class="n">${i + 1}</span><img src="${esc(it.info?.cover ?? "")}" alt="">
       <div class="t">${tag(it)}${name(it)}<br><small>${sub(it)}</small></div>
       <button data-pl="play" data-id="${it.id}" title="Play this one now">▶</button><button data-pl="up" data-id="${it.id}" title="Move up" ${i ? "" : "disabled"}>↑</button>

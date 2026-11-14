@@ -29,13 +29,13 @@
           <option value="stars">Stars (hardest first)</option><option value="acc">Accuracy (best first)</option><option value="length">Length (shortest first)</option>
           <option value="shuffle">Shuffle the list</option></select></div>
       </div>
-      <label class="check"><input type="checkbox" id="plFollow"> Play the replays of the teams that are up next</label>
+      <label class="check"><input type="checkbox" id="plFollow"> Use the tournament players' own replays (off: only your own list plays)</label>
       <div class="hint" id="plScope"></div>
       <div id="plList" class="pl-list"></div>
       <label>Add replays: one link per line (a BeatLeader replay or score link, a score id, <code>ss:&lt;id&gt;</code> for ScoreSaber, or a <code>.bsor</code> link)</label>
       <textarea id="plAdd" rows="3" placeholder="https://replay.beatleader.com/?scoreId=15467120&#10;beatleader.com/score/11169337"></textarea>
-      <div class="btns"><button id="plAddBtn">Add to playlist</button><span class="spacer" style="flex:1"></span><button id="plClear">Clear the list</button></div>
-      <div class="hint">Plays with its music in the big box of Starting Soon, Intermission and Be Right Back. On other scenes the music fades out and the replay pauses; it carries on when you come back. OBS and this preview show the same moment.</div></div>
+      <div class="btns"><button id="plAddBtn">Add to playlist</button><span class="spacer" style="flex:1"></span><button id="plReset" title="Forget which replays have had their turn: every one in the mix is as likely as any other again">Forget what has played</button><button id="plClear" title="Remove every replay you added yourself. The tournament players' replays stay: they come from the site">Clear my list</button></div>
+      <div class="hint">Breaks (Starting Soon, Intermission, Be Right Back) play a mix in random order: the replays you add here (a caster's, a guest's) and those of every team still in the bracket. A replay that has played at least half way has had its turn and waits until all the others have; then they all start over. Getting Ready plays someone who is about to play instead; that one is likely to be cut off, so it does not count as a turn. "When a song ends" applies when only your own list is playing. On other scenes the music fades out and the replay pauses. OBS and this preview show the same moment.</div></div>
     <div class="card" id="simCard"><h2>Simulator</h2>
       <div class="btns">
         <button data-sim="next">Next step ▶</button><button data-sim="auto" id="simAuto">Auto-play match</button><button data-sim="reset">Reset</button>

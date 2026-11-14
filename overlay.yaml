@@ -22,7 +22,8 @@ scenes:
   - brb: { svg: msu/brb, label: "Be Right Back" }
   - casters: { svg: msu/casters, label: "Casters" }
   - picks: { svg: msu/picks, label: "Picks & Bans" }
-  - ready: { svg: msu/ready, label: "Getting Ready" }
+  # replays: players = its replay box shows someone who is about to play (the other scenes play the break mix)
+  - ready: { svg: msu/ready, label: "Getting Ready", replays: players }
   - match: { svg: msu/match, label: "Match" }
   - bracket: { svg: msu/bracket, label: "Bracket" }
   - final: { svg: msu/final, label: "Final" }

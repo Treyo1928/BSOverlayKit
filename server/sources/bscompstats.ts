@@ -87,6 +87,7 @@ export class BscsSource implements DataSource {
   #lastLive: LiveEvent | null = null;     // the newest numbers of the song being played
   #liveOn = false;                        // this source has a live state out (so it must also take it back)
   #platformIds = new Map<string, string>();
+  #out = new Set<string>();               // ids of teams knocked out of the bracket
   #teams: TeamInfo[] = [];                // every team entered in the tournament   // playerId -> TA platform id, as seen in live events
 
   // signing in with a site account (see signIn below): this key's id and sign-in address, and who is let in
@@ -178,6 +179,7 @@ export class BscsSource implements DataSource {
       this.#matches = [];
       this.#teams = [];
       this.#bracket = null;
+      this.#out = new Set();
       this.#status = "not connected";
       this.#follow("");
       this.onFollow("", slug);
@@ -210,6 +212,20 @@ export class BscsSource implements DataSource {
       if (bracketId) {
         const b = await this.#api(`/brackets/${bracketId}`);
         this.#bracket = this.#bracketData(b.bracket);
+        // Who is out of it: a loss is one decided slot where the other side won; one loss ends a single-elimination
+        // bracket for a team, two a double-elimination one. (Counted, not read off who has moved on: a winner
+        // waiting for an opponent is in no undecided slot either.)
+        const losses = new Map<string, number>();
+        for (const s of (b.bracket?.slots ?? []) as Slot[]) {
+          if (s.passThrough || !s.winnerId || !s.teamA || !s.teamB) continue;
+          const loser = s.winnerId === s.teamA.id ? s.teamB.id : s.winnerId === s.teamB.id ? s.teamA.id : null;
+          if (loser) losses.set(loser, (losses.get(loser) ?? 0) + 1);
+        }
+        const allowed = /double/i.test(String(b.bracket?.format ?? "")) ? 2 : 1;
+        const out = new Set([...losses].filter(([, n]) => n >= allowed).map(([id]) => id));
+        const changed = out.size !== this.#out.size || [...out].some((id) => !this.#out.has(id));
+        this.#out = out;
+        if (changed) this.#teams = (t.teams ?? []).map((team: Team) => this.#teamInfo(team));
       }
       // the tournament answered: say so even before there is a match to follow (the match stream sets its own)
       if (!this.#matchId || /^tournament:|not connected/.test(this.#status)) {
@@ -230,6 +246,8 @@ export class BscsSource implements DataSource {
     return {
       name: team.name, logoKind, logo: logoKind === "image" ? this.#abs(team.logo) : "",
       replays: [...new Set(team.players.flatMap((p) => p.replays ?? []))],
+      players: team.players.filter((p) => p.replays?.length).map((p) => ({ name: p.name, replays: p.replays! })),
+      out: this.#out.has(team.id),
     };
   }
 

@@ -37,6 +37,7 @@ export class PlaylistControl {
     this.p.mode ??= "order";
     this.p.current ??= null;
     this.p.followTeams ??= true;
+    this.p.played ??= [];
     this.p.scope = this.scope();
     if (this.p.current && !this.p.items.some((x) => x.id === this.p.current!.id)) this.p.current = null;
     for (const it of this.p.items) if (!it.info) this.resolve(it);
@@ -47,39 +48,55 @@ export class PlaylistControl {
   }
 
   // ---------------------------------------------------------------- whose replays
-  // Besides the panel's own list ("special": items without a team), the list holds the replays the tournament's
-  // players chose to show (items with `team`, kept in step with the data source by setTeams). What plays:
-  //   - two teams are up next and have replays: a random one of theirs, whatever the mode
-  //   - otherwise the panel's list, in its mode; and if that is empty, a random one of every team's
-  private active: string[] | null = null;       // the teams up next (lower-case names), as the server last worked out
-  private pool(): { kind: "teams" | "special" | "all" | "none"; items: PlaylistItem[] } {
+  // The list holds the panel's own replays (items without a team: a caster's, a guest's, anything pasted in) and
+  // the replays the tournament's players chose to show (items with `team` and `player`, kept in step with the data
+  // source by setTeams). What plays:
+  //   - Getting Ready is on and a match is up: a replay of someone about to play (else of their two teams)
+  //   - any other time: the break mix, shuffled: the panel's own replays and those of every team still in the bracket
+  private focus: { teams: string[]; players: string[] } | null = null;   // who is about to play (lower-case), on Getting Ready
+  private out = new Set<string>();                                       // teams knocked out (lower-case)
+  private pool(): { kind: NonNullable<Playlist["scope"]>["kind"]; items: PlaylistItem[] } {
     const items = this.p.items;
     const follow = this.p.followTeams !== false;
-    const special = items.filter((x) => !x.team);
-    if (follow && this.active?.length) {
-      const theirs = items.filter((x) => x.team && this.active!.includes(x.team.toLowerCase()));
+    const lc = (s?: string) => (s ?? "").toLowerCase();
+    if (follow && this.focus) {
+      const theirs = items.filter((x) => x.team && this.focus!.teams.includes(lc(x.team)));
+      const lineup = theirs.filter((x) => x.player && this.focus!.players.includes(lc(x.player)));
+      if (lineup.length) return { kind: "lineup", items: lineup };
       if (theirs.length) return { kind: "teams", items: theirs };
     }
+    const special = items.filter((x) => !x.team);
+    const stillIn = follow ? items.filter((x) => x.team && !this.out.has(lc(x.team))) : [];
+    if (stillIn.length) return { kind: "mix", items: [...special, ...stillIn] };
     if (special.length) return { kind: "special", items: special };
     const all = follow ? items.filter((x) => x.team) : [];
     return all.length ? { kind: "all", items: all } : { kind: "none", items: [] };
   }
   private scope(): NonNullable<Playlist["scope"]> {
     const pool = this.pool();
-    return { kind: pool.kind, teams: pool.kind === "teams" ? [...new Set(pool.items.map((x) => x.team!))] : [] };
+    const names = pool.kind === "lineup" ? [...new Set(pool.items.map((x) => x.player!))] : pool.kind === "teams" ? [...new Set(pool.items.map((x) => x.team!))] : [];
+    return { kind: pool.kind, names, out: [...new Set(this.p.items.filter((x) => x.team && this.out.has(x.team.toLowerCase())).map((x) => x.team!))] };
   }
-  /** The mode songs follow one another in: the teams' replays are always shuffled. */
+  /** The mode songs follow one another in: only the panel's own list, played alone, has one; everything else is shuffled. */
   private modeNow(): Playlist["mode"] { return this.pool().kind === "special" ? this.p.mode : "shuffle"; }
+  /** A replay for Getting Ready is a glimpse, not a turn. */
+  private passing(kind = this.pool().kind) { return kind === "lineup" || kind === "teams"; }
 
   /**
-   * The data source's word on the teams: every team's replays, and which teams are up next (null: none).
-   * Replays that are new join the list, ones that are gone leave it. The replay that is playing is left to finish;
-   * one that is only waiting (no replay scene on stream) gives way at once to what should play now.
+   * The data source's word on the teams: every team's replays (whose each is, and whether the team is out of the
+   * bracket), and `focus`: who is about to play while Getting Ready is on (null any other time).
+   * Replays that are new join the list, ones that are gone leave it. The replay that is playing is left to finish,
+   * except across the line between a break and Getting Ready: there what should play now starts at once.
    */
-  setTeams(teams: { name: string; replays: string[] }[], active: string[] | null, onAir: boolean) {
-    const want = new Map<string, { team: string; ref: string }>();
-    for (const t of teams) for (const ref of t.replays) want.set(`${t.name}\n${ref}`, { team: t.name, ref });
-    const key = (x: PlaylistItem) => `${x.team}\n${x.ref}`;
+  setTeams(teams: { name: string; replays: string[]; out?: boolean; players?: { name: string; replays: string[] }[] }[],
+    focus: { teams: string[]; players: string[] } | null, onAir: boolean) {
+    const want = new Map<string, { team: string; player?: string; ref: string }>();
+    for (const t of teams) {
+      const owned = new Set<string>();
+      for (const pl of t.players ?? []) for (const ref of pl.replays) { owned.add(ref); want.set(`${t.name}\n${pl.name}\n${ref}`, { team: t.name, player: pl.name, ref }); }
+      for (const ref of t.replays) if (!owned.has(ref)) want.set(`${t.name}\n\n${ref}`, { team: t.name, ref });
+    }
+    const key = (x: PlaylistItem) => `${x.team}\n${x.player ?? ""}\n${x.ref}`;
     const before = this.p.items.length;
     let structural = false;
     this.p.items = this.p.items.filter((x) => !x.team || want.has(key(x)));
@@ -87,19 +104,29 @@ export class PlaylistControl {
     const have = new Set(this.p.items.filter((x) => x.team).map(key));
     for (const [k, w] of want) {
       if (have.has(k)) continue;
-      const it: PlaylistItem = { id: rand(), ref: w.ref, info: null, team: w.team };
+      const it: PlaylistItem = { id: rand(), ref: w.ref, info: null, team: w.team, ...(w.player ? { player: w.player } : {}) };
       this.p.items.push(it);
       this.resolve(it);
       structural = true;
     }
-    this.active = active?.length ? active.map((n) => n.toLowerCase()) : null;
+    this.out = new Set(teams.filter((t) => t.out).map((t) => t.name.toLowerCase()));
+    this.focus = focus && (focus.teams.length || focus.players.length)
+      ? { teams: focus.teams.map((n) => n.toLowerCase()), players: focus.players.map((n) => n.toLowerCase()) } : null;
+    const ids = new Set(this.p.items.map((x) => x.id));
+    this.p.played = (this.p.played ?? []).filter((id) => ids.has(id));
     const scope = this.scope();
     const moved = JSON.stringify(scope) !== JSON.stringify(this.p.scope);
     this.p.scope = scope;
     const pool = this.pool();
     const cur = this.current;
     if (this.p.current && !cur) this.p.current = null;                 // the playing one was removed
-    else if (cur && !pool.items.includes(cur) && pool.items.length && !onAir) this.switchTo(this.pick("shuffle"));
+    else if (cur && pool.items.length) {
+      // Getting Ready has come on: someone about to play, now. Or it has gone: a fresh replay from the mix, not the
+      // rest of the glimpse. Otherwise a replay that no longer belongs gives way only while nothing is on stream.
+      const glimpse = this.passing(pool.kind);
+      if (glimpse !== !!this.p.current!.passing) this.switchTo(this.pick("shuffle"));
+      else if (!pool.items.includes(cur) && !onAir) this.switchTo(this.pick("shuffle"));
+    }
     if (structural || moved) this.changed(structural);
   }
   setFollowTeams(on: boolean) {
@@ -107,6 +134,8 @@ export class PlaylistControl {
     this.p.scope = this.scope();
     this.changed(true);
   }
+  /** Everything gets its turn again from now. */
+  resetPlayed() { this.p.played = []; this.changed(true); }
 
   /** What plays after the current one (null in shuffle: it is picked when the song ends). */
   upNext(): PlaylistItem | null {
@@ -202,24 +231,43 @@ export class PlaylistControl {
     if (!items.length) return null;
     const i = items.findIndex((x) => x.id === this.p.current?.id);
     if (mode === "shuffle" && items.length > 1) {
-      // not the current one, and not one of the last few if there are enough
-      const recent = new Set(this.recent.slice(-Math.min(items.length - 1, 4)));
+      // One that has not had its turn yet (and is not the one playing). When every one here has had its turn, they
+      // all get another: their marks are wiped and the draw starts over. Replays outside this pool keep theirs.
+      this.credit();     // the one playing first: it is part of "every one has had its turn"
+      const played = new Set(this.p.played ?? []);
       const others = items.filter((x) => x.id !== this.p.current?.id);
-      const fresh = others.filter((x) => !recent.has(x.id));
-      const from = fresh.length ? fresh : others;
-      return from[Math.floor(Math.random() * from.length)];
+      let fresh = others.filter((x) => !played.has(x.id));
+      if (!fresh.length) {
+        const here = new Set(items.map((x) => x.id));
+        this.p.played = (this.p.played ?? []).filter((id) => !here.has(id));
+        this.startedOver = true;       // the one playing was the last of the round: its mark is not put back
+        fresh = others;
+      }
+      return fresh[Math.floor(Math.random() * fresh.length)];
     }
     if (mode === "repeat") return items[Math.max(0, i)];
     return items[(i + 1) % items.length];
   }
-  private recent: string[] = [];
   private waitingSince = 0;     // when the current one started waiting with a replay scene on stream
+  private startedOver = false;  // pick() has just wiped the marks: every replay had had its turn
+
+  /**
+   * The replay that is playing has had its turn if it is being played in a break (not as a glimpse on Getting Ready)
+   * and has got at least half way: one cut short by the match starting, or skipped early, keeps its chance to be
+   * seen whole.
+   */
+  private credit() {
+    const c = this.p.current, pos = position(this.p);
+    if (c && !c.passing && c.duration > 0 && pos !== null && pos >= c.duration * 0.5 && !this.p.played?.includes(c.id)) {
+      this.p.played = [...(this.p.played ?? []), c.id];
+    }
+  }
 
   private switchTo(it: PlaylistItem | null) {
-    if (this.p.current) this.recent.push(this.p.current.id);
-    this.recent = this.recent.slice(-10);
+    if (!this.startedOver) this.credit();
+    this.startedOver = false;
     this.p.current = it
-      ? { id: it.id, startAt: null, pausedAt: null, duration: it.info?.duration ?? 0, switchedAt: Date.now(), ready: false }
+      ? { id: it.id, startAt: null, pausedAt: null, duration: it.info?.duration ?? 0, switchedAt: Date.now(), ready: false, ...(this.passing() ? { passing: true } : {}) }
       : null;
     this.changed(true);
   }
