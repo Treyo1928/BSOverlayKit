@@ -535,27 +535,28 @@ setInterval(() => {
     if (f.want && !f.v && performance.now() - f.loadSentAt > 20_000) sendLoad(f);   // a load that never answered
     // Three levels go to each viewer. Its whole output fades in and out as its hole comes on stream and leaves it
     // (masterVolume). The MUSIC has the panel mixer's level on top: the music slider times the level of the scene
-    // that is on (songVolume). The HITSOUNDS have their own slider (hitsoundVolume). So turning the music down does
-    // not turn the hits down, and the same slider figures sound the same on every scene: no hole is quieter by itself.
+    // that is on (songVolume). The HITSOUNDS have their own slider, times the same scene level (hitsoundVolume): a
+    // scene that is quieter is quieter in both, and the two sliders still set music and hits apart from each other.
     const mix = state?.show?.mix;
     const scene = state?.show?.scene;
     const music = mix ? Math.min(1, (Number(mix.music) || 0) * (mix.scenes?.[scene] ?? 1)) : 1;
-    const hits = mix ? Math.max(0, Math.min(1, Number(mix.hits ?? 1))) : 1;
+    const hits = mix ? Math.max(0, Math.min(1, Number(mix.hits ?? 1))) * Math.min(1, mix.scenes?.[scene] ?? 1) : 1;
     f.target = f.shown && !silent ? VOLUME[f.name] ?? 0 : 0;
     const step = (50 / FADE_MS) * Math.max(VOLUME[f.name] ?? 0, 0.01);
     f.vol = f.vol < f.target ? Math.min(f.target, f.vol + step) : Math.max(f.target, f.vol - step);
     // The music's level fades when the scene changes; a slider moved in the mixer is heard at once (finding a level
     // by ear needs the level you set, not a fade toward it).
-    const mixed = mix ? `${mix.music}|${mix.scenes?.[scene] ?? 1}` : "";
-    if (f.song === undefined || (f.mixed !== mixed && f.mixScene === scene)) f.song = music;
+    const mixed = mix ? `${mix.music}|${mix.hits ?? 1}|${mix.scenes?.[scene] ?? 1}` : "";
+    if (f.song === undefined || (f.mixed !== mixed && f.mixScene === scene)) { f.song = music; f.hit = hits; }
     f.mixed = mixed; f.mixScene = scene;
     f.song = f.song < music ? Math.min(music, f.song + 50 / FADE_MS) : Math.max(music, f.song - 50 / FADE_MS);
+    f.hit = f.hit < hits ? Math.min(hits, f.hit + 50 / FADE_MS) : Math.max(hits, f.hit - 50 / FADE_MS);
     const levels = {};
     if (Math.abs(f.vol - f.sent) > 0.004 || (f.sent !== 0 && f.vol === 0)) levels.masterVolume = f.sent = f.vol;
     if (f.songSent === undefined || Math.abs(f.song - f.songSent) > 0.004 || (f.songSent !== 0 && f.song === 0)) levels.songVolume = f.songSent = f.song;
-    if (f.hitsSent !== hits) levels.hitsoundVolume = f.hitsSent = hits;
+    if (f.hitsSent === undefined || Math.abs(f.hit - f.hitsSent) > 0.004 || (f.hitsSent !== 0 && f.hit === 0)) levels.hitsoundVolume = f.hitsSent = f.hit;
     // all three again every few seconds: a viewer that reloaded (or was busy loading) has lost them
-    if (performance.now() - (f.levelsAt ?? 0) > 3000) Object.assign(levels, { masterVolume: f.sent = f.vol, songVolume: f.songSent = f.song, hitsoundVolume: f.hitsSent = hits });
+    if (performance.now() - (f.levelsAt ?? 0) > 3000) Object.assign(levels, { masterVolume: f.sent = f.vol, songVolume: f.songSent = f.song, hitsoundVolume: f.hitsSent = f.hit });
     if (Object.keys(levels).length) { f.levelsAt = performance.now(); f.told = { ...(f.told ?? {}), ...levels }; tell(f, { type: "msu:settings", settings: levels }); }
     // the replay viewer settings from the panel (up/down look lock, resolution, frame cap), sent again after a reload.
     // The panel's small preview (&mute) draws at the size it is shown and 30 fps, leaving the PC's power to OBS.
