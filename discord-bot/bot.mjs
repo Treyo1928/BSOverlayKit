@@ -7,7 +7,7 @@
 //   it can see). Until one is picked there: CASTER_CHANNEL_ID if set, else the first voice channel with "cast" in
 //   its name.
 //
-//   The bot sits in the channel muted. What it hears there it passes to the overlay as it arrives, so the casters'
+//   The bot sits in the channel muted, and only while somebody else is in it. What it hears there it passes to the overlay as it arrives, so the casters'
 //   voices are on stream (mixed in the panel: Sound). Nothing is recorded, kept or decoded here: each packet goes
 //   straight on and is gone. VOICE_AUDIO=off: no sound is passed on at all, only who is talking.
 //
@@ -136,13 +136,24 @@ function leave() {
   connection?.destroy();
   connection = null;
   talking.clear();
-  joinedAt.clear();
 }
+/** Follow this channel: sit in it while anyone is there (see sit). */
 function join(id) {
   leave();
+  joinedAt.clear();       // another channel: the order people joined starts again
   channelId = id;
-  const channel = client.channels.cache.get(id);
-  if (!channel?.isVoiceBased?.()) return;
+  sit();
+}
+/** The bot is in the voice channel only while a person is: alone it would sit in an empty room, so it steps out,
+ *  and comes back the moment someone joins (it knows who is there without being in the channel itself). */
+function sit() {
+  const channel = client.channels.cache.get(channelId);
+  const anyone = !!channel?.isVoiceBased?.() && [...channel.members.values()].some((m) => !m.user.bot);
+  if (anyone && !connection) { console.log(`someone is in #${channel.name}: joining`); connect(channel); }
+  else if (!anyone && connection) { console.log(`#${channel?.name ?? 'the channel'} is empty: stepping out until someone joins`); leave(); }
+}
+function connect(channel) {
+  leave();
   const mine = connection = joinVoiceChannel({
     channelId: channel.id,
     guildId: channel.guild.id,
@@ -162,7 +173,7 @@ function join(id) {
     } catch {
       if (connection !== mine) return;          // the channel was changed meanwhile
       console.warn('voice disconnected, joining again in 5 s');
-      setTimeout(() => connection === mine && join(channelId), 5_000);
+      setTimeout(() => { if (connection === mine) { leave(); sit(); } }, 5_000);
     }
   });
   entersState(mine, VoiceConnectionStatus.Ready, 20_000)
@@ -177,7 +188,7 @@ function join(id) {
         : channel.full ? 'the channel is full'
         : `it got as far as: ${steps.join(' -> ') || 'nothing'} (stuck at "signalling": Discord never answered; at "connecting": the voice link itself, UDP out of this machine or the encryption library)`;
       console.error(`could not join voice in #${channel.name}: ${why}. Casters still show; their rings will not light up. Trying again in 60 s.`);
-      setTimeout(() => connection === mine && join(channelId), 60_000);
+      setTimeout(() => { if (connection === mine) { leave(); sit(); } }, 60_000);
     });
 }
 
@@ -195,7 +206,7 @@ async function heartbeat() {
   const next = wanted(said.channelId);
   if (next !== channelId) {
     console.log(next ? `following ${client.channels.cache.get(next)?.name}` : 'no voice channel to follow: pick one in the overlay panel (Casters)');
-    if (next) join(next); else { leave(); channelId = ''; }
+    if (next) join(next); else { leave(); joinedAt.clear(); channelId = ''; }
     await sendCasters(true);
   } else if (lastSent === null) await sendCasters(true);
 }
@@ -208,7 +219,7 @@ client.once(Events.ClientReady, async () => {
   setInterval(heartbeat, 8_000);
 });
 client.on(Events.VoiceStateUpdate, (before, after) => {
-  if (before.channelId === channelId || after.channelId === channelId) sendCasters();
+  if (before.channelId === channelId || after.channelId === channelId) { sit(); sendCasters(); }
 });
 client.on(Events.GuildMemberUpdate, () => sendCasters());      // a name or picture changed while in the channel
 client.on(Events.Error, (e) => console.error(`discord: ${e.message}`));

@@ -4,7 +4,8 @@ Whoever is in the casting voice channel on Discord is on the overlay's **Casters
 with their Discord name and picture. Their ring lights up while they talk. Nobody is set up by hand: a caster joins
 the channel and is on stream; they leave and are gone.
 
-The bot sits in the channel muted, and passes what it hears to the overlay, so **the casters' voices are on
+The bot sits in the channel muted, only while someone else is in it (it steps out of an empty channel and comes
+back when someone joins), and passes what it hears to the overlay, so **the casters' voices are on
 stream** without OBS capturing Discord. They are mixed in the panel's **Sound** card: one level for all casters and
 one for each. Nothing is recorded or kept: each bit of sound goes straight to the stream's page and is gone. Tell
 your casters the channel is live while the bot is in it. `VOICE_AUDIO=off` in `.env` stops the bot passing any sound
