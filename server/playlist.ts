@@ -172,6 +172,7 @@ export class PlaylistControl {
     const i = this.p.items.findIndex((x) => x.id === id);
     if (i < 0 || this.p.items[i].team) return;       // a team's replay is taken off where it was put on: the site
     this.p.items.splice(i, 1);
+    this.p.played = (this.p.played ?? []).filter((x) => x !== id);      // its mark goes with it
     this.p.scope = this.scope();
     if (wasCurrent) this.switchTo(this.pick(this.modeNow() === "repeat" ? "order" : this.modeNow()));
     this.changed(true);
