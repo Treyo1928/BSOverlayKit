@@ -191,10 +191,12 @@ function render() {
       : !line.bot ? "The bot is not connected to the overlay, so no voices arrive (it says why in its log). "
       : heard.length ? "" : "Nobody is in the voice channel. ")
     + "100 % is each voice as Discord sends it; up to 200 % lifts a quiet one. Someone not \"On stream\" in the Casters card is not heard either. To hear the voices here, tick Casters above the preview: that is this browser only.";
-  const sceneIds = Object.keys(S.scenes).join();
+  // only the scenes a replay is heard on (those with a video box) have a level: the rest have no sound of their own
+  const heardOn = Object.entries(S.scenes).filter(([id]) => !S.soundScenes || S.soundScenes.includes(id));
+  const sceneIds = heardOn.map(([id]) => id).join();
   if ($("#mixScenes").dataset.for !== sceneIds) {
     $("#mixScenes").dataset.for = sceneIds;
-    $("#mixScenes").innerHTML = Object.entries(S.scenes).map(([id, label]) =>
+    $("#mixScenes").innerHTML = heardOn.map(([id, label]) =>
       `<div class="row" style="align-items:center;gap:8px"><label style="flex:0 0 9.5em;margin:0" data-mix-label="${id}">${esc(cap(label))}</label><input data-mix="${id}" type="range" min="0" max="100" step="1" style="flex:1"><b data-mix-value="${id}" style="flex:0 0 3.2em;text-align:right"></b></div>`).join("");
   }
   for (const el of $("#mixScenes").querySelectorAll("[data-mix]")) {

@@ -541,16 +541,22 @@ setInterval(() => {
     const scene = state?.show?.scene;
     const music = mix ? Math.min(1, (Number(mix.music) || 0) * (mix.scenes?.[scene] ?? 1)) : 1;
     const hits = mix ? Math.max(0, Math.min(1, Number(mix.hits ?? 1))) * Math.min(1, mix.scenes?.[scene] ?? 1) : 1;
+    const comingOn = f.vol === 0;          // silent until now: its levels can be set outright, nothing is heard jumping
     f.target = f.shown && !silent ? VOLUME[f.name] ?? 0 : 0;
     const step = (50 / FADE_MS) * Math.max(VOLUME[f.name] ?? 0, 0.01);
     f.vol = f.vol < f.target ? Math.min(f.target, f.vol + step) : Math.max(f.target, f.vol - step);
     // The music's level fades when the scene changes; a slider moved in the mixer is heard at once (finding a level
     // by ear needs the level you set, not a fade toward it).
     const mixed = mix ? `${mix.music}|${mix.hits ?? 1}|${mix.scenes?.[scene] ?? 1}` : "";
-    if (f.song === undefined || (f.mixed !== mixed && f.mixScene === scene)) { f.song = music; f.hit = hits; }
+    // A replay leaving the stream (the new scene has no place for it) keeps the level of the scene it was on while
+    // it fades out: the scene coming on is not its scene, and that one's level (often 100 %) must not be heard on
+    // the way out.
+    if (f.song === undefined || (f.shown && (comingOn || (f.mixed !== mixed && f.mixScene === scene)))) { f.song = music; f.hit = hits; }
     f.mixed = mixed; f.mixScene = scene;
-    f.song = f.song < music ? Math.min(music, f.song + 50 / FADE_MS) : Math.max(music, f.song - 50 / FADE_MS);
-    f.hit = f.hit < hits ? Math.min(hits, f.hit + 50 / FADE_MS) : Math.max(hits, f.hit - 50 / FADE_MS);
+    if (f.shown) {
+      f.song = f.song < music ? Math.min(music, f.song + 50 / FADE_MS) : Math.max(music, f.song - 50 / FADE_MS);
+      f.hit = f.hit < hits ? Math.min(hits, f.hit + 50 / FADE_MS) : Math.max(hits, f.hit - 50 / FADE_MS);
+    }
     const levels = {};
     if (Math.abs(f.vol - f.sent) > 0.004 || (f.sent !== 0 && f.vol === 0)) levels.masterVolume = f.sent = f.vol;
     if (f.songSent === undefined || Math.abs(f.song - f.songSent) > 0.004 || (f.songSent !== 0 && f.song === 0)) levels.songVolume = f.songSent = f.song;

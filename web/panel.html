@@ -86,7 +86,7 @@
         <button id="boardUndo" title="Take away the last line drawn (by anyone)">Undo</button><button id="boardClear" title="Wipe the whole board">Clear board</button>
       </div>
       <div class="board-pad"><canvas id="boardPad"></canvas></div>
-      <div class="hint">Draw here with the mouse, a pen or a finger; it appears on stream as you draw, for everyone with this panel open too. The board sits on top of every scene, so a drawing stays when the scene changes, and it is kept while the board is hidden. Where it sits on stream is <code>whiteboard:</code> in overlay.yaml.</div></div>
+      <div class="hint">Draw here with the mouse, a pen or a finger; it appears on stream as you draw, for everyone with this panel open too. The board comes down by itself when another scene goes on air (tick the box again to put it back); the drawing is kept while it is hidden. Where it sits on stream is <code>whiteboard:</code> in overlay.yaml.</div></div>
     <div class="card"><h2>Sound</h2>
       <div class="row"><div><label>Replay music, everywhere: <b id="mixMusicValue">100</b>%</label><input id="mixMusic" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
       <div class="row"><div><label>Hitsounds: <b id="mixHitsValue">100</b>%</label><input id="mixHits" type="range" min="0" max="100" step="1" style="width:100%"></div></div>
@@ -96,7 +96,7 @@
       <div class="row"><div><label>All casters: <b id="mixVoicesValue">100</b>%</label><input id="mixVoices" type="range" min="0" max="200" step="1" style="width:100%"></div></div>
       <div id="mixPeople"></div>
       <div class="hint" id="voicesHint"></div>
-      <div class="hint">Each scene has a level of its own (Getting Ready starts at 50 %: a breather before the song; Casters at 35 %, to talk over); the scene on air is marked. It turns the music and the hitsounds down together. On top of that the first two sliders set the music and the hitsounds apart from each other, everywhere. The casters' voices are not touched by the scene levels. 100 % is the replay as recorded; it cannot go louder. Sliders act as you drag; a scene change fades. To hear it on this page, tick Sound above the preview.</div></div>
+      <div class="hint">Scenes without a video box, like Picks &amp; Bans, have no replay sound and so no slider. Each scene that shows a replay has a level of its own (Getting Ready starts at 50 %: a breather before the song; Casters at 35 %, to talk over); the scene on air is marked. It turns the music and the hitsounds down together. On top of that the first two sliders set the music and the hitsounds apart from each other, everywhere. The casters' voices are not touched by the scene levels. 100 % is the replay as recorded; it cannot go louder. Sliders act as you drag; a scene change fades. To hear it on this page, tick Sound above the preview.</div></div>
     <div class="card"><h2>Video holes</h2>
       <div class="hint">Filled automatically: each player's live TA replay during a match, the replay playlist in the big box. Only type a link here to override one.</div>
       <div class="row"><div><label>Side A (<code>feed:a</code>)</label><input id="feedA" placeholder="https://…"></div>

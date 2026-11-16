@@ -145,13 +145,17 @@ async function designList() {
 let designVersion = Date.now();
 /** Scenes with a feed:main hole: the playlist plays while one of them is on stream and pauses otherwise. */
 let replayScenes = new Set<string>();
+/** Scenes with any video hole: the only ones a replay is heard on, so the only ones the mixer has a level for. */
+let soundScenes = new Set<string>();
 async function findReplayScenes() {
-  const out = new Set<string>();
+  const out = new Set<string>(), sound = new Set<string>();
   for (const [id, s] of Object.entries(config.scenes)) {
     const svg = await Deno.readTextFile(at(`design/${s.svg}.svg`)).catch(() => "");
     if (/feed:main\b/.test(svg)) out.add(id);
+    if (/feed:[a-z]/.test(svg)) sound.add(id);
   }
   replayScenes = out;
+  soundScenes = sound;
 }
 await findReplayScenes();
 (async () => {
@@ -269,6 +273,9 @@ let fade: { ms: number; until: number } | null = null;
 function setScene(scene: string, fadeMs?: number) {
   if (!config.scenes[scene]) return;
   fade = fadeMs !== undefined && scene !== show.scene ? { ms: fadeMs, until: Date.now() + 1500 } : null;
+  // The whiteboard belongs to the scene it was put up on: another scene coming on air takes it down (the drawing is
+  // kept). Left up, it would sit over Picks & Bans or a match when a rule switches there mid-explanation.
+  if (scene !== show.scene) closeBoard();
   show.scene = scene;
   saveShow();
   dirty = true;
@@ -477,7 +484,7 @@ const stateMsg = (staged = false) => ({
 const panelMsg = async () => ({
   ...stateMsg(), staging: !!show.staging, staged: show.staged ? { ...stagedView(), playlist: undefined, staged: undefined } : null,
   stagedDiffers: stagedDiffers(), airMoved: !!show.staged && show.staged.airScene !== show.scene,
-  playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
+  playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])), soundScenes: [...soundScenes],
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
   discord: { voice: { bot: botLines.size > 0, hearing: voiceTo.size },
@@ -636,6 +643,12 @@ board.strokes = Array.isArray(board.strokes) ? board.strokes : [];
 const MAX_STROKES = 600, MAX_STROKE_NUMBERS = 8000;
 let boardTimer: ReturnType<typeof setTimeout> | undefined;
 const saveBoard = () => { clearTimeout(boardTimer); boardTimer = setTimeout(() => Deno.writeTextFile(dataAt("board.json"), JSON.stringify(board)).catch(() => {}), 700); };
+function closeBoard() {
+  try { if (!board.open) return; } catch { return; }      // a scene set while starting up: no board yet
+  board.open = false;
+  broadcastAll(boardMsg());
+  saveBoard();
+}
 const boardMsg = () => ({ type: "board", open: board.open, strokes: board.strokes, box: config.whiteboard });
 /** Points as the panel sent them, made safe: pairs of numbers from 0 to 1, a few decimals. */
 const boardPoints = (raw: unknown, room: number) =>
