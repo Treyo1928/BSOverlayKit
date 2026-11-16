@@ -1,0 +1,5 @@
+voice/
+state/
+.env
+__pycache__/
+*.pyc

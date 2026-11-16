@@ -1,29 +1,26 @@
-// The caster bot.
-//   Whoever is in the casting voice channel shows on the overlay's Casters scene (in the order they joined, with
-//   their Discord name and picture), and their ring lights up while they talk. Nobody is set up by hand: joining the
-//   channel is all a caster does.
+// The bot's ears: the only part of the Discord bot that is in a voice channel.
+//   It sits (muted) in the casting channel the main bot (../bot.py) follows, while somebody else is in it, and
+//   tells the overlay two things: who is talking (their ring lights up on the Casters scene), and what they say
+//   (the casters' voices on stream, mixed in the panel: Sound). Nothing is recorded, kept or decoded here: each
+//   packet goes straight on and is gone. VOICE_AUDIO=off: no sound is passed on at all, only who is talking.
 //
-//   Which channel: the one picked in the overlay panel's Casters card (the bot tells the overlay which voice channels
-//   it can see). Until one is picked there: CASTER_CHANNEL_ID if set, else the first voice channel with "cast" in
-//   its name.
+//   It is JavaScript because hearing a Discord voice channel means taking part in its end-to-end encryption, and
+//   this library is the one that does that dependably. Everything else the bot does is in ../bot.py.
 //
-//   The bot sits in the channel muted, and only while somebody else is in it. What it hears there it passes to the overlay as it arrives, so the casters'
-//   voices are on stream (mixed in the panel: Sound). Nothing is recorded, kept or decoded here: each packet goes
-//   straight on and is gone. VOICE_AUDIO=off: no sound is passed on at all, only who is talking.
-//
-//   Settings (environment, or .env beside this file): DISCORD_TOKEN, OVERLAY_URL, OVERLAY_CODE; optional
-//   CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO. See README.md.
+//   Settings (environment, or ../.env): DISCORD_TOKEN, OVERLAY_URL, OVERLAY_CODE; optional IGNORE_USER_IDS,
+//   VOICE_AUDIO. It logs in as the same bot as bot.py.
 import { readFileSync } from 'node:fs';
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { EndBehaviorType, entersState, generateDependencyReport, joinVoiceChannel, VoiceConnectionStatus } from '@discordjs/voice';
 
 const env = (k, d = '') => (process.env[k] ?? d).trim();
 const TOKEN = env('DISCORD_TOKEN');
-const IGNORE = new Set(env('IGNORE_USER_IDS').split(/[\s,]+/).filter(Boolean));   // people who are never casters
+const IGNORE = new Set(env('IGNORE_USER_IDS').split(/[\s,]+/).filter(Boolean));
 const OVERLAY = env('OVERLAY_URL', 'http://127.0.0.1:8095').replace(/\/+$/, '');
+const AUDIO = !/^(off|0|no|false)$/i.test(env('VOICE_AUDIO', 'on'));
 let OVERLAY_CODE = env('OVERLAY_CODE');
 if (!OVERLAY_CODE) {
-  try { OVERLAY_CODE = JSON.parse(readFileSync(new URL(`../${env('KIT_DATA', 'data')}/secrets.json`, import.meta.url))).hostCode; } catch { /* not beside an overlay */ }
+  try { OVERLAY_CODE = JSON.parse(readFileSync(new URL(`../../${env('KIT_DATA', 'data')}/secrets.json`, import.meta.url))).hostCode; } catch { /* not beside an overlay */ }
 }
 
 // asked to stop before there is anything to close (as a container's first process, Node ignores these otherwise)
@@ -33,12 +30,12 @@ process.on('SIGTERM', quit);
 
 if (!TOKEN) {
   // Not set up: stay quiet and stay up (a container that exits is started again, over and over).
-  console.log('caster bot: no DISCORD_TOKEN, so nothing to do. Set it (see discord-bot/README.md) and start this again.');
+  console.log('voice: no DISCORD_TOKEN, so nothing to do. Set it (see discord-bot/README.md) and start this again.');
   setInterval(() => {}, 1 << 30);
   await new Promise(() => {});
 }
 if (!OVERLAY_CODE) {
-  console.error('caster bot: no OVERLAY_CODE (the overlay panel\'s login code), so it cannot tell the overlay anything.');
+  console.error('voice: no OVERLAY_CODE (the overlay panel\'s login code), so it cannot tell the overlay anything.');
   process.exit(2);
 }
 
@@ -52,6 +49,7 @@ async function overlay(action) {
       body: JSON.stringify(action),
     });
     if (!r.ok) { console.warn(`overlay ${action.action}: ${r.status} ${(await r.text()).slice(0, 200)}`); return null; }
+    if (overlay.down) { console.log('overlay reachable again'); overlay.down = ''; }
     return await r.json().catch(() => ({}));
   } catch (e) {
     if (overlay.down !== e.message) console.warn(`overlay not reachable (${OVERLAY}): ${e.message}`);
@@ -60,10 +58,8 @@ async function overlay(action) {
   }
 }
 
-// ---------------------------------------------------------------- the casters' voices, to the overlay
-const AUDIO = !/^(off|0|no|false)$/i.test(env('VOICE_AUDIO', 'on'));
+// the line the sound goes down: a WebSocket to the overlay, opened again whenever it drops
 let line = null, lineOk = false, lineSaid = '';
-/** The line the sound goes down: a WebSocket to the overlay, opened again whenever it drops. */
 function openLine() {
   if (!AUDIO) return;
   const ws = line = new WebSocket(`${OVERLAY.replace(/^http/, 'ws')}/ws/voice`);
@@ -95,54 +91,17 @@ function hear(mine, uid) {
   stream.on('error', (e) => console.warn(`voices: ${uid}: ${e.message}`));
 }
 
-// ---------------------------------------------------------------- which channel, and who is in it
+// ---------------------------------------------------------------- in the channel while someone else is
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
-const joinedAt = new Map();          // user id -> when they joined, so casters keep their places
 const talking = new Set();
-let channelId = '';                  // the channel being followed
-let connection = null;
+let channelId = '';                  // the channel to listen in (the main bot's choice, by way of the overlay)
+let connection = null, problem = '';
 
-const voiceChannels = () => [...client.channels.cache.values()].filter((c) => c.isVoiceBased?.() && c.guild);
-/** The channel to follow: the panel's choice, else the one in the settings, else one that sounds like casting. */
-function wanted(chosen) {
-  const known = (id) => (id && voiceChannels().some((c) => c.id === id) ? id : '');
-  return known(chosen) || known(env('CASTER_CHANNEL_ID')) || (voiceChannels().find((c) => /cast/i.test(c.name))?.id ?? '');
-}
-
-function castersNow() {
-  const channel = client.channels.cache.get(channelId);
-  if (!channel?.isVoiceBased?.()) return [];
-  const people = [...channel.members.values()].filter((m) => !m.user.bot && !IGNORE.has(m.id));
-  for (const m of people) if (!joinedAt.has(m.id)) joinedAt.set(m.id, Date.now());
-  for (const id of joinedAt.keys()) if (!people.some((m) => m.id === id)) joinedAt.delete(id);
-  return people
-    .sort((a, b) => joinedAt.get(a.id) - joinedAt.get(b.id))
-    .map((m) => ({ id: m.id, name: m.displayName, handle: `@${m.user.username}`, avatar: m.displayAvatarURL({ extension: 'png', size: 256 }) }));
-}
-
-let lastSent = null;
-async function sendCasters(force = false) {
-  const list = castersNow();
-  const json = JSON.stringify(list);
-  if (json === lastSent && !force) return;
-  lastSent = json;
-  console.log(`casters: ${list.map((c) => c.name).join(', ') || '(nobody)'}`);
-  await overlay({ action: 'discordCasters', casters: list });
-  for (const id of talking) await overlay({ action: 'speaking', id, on: true });
-}
-
-// ---------------------------------------------------------------- who is talking
 function leave() {
   connection?.destroy();
   connection = null;
+  for (const uid of talking) overlay({ action: 'speaking', id: uid, on: false });
   talking.clear();
-}
-/** Follow this channel: sit in it while anyone is there (see sit). */
-function join(id) {
-  leave();
-  joinedAt.clear();       // another channel: the order people joined starts again
-  channelId = id;
-  sit();
 }
 /** The bot is in the voice channel only while a person is: alone it would sit in an empty room, so it steps out,
  *  and comes back the moment someone joins (it knows who is there without being in the channel itself). */
@@ -177,55 +136,47 @@ function connect(channel) {
     }
   });
   entersState(mine, VoiceConnectionStatus.Ready, 20_000)
-    .then(() => console.log(`listening in #${channel.name} (${channel.guild.name})`))
-    // without voice the list of who is there still works (that comes from the server, not the voice link): only the
-    // talking rings do not
+    .then(() => { problem = ''; console.log(`listening in #${channel.name} (${channel.guild.name})`); })
     .catch(() => {
       if (connection !== mine) return;
       const can = channel.permissionsFor(client.user);
       const missing = ['ViewChannel', 'Connect'].filter((p) => !can?.has(p));
-      const why = missing.length ? `the bot lacks ${missing.join(' and ')} in that channel (channel or role permissions in Discord)`
+      problem = missing.length ? `the bot lacks ${missing.join(' and ')} in that channel (channel or role permissions in Discord)`
         : channel.full ? 'the channel is full'
         : `it got as far as: ${steps.join(' -> ') || 'nothing'} (stuck at "signalling": Discord never answered; at "connecting": the voice link itself, UDP out of this machine or the encryption library)`;
-      console.error(`could not join voice in #${channel.name}: ${why}. Casters still show; their rings will not light up. Trying again in 60 s.`);
+      console.error(`could not join voice in #${channel.name}: ${problem}. Casters still show; their rings will not light up and they are not heard. Trying again in 60 s.`);
       setTimeout(() => { if (connection === mine) { leave(); sit(); } }, 60_000);
     });
 }
 
-// ---------------------------------------------------------------- keeping the overlay and the bot in step
-/** Tell the overlay the bot is here and what it can see; follow the channel the panel has picked. Every 8 s. */
-async function heartbeat() {
-  const said = await overlay({
-    action: 'discordBot',
-    bot: client.user?.tag ?? '',
-    following: channelId,
-    channels: voiceChannels().map((c) => ({ id: c.id, name: c.name, guild: c.guild.name, people: [...c.members.values()].filter((m) => !m.user.bot).length })),
-  });
+/** Ask the overlay which channel the main bot follows (every 3 s), and say how the listening stands. */
+async function ask() {
+  const said = await overlay({ action: 'discordVoice', listening: !!connection && !problem, problem });
   if (!said) return;
-  if (overlay.down) { console.log('overlay reachable again'); overlay.down = ''; lastSent = null; }
-  const next = wanted(said.channelId);
-  if (next !== channelId) {
-    console.log(next ? `following ${client.channels.cache.get(next)?.name}` : 'no voice channel to follow: pick one in the overlay panel (Casters)');
-    if (next) join(next); else { leave(); joinedAt.clear(); channelId = ''; }
-    await sendCasters(true);
-  } else if (lastSent === null) await sendCasters(true);
+  const next = client.channels.cache.get(said.channelId)?.isVoiceBased?.() ? said.channelId : '';
+  if (next === channelId) return;
+  console.log(next ? `listening channel: ${client.channels.cache.get(next).name}` : 'no channel to listen in');
+  leave();
+  problem = '';
+  channelId = next;
+  sit();
 }
 
 client.once(Events.ClientReady, async () => {
-  console.log(`logged in as ${client.user.tag}; in ${client.guilds.cache.size} server(s), ${voiceChannels().length} voice channel(s) visible`);
-  if (!client.guilds.cache.size) console.warn('the bot is in no server yet: invite it (see README.md)');
+  console.log(`voice: logged in as ${client.user.tag}`);
   openLine();
-  await heartbeat();
-  setInterval(heartbeat, 8_000);
+  await ask();
+  setInterval(ask, 3_000);
 });
 client.on(Events.VoiceStateUpdate, (before, after) => {
-  if (before.channelId === channelId || after.channelId === channelId) { sit(); sendCasters(); }
+  if (before.channelId === channelId || after.channelId === channelId) sit();
 });
-client.on(Events.GuildMemberUpdate, () => sendCasters());      // a name or picture changed while in the channel
 client.on(Events.Error, (e) => console.error(`discord: ${e.message}`));
 
 const stop = async () => { leave(); await client.destroy().catch(() => {}); process.exit(0); };
 for (const sig of ['SIGINT', 'SIGTERM']) { process.off(sig, quit); process.on(sig, stop); }
+// one bad moment must not take the listening down mid-cast
+process.on('unhandledRejection', (e) => console.error(`unexpected: ${e?.stack ?? e}`));
 
 console.log(generateDependencyReport().split('\n').filter((l) => /davey|aes-256-gcm|voice:/.test(l)).join(' | '));
 client.login(TOKEN).catch((e) => {

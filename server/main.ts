@@ -101,7 +101,11 @@ const cleanCaster = (c: any) => ({ id: String(c?.id ?? ""), name: String(c?.name
 show.casters = (show.casters ?? []).map(cleanCaster);
 show.castersFrom ??= "panel";
 // the caster bot: which voice channel the panel picked for it, and who in that channel is not shown as a caster
-show.discord = { channelId: String(show.discord?.channelId ?? ""), hidden: Array.isArray(show.discord?.hidden) ? show.discord!.hidden.map(String) : [] };
+show.discord = {
+  channelId: String(show.discord?.channelId ?? ""), hidden: Array.isArray(show.discord?.hidden) ? show.discord!.hidden.map(String) : [],
+  // the players' voice channel: who is deafened in it while they play (see "players' channel" below)
+  room: String(show.discord?.room ?? ""), deafen: show.discord?.deafen ?? true, players: { ...(show.discord?.players ?? {}) }, release: Number(show.discord?.release) || 0,
+};
 show.header ??= config.header;
 show.upNext = { a: String(show.upNext?.a ?? ""), b: String(show.upNext?.b ?? ""), text: String(show.upNext?.text ?? "") };
 // players who stare at the ceiling make a first-person replay nauseating: the viewers hold the look near level
@@ -478,7 +482,13 @@ const panelMsg = async () => ({
   playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
-  discord: { voice: { bot: voiceStats.from > 0, hearing: voiceTo.size }, bot: discordBot.tag, seenAt: discordBot.seenAt, following: discordBot.following, channels: discordBot.channels, chosen: show.discord!.channelId,
+  discord: { voice: { bot: voiceStats.from > 0, hearing: voiceTo.size, ears: discordBot.voice },
+    // the players' channel: the settings, what the bot says of it, and each player of the match with the Discord
+    // account that will be deafened for them (`from`: panel = picked here, site = their sign-in on the site)
+    room: { chosen: show.discord!.room, on: !!show.discord!.deafen, line: botLines.size > 0, fresh: Date.now() - discordRoom.at < 15_000, ...discordRoom,
+      playing: lastPlaying(),
+      players: (source.roster?.() ?? []).map((p) => ({ id: p.id, name: p.name, team: p.team, discordId: discordOf(p), site: p.discordId ?? "", from: p.id in show.discord!.players! ? "panel" : p.discordId ? "site" : "" })) },
+    bot: discordBot.tag, seenAt: discordBot.seenAt, following: discordBot.following, channels: discordBot.channels, chosen: show.discord!.channelId,
     people: discordBot.people.map((c) => ({ id: c.id, name: c.name, handle: c.handle, avatar: c.avatar, hidden: show.discord!.hidden.includes(c.id) })) },
 });
 setInterval(async () => {
@@ -514,6 +524,29 @@ const actions: Record<string, (a: any) => unknown> = {
     return { channelId: show.discord!.channelId };
   },
   // picking a channel is asking for its people: that switches "from Discord" on as well (in Next, while staging)
+  // the bot's ears (discord-bot/voice): which channel to listen in is the one the main bot follows
+  discordVoice: (a) => {
+    discordBot.voice = { seenAt: Date.now(), listening: !!a.listening, problem: String(a.problem ?? "").slice(0, 300) };
+    return { channelId: discordBot.following };
+  },
+  // the players' voice channel (see "players' channel" below)
+  discordRoom: (a) => { show.discord!.room = String(a.channelId ?? ""); sendOrders(); },
+  discordDeafen: (a) => { show.discord!.deafen = !!a.on; sendOrders(); },
+  discordPlayer: (a) => {
+    const id = String(a.playerId ?? ""), to = a.discordId === null || a.discordId === undefined ? null : String(a.discordId);
+    if (!id) return;
+    if (to === null) delete show.discord!.players![id];        // back to what the site knows
+    else if (to === "" || /^\d{5,25}$/.test(to)) show.discord!.players![id] = to;
+    const ids = Object.keys(show.discord!.players!);
+    if (ids.length > 500) delete show.discord!.players![ids[0]];
+    sendOrders();
+  },
+  discordRelease: () => { show.discord!.release = (show.discord!.release ?? 0) + 1; sendOrders(); },
+  discordDeafenTest: (a) => {
+    if (!/^\d{5,25}$/.test(String(a.id ?? ""))) throw new Error("nobody to test");
+    if (!botLines.size) throw new Error("the bot is not connected");
+    for (const ws of botLines) send(ws, { type: "deafenTest", id: String(a.id), ms: 4000 });
+  },
   discordChannel: (a) => { show.discord!.channelId = String(a.channelId ?? ""); if (show.discord!.channelId) { (show.staging ? ensureStaged() : show).castersFrom = "discord"; applyDiscordCasters(); } },
   discordHide: (a) => {
     const id = String(a.id ?? ""), hidden = new Set(show.discord!.hidden);
@@ -639,8 +672,53 @@ function boardAction(a: any) {
   saveBoard();
 }
 
+// ------------------------------------------------------------------ players' channel: deaf while they play
+// While a TournamentAssistant song is being played, the players in it are server-deafened in the players' voice
+// channel by the Discord bot, and undeafened when it ends. This server only says who is playing: once a second, and
+// at once when that changes, every connected bot is sent the list (an "order"). The list comes straight from the
+// data source (no stream delay), and is empty whenever the source cannot vouch for a song. The bot does the rest,
+// and treats silence from here as "nobody" (discord-bot/deafen.py), so nothing this server fails to do can leave
+// someone deaf.
+const botLines = new Set<WebSocket>();
+/** Which Discord account plays as this player: the panel's word where it gave one, else the data source's. */
+const discordOf = (p: { id: string; discordId: string | null }) => (p.id in show.discord!.players! ? show.discord!.players![p.id] : p.discordId ?? "");
+function deafenOrder() {
+  const d = show.discord!, on = !!d.deafen && !!d.room;
+  const now = on ? source.playing?.() ?? null : null;
+  const roster = now ? source.roster?.() ?? [] : [];
+  const ids = now ? [...new Set(now.players.map((id) => discordOf(roster.find((p) => p.id === id) ?? { id, discordId: null })).filter(Boolean))] : [];
+  return { type: "deafen", run: now?.run ?? "", ids, until: now?.until ?? 0, room: d.room ?? "", on, release: show.discord!.release ?? 0 };
+}
+let lastOrder = "";
+/** For the panel: the Discord ids being kept deaf right now, and the players in the song who have no account set. */
+function lastPlaying() {
+  const now = show.discord!.deafen && show.discord!.room ? source.playing?.() ?? null : null;
+  if (!now) return null;
+  const roster = source.roster?.() ?? [];
+  return { players: now.players.map((id) => { const p = roster.find((x) => x.id === id); return { id, name: p?.name ?? id, discordId: p ? discordOf(p) : "" }; }) };
+}
+function sendOrders() {
+  const o = deafenOrder();
+  lastOrder = JSON.stringify([o.run, o.ids, o.room, o.on, o.release]);
+  for (const ws of botLines) send(ws, o);
+}
+setInterval(() => {
+  const o = deafenOrder(), key = JSON.stringify([o.run, o.ids, o.room, o.on, o.release]);
+  if (key !== lastOrder) dirty = true;         // the panel shows who is being deafened
+  lastOrder = key;
+  for (const ws of botLines) send(ws, o);
+}, 1000);
+// sooner than the next second when a song starts or ends: checked four times a second, sent only on a change
+setInterval(() => {
+  if (!botLines.size) return;
+  const o = deafenOrder();
+  if (JSON.stringify([o.run, o.ids, o.room, o.on, o.release]) !== lastOrder) { sendOrders(); dirty = true; }
+}, 250);
+/** The players' channel as the bot last described it: who is in it, who is deaf, whether the bot may deafen. */
+let discordRoom = { at: 0, channelId: "", members: [] as { id: string; name: string; handle: string; avatar: string; deaf: boolean }[], may: false, owed: [] as string[], error: "" };
+
 // The caster bot as last heard from (nothing here is kept over a restart: the bot says it all again).
-const discordBot = { tag: "", seenAt: 0, following: "", channels: [] as { id: string; name: string; guild: string; people: number }[], people: [] as ReturnType<typeof cleanCaster>[] };
+const discordBot = { voice: { seenAt: 0, listening: false, problem: "" }, tag: "", seenAt: 0, following: "", channels: [] as { id: string; name: string; guild: string; people: number }[], people: [] as ReturnType<typeof cleanCaster>[] };
 /** The casters on stream are whoever the bot sees in the channel, less the hidden, while the panel says "from Discord". */
 function applyDiscordCasters() {
   if (show.castersFrom !== "discord") return;
@@ -658,7 +736,7 @@ async function runAction(a: any) {
   let answer: unknown;
   try { answer = await fn(a); } finally { target = show; }
   // talking flickers on and off, and the bot says hello every few seconds: not worth a file write each time
-  if (a.action !== "speaking" && a.action !== "live" && a.action !== "discordBot") saveShow();
+  if (a.action !== "speaking" && a.action !== "live" && a.action !== "discordBot" && a.action !== "discordVoice") saveShow();
   dirty = true;
   return answer;
 }
@@ -832,6 +910,35 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
       if (e.data instanceof ArrayBuffer) relayVoice(e.data);
     };
     socket.onclose = () => { clearTimeout(giveUp); if (ok) voiceStats.from--; };
+    return response;
+  }
+  if (p === "/ws/bot" && upgrade) {
+    // the Discord bot's line. Its first message is the panel login code; then this server sends it orders (who is
+    // playing a song, see deafenOrder) and it sends back how the players' channel stands.
+    const addr = addressOf(req, info);
+    if (blocked(addr)) return new Response("try again later", { status: 429 });
+    const { socket, response } = Deno.upgradeWebSocket(req);
+    let ok = false;
+    const giveUp = setTimeout(() => { if (!ok) socket.close(); }, 5000);
+    socket.onmessage = (e) => {
+      if (typeof e.data !== "string" || e.data.length > 100_000) return;
+      if (!ok) {
+        if (same(e.data, secrets.hostCode)) { ok = true; botLines.add(socket); send(socket, { ok: true }); send(socket, deafenOrder()); }
+        else { failed(addr); socket.close(); }
+        return;
+      }
+      try {
+        const m = JSON.parse(e.data);
+        if (m?.type !== "room") return;
+        discordRoom = {
+          at: Date.now(), channelId: String(m.channelId ?? ""), may: !!m.may, error: String(m.error ?? "").slice(0, 300),
+          owed: (Array.isArray(m.owed) ? m.owed : []).slice(0, 100).map(String),
+          members: (Array.isArray(m.members) ? m.members : []).slice(0, 100).map((x: any) => ({ id: String(x.id), name: String(x.name ?? "").slice(0, 80), handle: String(x.handle ?? "").slice(0, 80), avatar: String(x.avatar ?? "").slice(0, 300), deaf: !!x.deaf })),
+        };
+        dirty = true;
+      } catch { /* ignore */ }
+    };
+    socket.onclose = () => { clearTimeout(giveUp); botLines.delete(socket); dirty = true; };
     return response;
   }
   if (p === "/ws/panel" && upgrade) {

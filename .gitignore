@@ -7,3 +7,7 @@ data/*
 .env
 # packages installed for the caster bot
 node_modules/
+# the Discord bot's record of who it has deafened, and Python's leftovers
+discord-bot/state/
+__pycache__/
+.venv/

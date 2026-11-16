@@ -144,6 +144,10 @@ The `data/` folder is your own preview's settings and is never part of what you 
   voice channel is on the Casters scene, their ring glows while they talk, and their voices are on stream (mixed in
   the panel's Sound card). The panel's Casters card picks the
   channel and who is shown; without the bot, casters are typed in there.
+- **Players deafened while they play:** the same bot server-deafens each player in the players' voice channel for
+  the length of their TournamentAssistant song, and undeafens them whatever happens
+  ([`discord-bot/README.md`](discord-bot/README.md), "Nobody is left deaf"). The panel's Players' voice channel
+  card picks the channel and says which Discord account is which player.
 - **Generic starter scenes** (not MSU): `OVERLAY=overlay.starter.yaml ./run.sh`.
 
 ### Staging: look before it goes on air
@@ -200,7 +204,8 @@ server/                    the server (Deno): panel, data sources, playlist, aut
 web/                       the overlay page, its engine (layer names → live bindings, animations, particles) and the panel
 tools/                     install-fonts.sh; act.sh (send a panel action); browser checks used while developing
 shots/                     reference screenshots of the scenes
-discord-bot/               the caster bot (Node): Discord voice channel → the Casters scene
+discord-bot/               the Discord bot (Python, plus a small Node part that listens in voice): casters on the
+                           Casters scene, their voices on stream, players deafened while they play
 DEPLOY.md, Dockerfile, docker-compose.yml, docker/      hosting it on a server
 data/                      made when it runs: your panel settings and login code. Never committed
 ```

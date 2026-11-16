@@ -25,9 +25,11 @@ services:
     memswap_limit: 512m
     cpus: 1.0
 
-  # The caster bot: whoever is in the Discord voice channel is on the Casters scene (discord-bot/README.md). With no
-  # token it starts, says so and waits: nothing else is affected. Its settings (DISCORD_TOKEN, and optionally
-  # CASTER_CHANNEL_ID, IGNORE_USER_IDS) are in discord-bot/.env: copy discord-bot/.env.example.
+  # The Discord bot (discord-bot/README.md), in two parts that log in as the same bot. With no token both start, say
+  # so and wait: nothing else is affected. Their settings (DISCORD_TOKEN, and optionally CASTER_CHANNEL_ID,
+  # IGNORE_USER_IDS, VOICE_AUDIO) are in discord-bot/.env: copy discord-bot/.env.example.
+  #   casters  who is in the casting channel (names, pictures) and deafening players while they play (Python)
+  #   voice    sits in the casting channel: who is talking, and the casters' voices for the stream (Node)
   casters:
     build: ./discord-bot
     restart: unless-stopped
@@ -35,7 +37,25 @@ services:
     env_file:
       - path: ./discord-bot/.env
         required: false
-    environment:        # these two always win over the file: in compose the overlay is next door
+    environment:        # these always win over the file: in compose the overlay is next door
+      OVERLAY_URL: http://overlay:8095
+      OVERLAY_CODE: ${HOST_CODE:?set HOST_CODE in .env}
+      STATE_DIR: /bot/state
+    volumes:
+      - discord-bot-state:/bot/state     # who it has deafened: must survive a restart
+    stop_grace_period: 15s               # it undeafens everyone before it goes
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: 0.5
+
+  voice:
+    build: ./discord-bot/voice
+    restart: unless-stopped
+    depends_on: [overlay]
+    env_file:
+      - path: ./discord-bot/.env
+        required: false
+    environment:
       OVERLAY_URL: http://overlay:8095
       OVERLAY_CODE: ${HOST_CODE:?set HOST_CODE in .env}
     mem_limit: 256m
@@ -79,5 +99,6 @@ services:
 
 volumes:
   overlay-data:
+  discord-bot-state:
   caddy-data:
   caddy-config:

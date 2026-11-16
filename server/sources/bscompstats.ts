@@ -14,7 +14,36 @@
 // turns both into the overlay's live state (phase loading/playing, numbers per side and lineup slot), and names each
 // lineup player's TA live-replay stream for the video holes (`taLive`). Matches that are not in TA mode have no live
 // play: a map is "waiting" until its scores are in, then the scores show as the map's result.
-import { TUG_FULL, blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PoolItem, type ResultItem, type Side, type TeamInfo } from "../model.ts";
+import { TUG_FULL, blankSide, type BracketData, type DataSource, type EventMsg, fmtTime, type LiveState, type MapSlot, type OverlayData, type PlayerData, type PlayingNow, type PoolItem, type RosterPlayer, type ResultItem, type Side, type TeamInfo } from "../model.ts";
+
+/**
+ * Who is in a TA song in this match at `now`: null unless the next map's start says "playing" (so not while it
+ * loads, not once it is finished, failed or cancelled, and not once its request is gone). `seen` remembers when a
+ * song with no start time from the site was first seen, so that it too has an end.
+ */
+export function playingIn(m: Match, live: LiveEvent | null, now: number, seen: Map<string, number>): PlayingNow | null {
+  if (!m.taMode) return null;
+  const pm = m.plannedMaps.find((p) => !p.scoresClosed);
+  const status = pm?.start?.requestedAt ? pm.start.status : null;
+  if (!pm || status?.phase !== "playing") return null;
+  const l = live?.matchMapId === pm.matchMapId ? live : null;
+  if (l?.phase === "over") return null;
+  const key = `${pm.matchMapId}:${pm.start!.requestedAt}`;
+  let startedAt = l?.startedAt || (status.startedAt ? new Date(status.startedAt).getTime() : 0);
+  if (!startedAt) {
+    if (!seen.has(key)) { seen.clear(); seen.set(key, now); }
+    startedAt = seen.get(key)!;
+  }
+  // the site itself ends a song 20 s after its length at the latest; a little more, and it cannot still be going
+  const until = startedAt + (Number(pm.map.duration) || 600) * 1000 + 35_000;
+  if (now > until) return null;
+  const done = (id: string) => {
+    const s = status.players?.find((x) => x.playerId === id)?.state;
+    return (s !== undefined && s !== "playing") || !!l?.players.find((x) => x.playerId === id)?.finished;
+  };
+  const players = [...(pm.lineups[m.teamA.id] ?? []), ...(pm.lineups[m.teamB.id] ?? [])].filter((id) => !done(id));
+  return players.length ? { run: `${key}:${startedAt}`, until, players } : null;
+}
 
 export interface BscsOptions { url?: string; tournament?: string; match?: string }
 /** Someone who may sign in to this overlay with their account on the site. */
@@ -37,13 +66,14 @@ interface PlannedMap {
 }
 interface Team { id: string; name: string; color: string; logo?: string | null;
   players: { id: string; name: string; avatar: string | null; beatLeaderId?: string | null; taPlatformId?: string | null; replays?: string[];
+    /** the Discord account they sign in to the site with, when the key's owner runs the tournament */ discordId?: string | null;
     sabers?: { left: string; right: string } | null }[] }
 /** `event: live` of the match events stream: every lineup player's numbers while a song plays. */
-interface LiveEvent {
+export interface LiveEvent {
   matchId: string; matchMapId: string; phase: "playing" | "over"; startedAt: number; at: number;
   players: { playerId: string; teamId: string; slot: number; platformId: string; score: number; accuracy: number | null; combo: number; misses: number; songPosition: number; finished: boolean }[];
 }
-interface Match {
+export interface Match {
   id: string; name: string; state: "PICKBAN" | "PLAYING" | "COMPLETE";
   scoring?: { mode?: string; curve?: { padding: number; slope: number; perfectPoints: number } } | null;
   taMode?: boolean; ta?: { host: string; port: number; liveUrl?: string } | null;
@@ -280,11 +310,13 @@ export class BscsSource implements DataSource {
           if (!r.ok || !r.body) throw new Error(`${r.status} ${(await r.text()).slice(0, 120)}`);
           this.#status = "live";
           wait = 1000;
+          this.#downSince = 0; this.#heardAt = Date.now();
           const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
           let buf = "";
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;
+            this.#heardAt = Date.now();
             buf += value;
             let i;
             while ((i = buf.indexOf("\n\n")) >= 0) {
@@ -299,6 +331,7 @@ export class BscsSource implements DataSource {
           throw new Error("stream ended");
         } catch (e) {
           if (abort.signal.aborted) return;
+          this.#downSince ||= Date.now();
           this.#status = `reconnecting (${(e as Error).message})`;
           await new Promise((res) => setTimeout(res, wait));
           wait = Math.min(15_000, wait * 2);
@@ -404,6 +437,27 @@ export class BscsSource implements DataSource {
       }),
     };
   }
+  // ---------------------------------------------------------------- who is in a song (for the bot that deafens)
+  #heardAt = 0;                            // when the site's stream last sent anything (it sends every 20 s at least)
+  #downSince = 0;                          // when the stream dropped (0: it is up)
+  #seenPlaying = new Map<string, number>(); // a song whose start time the site did not give: when it was first seen
+  /**
+   * Who is in a TA song this instant, straight from the site (the stream delay does not apply). null whenever that
+   * cannot be vouched for: no song, a finished or cancelled one, or a stream to the site that has gone quiet (then
+   * its end could be missed, so nobody is said to be playing).
+   */
+  playing(): PlayingNow | null {
+    const m = this.#match, now = Date.now();
+    if (!m || this.#over(m).over) return null;
+    if ((this.#downSince && now - this.#downSince > 5_000) || now - this.#heardAt > 45_000) return null;
+    return playingIn(m, this.#lastLive, now, this.#seenPlaying);
+  }
+  /** Everyone on the two teams of the match in hand, with the Discord account the site knows for each. */
+  roster(): RosterPlayer[] {
+    const m = this.#match;
+    return m ? [m.teamA, m.teamB].flatMap((t) => t.players.map((p) => ({ id: p.id, name: p.name, team: t.name, discordId: p.discordId || null }))) : [];
+  }
+
   #sendLive() {
     const l = this.#liveState();
     if (!l && !this.#liveOn) return;       // nothing of ours is out: leave a live state set by a tool alone

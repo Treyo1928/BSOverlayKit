@@ -228,7 +228,14 @@ export interface ShowState {
   casters: Caster[];
   castersFrom: "panel" | "discord";       // discord = the caster bot keeps the list in sync with the voice channel
   /** The caster bot: the voice channel picked for it in the panel ("" = its own choice), and people in it who are not shown. */
-  discord?: { channelId: string; hidden: string[] };
+  discord?: {
+    channelId: string; hidden: string[];
+    /** The players' voice channel, whether players are deafened in it while they play, and which Discord account
+     *  is which player where the panel says so (player id -> Discord id; "" = nobody, even if the site knows one). */
+    room?: string; deafen?: boolean; players?: Record<string, string>;
+    /** How many times the panel has said "undeafen everyone now": a change lets everyone in the song go. */
+    release?: number;
+  };
   brb: { title: string; message: string; endsAt: number };
   ticker: string[];
   feeds: Record<string, string>;          // feed:a / feed:main … -> a URL set in the panel (overrides the data's)
@@ -307,8 +314,18 @@ export interface EventMsg {
   why?: "pick" | "result";
 }
 
+/** A song being played right now: which (`run` changes with every start), the latest moment it can still be going
+ *  (epoch ms), and the ids of the players still in it. For the bot that deafens players while they play. */
+export interface PlayingNow { run: string; until: number; players: string[] }
+/** A player of the match in hand, and the Discord account the data source knows for them (if any). */
+export interface RosterPlayer { id: string; name: string; team: string; discordId: string | null }
+
 export interface DataSource {
   readonly name: string;
+  /** Who is in a song this instant: never held back by the stream delay. null: nobody is. */
+  playing?(): PlayingNow | null;
+  /** Everyone who may play in the match in hand. */
+  roster?(): RosterPlayer[];
   /** `live`: a source that knows the live gameplay itself (BSCompStats in TA mode) reports it here; null = over. */
   start(emit: (data: OverlayData) => void, event: (e: EventMsg) => void, live?: (state: LiveState | null) => void): Promise<void>;
   stop(): Promise<void>;

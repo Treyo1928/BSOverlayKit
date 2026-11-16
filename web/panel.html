@@ -57,6 +57,13 @@
       </div>
       <div id="casters"></div>
       <div class="hint" id="castersHint"></div></div>
+    <div class="card" id="roomCard"><h2>Players' voice channel <span class="spacer"></span><span id="roomState" class="muted"></span></h2>
+      <div class="row"><div><label>Voice channel the players and the TO sit in</label><select id="roomChannel"></select></div></div>
+      <label class="check" title="On: the Discord bot server-deafens each player in this channel from the moment their TournamentAssistant song starts until it ends, is cancelled, or they finish or fail. Off: nobody is deafened, and anyone the bot had deafened is undeafened at once"><input type="checkbox" id="roomDeafen"> Deafen the players while they play a song in TournamentAssistant</label>
+      <div id="roomWarn" class="err" style="font-size:13px;margin:6px 0;white-space:pre-wrap"></div>
+      <div id="roomPlayers" class="people"></div>
+      <div class="btns"><button id="roomRelease" title="Undeafens everyone the bot has deafened, straight away, and leaves them alone for the rest of the song being played. The next song deafens as usual">Undeafen everyone now</button></div>
+      <div class="hint">Each player of the match needs a Discord account beside their name: it is filled in by itself for players who sign in to the site with Discord, otherwise pick them from the people in the channel (they must be in it to be picked). <b>Test</b> deafens that person for 4 seconds, to see that the bot may. Only players in the song are deafened, only in this channel, and the TO never. They are undeafened when the song ends or is cancelled, when they finish or fail, if they move to another channel, and if the overlay, the site or the bot stops; someone who left Discord's voice while deaf is undeafened the moment they are back in any channel. The bot does not sit in this channel; it needs the <b>Deafen Members</b> permission in it.</div></div>
     <div class="card staged-edit"><h2>Up next <span class="spacer"></span><span id="upState" class="muted"></span></h2>
       <div class="row"><div><label>Team (left)</label><input id="upA" list="teamNames" placeholder="pick or type a team"></div>
         <div><label>Team (right)</label><input id="upB" list="teamNames" placeholder="pick or type a team"></div></div>

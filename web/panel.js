@@ -143,6 +143,7 @@ function render() {
     ? dc.people.map((c) => `<div class="who ${c.hidden ? "off" : ""}">${c.avatar ? `<img src="${esc(c.avatar)}" alt="">` : `<span class="noimg"></span>`}<span class="n">${esc(c.name)} <small>${esc(c.handle)}</small></span>
         <label title="Off: they stay in the channel but are not shown as a caster (a producer, someone listening in)"><input type="checkbox" data-discord-show="${esc(c.id)}" ${c.hidden ? "" : "checked"}> On stream</label></div>`).join("")
     : `<div class="muted">${dc.seenAt ? "Nobody is in the channel." : ""}</div>`;
+  renderRoom(dc);
   $("#castersHint").textContent = fromDiscord
     ? "Whoever joins the voice channel appears on the Casters scene in the order they joined, with their Discord name and picture; their ring lights up while they talk. Nobody needs setting up."
     : "Typed in here, for when the bot is not running. Tick the box above to go back to the voice channel.";
@@ -187,7 +188,8 @@ function render() {
   }
   const line = S.discord?.voice ?? {};
   $("#voicesHint").textContent = (!S.discord?.seenAt ? "The caster bot is not running, so there are no voices to mix. "
-      : !line.bot ? "The caster bot is not sending sound (it says why in its log). "
+      : line.ears?.problem ? `The bot cannot listen in the voice channel: ${line.ears.problem}. `
+      : !line.bot ? "The bot's listening part is not sending sound (it says why in its log: docker compose logs voice). "
       : heard.length ? "" : "Nobody is in the voice channel. ")
     + "100 % is each voice as Discord sends it; up to 200 % lifts a quiet one. Someone not \"On stream\" in the Casters card is not heard either. To hear the voices here, tick Casters above the preview: that is this browser only.";
   const sceneIds = Object.keys(S.scenes).join();
@@ -240,6 +242,8 @@ document.addEventListener("click", (e) => {
   const t = e.target.closest("button");
   if (!t) return;
   if (t.dataset.scene) send("scene", { scene: t.dataset.scene });
+  if (t.id === "roomRelease") send("discordRelease");
+  if (t.dataset.roomTest) send("discordDeafenTest", { id: t.dataset.roomTest });
   if (t.id === "take" || t.id === "take2") send("take");
   if (t.id === "discard" || t.id === "discard2") send("discardStaged");
   if (t.id === "airCut") send("scene", { scene: $("#airScene").value, air: true });
@@ -318,6 +322,9 @@ document.addEventListener("change", (e) => {
       .then((yes) => yes && send("source", { control: "tournament", slug }));
   }
   if (el.id === "mixVoicesOn") send("mix", { voicesOn: el.checked });
+  if (el.id === "roomChannel") send("discordRoom", { channelId: el.value });
+  if (el.id === "roomDeafen") send("discordDeafen", { on: el.checked });
+  if (el.dataset.roomPlayer) { send("discordPlayer", { playerId: el.dataset.roomPlayer, discordId: el.value === "site" ? null : el.value }); el.blur(); }
   if (el.id === "castersFrom") send("castersFrom", { from: el.checked ? "discord" : "panel" });
   if (el.id === "discordChannel") send("discordChannel", { channelId: el.value });
   if (el.dataset.discordShow) send("discordHide", { id: el.dataset.discordShow, hidden: !el.checked });
@@ -466,6 +473,57 @@ padCanvas.addEventListener("pointermove", (e) => {
 });
 const endStroke = () => { if (!drawing) return; clearInterval(drawing.timer); flushStroke(); drawing = null; };
 for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) padCanvas.addEventListener(type, endStroke);
+
+// ---------------------------------------------------------------- the players' voice channel
+// Who is deafened while they play. Rows are rebuilt only when something in them changed, and never while one of
+// their lists is open (rebuilding would close it under the mouse).
+let roomKey = "";
+function renderRoom(dc) {
+  const r = dc.room ?? { players: [], members: [] };
+  if (document.activeElement?.id !== "roomChannel") {
+    $("#roomChannel").innerHTML = `<option value="">None: nobody is deafened</option>`
+      + dc.channels.map((c) => `<option value="${esc(c.id)}" ${c.id === r.chosen ? "selected" : ""}>${esc(c.name)} · ${esc(c.guild)} (${c.people} in it)</option>`).join("")
+      + (r.chosen && !dc.channels.some((c) => c.id === r.chosen) ? `<option value="${esc(r.chosen)}" selected>A channel the bot cannot see now</option>` : "");
+  }
+  $("#roomDeafen").checked = !!r.on;
+  const here = new Map((r.members ?? []).map((m) => [m.id, m]));
+  const playing = new Set((r.playing?.players ?? []).map((p) => p.id));
+  const live = r.line && r.fresh;
+  const warn = [];
+  if (r.chosen && r.on) {
+    if (!live) warn.push("The Discord bot is not connected to the overlay: nobody is being deafened.");
+    else if (r.channelId !== r.chosen) warn.push("The bot cannot see this channel: nobody in it can be deafened.");
+    else if (!r.may) warn.push("The bot may not deafen in this channel. Give its role the Deafen Members permission in Discord (server settings, or this channel's permissions).");
+    if (r.error) warn.push(`The bot says: ${r.error}`);
+    const away = (r.owed ?? []).filter((id) => !here.has(id));
+    if (away.length) warn.push(`${away.length} player${away.length > 1 ? "s" : ""} left this channel while deafened. The bot undeafens them the moment they are in a voice channel again.`);
+    const unset = (r.players ?? []).filter((p) => !p.discordId);
+    if (unset.length && (r.players ?? []).length) warn.push(`No Discord account set for ${unset.map((p) => p.name).join(", ")}: they will not be deafened.`);
+  }
+  $("#roomWarn").textContent = warn.join("\n");
+  const deafNow = (r.members ?? []).filter((m) => m.deaf).length;
+  $("#roomState").textContent = !r.chosen ? "off" : !r.on ? "deafening switched off" : !live ? "bot not connected" : playing.size ? `song playing · ${deafNow} deafened` : "ready";
+  $("#roomState").style.color = r.chosen && r.on && live && !warn.length ? "#7be0a0" : "";
+  $("#roomRelease").disabled = !live;
+  const key = JSON.stringify([r.chosen, r.on, live, r.players, r.members, [...playing]]);
+  if (key === roomKey || $("#roomPlayers").contains(document.activeElement)) return;
+  roomKey = key;
+  const row = (p) => {
+    const m = here.get(p.discordId);
+    const state = !p.discordId ? `<small class="err">no account set</small>`
+      : !m ? `<small>not in the channel</small>`
+      : m.deaf ? `<small style="color:#ffb86b">deafened${playing.has(p.id) ? " (playing)" : ""}</small>` : `<small style="color:#7be0a0">in the channel</small>`;
+    const options = `<option value="" ${!p.discordId ? "selected" : ""}>Nobody (never deafened)</option>`
+      + (p.site ? `<option value="site" ${p.from === "site" ? "selected" : ""}>Their site sign-in${here.get(p.site) ? `: ${esc(here.get(p.site).name)}` : ""}</option>` : "")
+      + (r.members ?? []).filter((x) => x.id !== p.site || p.from !== "site").map((x) => `<option value="${esc(x.id)}" ${p.from === "panel" && x.id === p.discordId ? "selected" : ""}>${esc(x.name)} ${esc(x.handle)}</option>`).join("")
+      + (p.from === "panel" && p.discordId && !here.has(p.discordId) ? `<option value="${esc(p.discordId)}" selected>The account picked before (not in the channel)</option>` : "");
+    return `<div class="who">${m?.avatar ? `<img src="${esc(m.avatar)}" alt="">` : `<span class="noimg"></span>`}<span class="n">${esc(p.name)} <small>${esc(p.team)}</small> ${state}</span>
+      <select data-room-player="${esc(p.id)}" title="Which Discord account is ${esc(p.name)}" style="flex:0 1 13em;min-width:0">${options}</select>
+      <button data-room-test="${esc(p.discordId)}" ${p.discordId && m && live ? "" : "disabled"} title="Deafen ${esc(p.name)} for 4 seconds, then undeafen: shows that the bot may. Tell them first">Test</button></div>`;
+  };
+  $("#roomPlayers").innerHTML = !r.chosen ? "" : (r.players ?? []).length ? r.players.map(row).join("")
+    : `<div class="muted">No match is being followed, so there are no players to list yet.</div>`;
+}
 
 // ---------------------------------------------------------------- the caster bot's sign of life
 // It says hello every 8 s. The line by the card's title is worked out here, on a clock, so that it goes stale by

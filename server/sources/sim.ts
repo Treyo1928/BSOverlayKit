@@ -182,7 +182,7 @@ export class SimSource implements DataSource {
       this.#event({ name: "mapLoad" });
       return this.#push();
     }
-    if (this.#phase === "loading") { this.#phase = "playing"; this.#event({ name: "mapStart" }); this.#play(); return this.#push(); }
+    if (this.#phase === "loading") { this.#phase = "playing"; this.#songStart = Date.now(); this.#event({ name: "mapStart" }); this.#play(); return this.#push(); }
     if (this.#phase === "playing") { this.#finish(); }
   }
 
@@ -192,6 +192,17 @@ export class SimSource implements DataSource {
     if (this.#phase === "done") { this.#auto = false; return this.#push(); }
     if (this.#phase === "playing") { this.#autoTimer = setTimeout(() => this.#autoStep(), 500); return; }
     this.#autoTimer = setTimeout(() => { this.#next(); this.#autoStep(); }, wait);
+  }
+
+  #songStart = 0;                          // when the song being played started: no two songs share it
+  // who is in the song right now, and who could be (for the bot that deafens players: see DataSource)
+  playing() {
+    if (this.#phase !== "playing" || this.#current === null) return null;
+    const left = (this.#pool[this.#current].duration - this.#live.a[0].pos) / this.speed;
+    return { run: `sim:${this.#songStart}`, until: Date.now() + left * 1000 + 15_000, players: [...this.#lineup.a, ...this.#lineup.b] };
+  }
+  roster() {
+    return (["a", "b"] as const).flatMap((s) => this.#roster[s].map((name) => ({ id: name, name, team: this.#players[s].name, discordId: null })));
   }
 
   #play() {

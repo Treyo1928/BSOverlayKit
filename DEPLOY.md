@@ -37,9 +37,12 @@ and `docker save msu-chroviewer | ssh server docker load`: compose then uses it 
 - OBS Browser Source: the address in the panel's OBS card (it has OBS's own key in it), 1920 × 1080, tick
   **Control audio via OBS**. `https://overlay.treyo.dev/overlay` without the key shows the same picture and is the
   one to hand to anyone else.
-- The caster bot runs beside the overlay (the `casters` service). Put `DISCORD_TOKEN=<the bot's token>` in
-  `discord-bot/.env` (copy `discord-bot/.env.example`) and `docker compose up -d`; then pick the voice channel in the panel's Casters card. Making the bot:
-  [`discord-bot/README.md`](discord-bot/README.md). Without a token it idles.
+- The Discord bot runs beside the overlay (the `casters` and `voice` services: one bot, two small programs). Put
+  `DISCORD_TOKEN=<the bot's token>` in `discord-bot/.env` (copy `discord-bot/.env.example`) and
+  `docker compose up -d`; then pick the casting channel in the panel's Casters card and the players' channel in
+  its Players' voice channel card. Making the bot, and what it does:
+  [`discord-bot/README.md`](discord-bot/README.md). Without a token both idle. Who the bot has deafened is kept in
+  the `discord-bot-state` volume: leave it be (`docker compose down` keeps it; `down -v` would not).
 
 Which tournament it follows to begin with is `BSCS_TOURNAMENT` in `.env`. When the API key works in more than one
 tournament, the panel's BSCompStats card has a Tournament list to switch between them; the choice is kept over a
