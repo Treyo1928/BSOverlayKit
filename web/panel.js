@@ -188,8 +188,7 @@ function render() {
   }
   const line = S.discord?.voice ?? {};
   $("#voicesHint").textContent = (!S.discord?.seenAt ? "The caster bot is not running, so there are no voices to mix. "
-      : line.ears?.problem ? `The bot cannot listen in the voice channel: ${line.ears.problem}. `
-      : !line.bot ? "The bot's listening part is not sending sound (it says why in its log: docker compose logs voice). "
+      : !line.bot ? "The bot is not connected to the overlay, so no voices arrive (it says why in its log). "
       : heard.length ? "" : "Nobody is in the voice channel. ")
     + "100 % is each voice as Discord sends it; up to 200 % lifts a quiet one. Someone not \"On stream\" in the Casters card is not heard either. To hear the voices here, tick Casters above the preview: that is this browser only.";
   const sceneIds = Object.keys(S.scenes).join();

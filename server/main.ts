@@ -328,18 +328,16 @@ const broadcastAll = (m: unknown) => { broadcastOverlays(m); broadcastPanels(m);
 const stagedViews = new Set<WebSocket>();     // previews of the staged state (&staged)
 /** Overlay pages that gave the key (optional): the ones whose reports about a replay's length and end are believed. */
 const trusted = new WeakSet<WebSocket>();
-// The casters' voices. The caster bot sends each Opus packet it hears in the voice channel (/ws/voice); they go on,
+// The casters' voices. The Discord bot sends each Opus packet it hears in the voice channel (/ws/bot); they go on,
 // as they are, to the overlay pages that asked for them (&voices on the socket: OBS, and a panel preview whose
 // operator switched voices on) and that someone vouches for (the key, or signed in). Nothing is kept or decoded here.
 const voiceTo = new Set<WebSocket>();
-const voiceStats = { packets: 0, from: 0 };
 function relayVoice(data: ArrayBuffer) {
   const b = new Uint8Array(data);
   if (b.length < 3 || b.length > 1400 || b[0] < 5 || b[0] > 25 || b.length <= 1 + b[0]) return;
   if (!show.mix!.voicesOn) return;
   const id = new TextDecoder().decode(b.subarray(1, 1 + b[0]));
   if (show.discord!.hidden.includes(id)) return;       // in the channel, not a caster: not heard either
-  voiceStats.packets++;
   for (const ws of voiceTo) if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < 256_000) ws.send(b);
 }
 const MAX_OVERLAYS = 200;                     // watching needs no key, so there is a ceiling
@@ -482,7 +480,7 @@ const panelMsg = async () => ({
   playlist: { ...show.playlist, position: position(show.playlist), onAir: replayScenes.has(show.scene) }, live: liveData, scenes: Object.fromEntries(Object.entries(config.scenes).map(([k, v]) => [k, v.label ?? k])),
   source: { name: source.name, status: source.status(), panel: source.panel?.() ?? null }, overlayUrl: "/overlay", overlayKeyUrl: `/overlay?key=${secrets.overlayKey}`,
   errors: [configError, ...Object.values(await designList()).map((d) => d.error)].filter(Boolean),
-  discord: { voice: { bot: voiceStats.from > 0, hearing: voiceTo.size, ears: discordBot.voice },
+  discord: { voice: { bot: botLines.size > 0, hearing: voiceTo.size },
     // the players' channel: the settings, what the bot says of it, and each player of the match with the Discord
     // account that will be deafened for them (`from`: panel = picked here, site = their sign-in on the site)
     room: { chosen: show.discord!.room, on: !!show.discord!.deafen, line: botLines.size > 0, fresh: Date.now() - discordRoom.at < 15_000, ...discordRoom,
@@ -524,11 +522,6 @@ const actions: Record<string, (a: any) => unknown> = {
     return { channelId: show.discord!.channelId };
   },
   // picking a channel is asking for its people: that switches "from Discord" on as well (in Next, while staging)
-  // the bot's ears (discord-bot/voice): which channel to listen in is the one the main bot follows
-  discordVoice: (a) => {
-    discordBot.voice = { seenAt: Date.now(), listening: !!a.listening, problem: String(a.problem ?? "").slice(0, 300) };
-    return { channelId: discordBot.following };
-  },
   // the players' voice channel (see "players' channel" below)
   discordRoom: (a) => { show.discord!.room = String(a.channelId ?? ""); sendOrders(); },
   discordDeafen: (a) => { show.discord!.deafen = !!a.on; sendOrders(); },
@@ -677,7 +670,7 @@ function boardAction(a: any) {
 // channel by the Discord bot, and undeafened when it ends. This server only says who is playing: once a second, and
 // at once when that changes, every connected bot is sent the list (an "order"). The list comes straight from the
 // data source (no stream delay), and is empty whenever the source cannot vouch for a song. The bot does the rest,
-// and treats silence from here as "nobody" (discord-bot/deafen.py), so nothing this server fails to do can leave
+// and treats silence from here as "nobody" (discord-bot/deafen.mjs), so nothing this server fails to do can leave
 // someone deaf.
 const botLines = new Set<WebSocket>();
 /** Which Discord account plays as this player: the panel's word where it gave one, else the data source's. */
@@ -718,7 +711,7 @@ setInterval(() => {
 let discordRoom = { at: 0, channelId: "", members: [] as { id: string; name: string; handle: string; avatar: string; deaf: boolean }[], may: false, owed: [] as string[], error: "" };
 
 // The caster bot as last heard from (nothing here is kept over a restart: the bot says it all again).
-const discordBot = { voice: { seenAt: 0, listening: false, problem: "" }, tag: "", seenAt: 0, following: "", channels: [] as { id: string; name: string; guild: string; people: number }[], people: [] as ReturnType<typeof cleanCaster>[] };
+const discordBot = { tag: "", seenAt: 0, following: "", channels: [] as { id: string; name: string; guild: string; people: number }[], people: [] as ReturnType<typeof cleanCaster>[] };
 /** The casters on stream are whoever the bot sees in the channel, less the hidden, while the panel says "from Discord". */
 function applyDiscordCasters() {
   if (show.castersFrom !== "discord") return;
@@ -736,7 +729,7 @@ async function runAction(a: any) {
   let answer: unknown;
   try { answer = await fn(a); } finally { target = show; }
   // talking flickers on and off, and the bot says hello every few seconds: not worth a file write each time
-  if (a.action !== "speaking" && a.action !== "live" && a.action !== "discordBot" && a.action !== "discordVoice") saveShow();
+  if (a.action !== "speaking" && a.action !== "live" && a.action !== "discordBot") saveShow();
   dirty = true;
   return answer;
 }
@@ -892,9 +885,10 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     };
     return response;
   }
-  if (p === "/ws/voice" && upgrade) {
-    // the caster bot's line for sound. Its first message is the panel login code (text); after that, one binary
-    // message per Opus packet: [length of the id][the speaker's Discord id][the packet].
+  if (p === "/ws/bot" && upgrade) {
+    // the Discord bot's line. Its first message is the panel login code; then this server sends it orders (who is
+    // playing a song, see deafenOrder), and it sends how the players' channel stands (text) and the casters' voices
+    // (binary, one message per Opus packet: [length of the id][the speaker's Discord id][the packet]).
     const addr = addressOf(req, info);
     if (blocked(addr)) return new Response("try again later", { status: 429 });
     const { socket, response } = Deno.upgradeWebSocket(req);
@@ -902,25 +896,7 @@ Deno.serve({ port: PORT, hostname: HOST }, async (req, info) => {
     let ok = false;
     const giveUp = setTimeout(() => { if (!ok) socket.close(); }, 5000);
     socket.onmessage = (e) => {
-      if (!ok) {
-        if (typeof e.data === "string" && same(e.data, secrets.hostCode)) { ok = true; voiceStats.from++; send(socket, { ok: true }); }
-        else { failed(addr); socket.close(); }
-        return;
-      }
-      if (e.data instanceof ArrayBuffer) relayVoice(e.data);
-    };
-    socket.onclose = () => { clearTimeout(giveUp); if (ok) voiceStats.from--; };
-    return response;
-  }
-  if (p === "/ws/bot" && upgrade) {
-    // the Discord bot's line. Its first message is the panel login code; then this server sends it orders (who is
-    // playing a song, see deafenOrder) and it sends back how the players' channel stands.
-    const addr = addressOf(req, info);
-    if (blocked(addr)) return new Response("try again later", { status: 429 });
-    const { socket, response } = Deno.upgradeWebSocket(req);
-    let ok = false;
-    const giveUp = setTimeout(() => { if (!ok) socket.close(); }, 5000);
-    socket.onmessage = (e) => {
+      if (ok && e.data instanceof ArrayBuffer) return relayVoice(e.data);
       if (typeof e.data !== "string" || e.data.length > 100_000) return;
       if (!ok) {
         if (same(e.data, secrets.hostCode)) { ok = true; botLines.add(socket); send(socket, { ok: true }); send(socket, deafenOrder()); }

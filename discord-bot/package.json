@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Puts whoever is in the casting voice channel on the overlay's Casters scene, and lights up whoever is talking.",
   "scripts": {
-    "start": "node --env-file-if-exists=../.env voice.mjs"
+    "start": "node --env-file-if-exists=.env bot.mjs",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.12"

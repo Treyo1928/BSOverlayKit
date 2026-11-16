@@ -204,8 +204,8 @@ server/                    the server (Deno): panel, data sources, playlist, aut
 web/                       the overlay page, its engine (layer names → live bindings, animations, particles) and the panel
 tools/                     install-fonts.sh; act.sh (send a panel action); browser checks used while developing
 shots/                     reference screenshots of the scenes
-discord-bot/               the Discord bot (Python, plus a small Node part that listens in voice): casters on the
-                           Casters scene, their voices on stream, players deafened while they play
+discord-bot/               the Discord bot (Node): casters on the Casters scene, their voices on stream, players
+                           deafened while they play
 DEPLOY.md, Dockerfile, docker-compose.yml, docker/      hosting it on a server
 data/                      made when it runs: your panel settings and login code. Never committed
 ```

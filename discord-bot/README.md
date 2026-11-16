@@ -11,16 +11,7 @@ One Discord bot that does three things for the stream:
    bans), each player is server-deafened from the moment their TournamentAssistant song starts until it ends, is
    cancelled, or they finish or fail. The TO is never touched.
 
-It is two small programs that log in as the same bot:
-
-| | What it does | Written in |
-|---|---|---|
-| `bot.py`, `deafen.py` | who is in which channel, names and pictures, deafening players | Python (discord.py) |
-| `voice/voice.mjs` | sits in the casting channel: who is talking, and the sound | JavaScript (discord.js) |
-
-The second one is JavaScript for one reason: hearing a Discord voice channel means taking part in its end-to-end
-encryption, and that library is the one that does it dependably today. It is about 150 lines and does nothing else.
-Everything with rules in it is in Python.
+It is one small Node program: `bot.mjs`, with the deafening's rules on their own in `deafen.mjs`.
 
 Nothing is recorded or kept: each bit of sound goes straight to the stream's page and is gone. Tell your casters the
 channel is live while the bot is in it. `VOICE_AUDIO=off` in `.env` stops any sound being passed on (the bot then
@@ -112,8 +103,8 @@ you.
    picture and name appear. Talk: your ring glows. Have someone else join and leave: the layout follows.
 2. Pick the players' channel, have the players join it, set each one's account, press **Test** for each.
 
-Problems: the logs say what is wrong in plain words (`docker compose logs casters` and `docker compose logs voice`,
-or `logs/discord-bot.log` and `logs/discord-voice.log` under `start.sh`): no token, a token Discord refuses, a bot
+Problems: the log says what is wrong in plain words (`docker compose logs casters`, or `logs/discord-bot.log` under
+`start.sh`): no token, a token Discord refuses, a bot
 that is in no server yet, a channel it cannot see, a permission it lacks. The panel's Players card shows the
 deafening's own problems in red. If the bot cannot join voice but can see the channel, casters still appear; only
 the talking rings stay dark and no voices reach the stream.
@@ -121,10 +112,6 @@ the talking rings stay dark and no voices reach the stream.
 ## Running it by hand
 
 ```bash
-python -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python bot.py                 # reads .env here; the overlay must already be running
-(cd voice && npm install && npm start)  # the listening part; reads ../.env
+npm install && npm start      # reads .env here; the overlay must already be running
+npm test                      # the deafening: every row of the table above, against a pretend Discord
 ```
-
-Tests of the deafening (every row of the table above, against a pretend Discord): `python -m unittest -v` in this
-folder. They need nothing installed.
