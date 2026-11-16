@@ -31,6 +31,7 @@
     <filter id="coverBlur" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation="28"/></filter>
     <clipPath id="mapCover"><rect x="42" y="232" width="168" height="168" rx="10"/></clipPath>
     <clipPath id="npCover"><rect x="611" y="940" width="104" height="104" rx="8"/></clipPath>
+    <clipPath id="npAvatar"><circle cx="1787" cy="979" r="23"/></clipPath>
     <clipPath id="avA"><circle cx="72" cy="528" r="27"/></clipPath>
     <clipPath id="avB"><circle cx="72" cy="770" r="27"/></clipPath>
   </defs>
@@ -183,8 +184,17 @@
     <text x="734" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>WHILE WE WAIT · NOW PLAYING</tspan></text>
     <text inkscape:label="{replay.song | upper} fit:640" x="733" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:start;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>SONG NAME</tspan></text>
     <text inkscape:label="{replay.byline} fit:640" x="734" y="1022" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:start;fill:url(#cream);opacity:0.85"><tspan>Artist · mapped by Mapper</tspan></text>
-    <text x="1813" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>PLAYED BY</tspan></text>
-    <text inkscape:label="{replay.player | upper} fit:380" x="1813" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+    <!-- the player's picture beside their name; with no picture the name starts at the edge -->
+    <g inkscape:label="show:replay.playerAvatar">
+      <circle cx="1787" cy="979" r="25" fill="url(#cream)"/>
+      <image inkscape:label="img:replay.playerAvatar" x="1764" y="956" width="46" height="46" clip-path="url(#npAvatar)"/>
+      <text x="1749" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>PLAYED BY</tspan></text>
+      <text inkscape:label="{replay.player | upper} fit:330" x="1749" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+    </g>
+    <g inkscape:label="hide:replay.playerAvatar">
+      <text x="1813" y="960" style="font-family:Geom Graphic;font-size:14px;letter-spacing:5px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>PLAYED BY</tspan></text>
+      <text inkscape:label="{replay.player | upper} fit:380" x="1813" y="994" style="font-family:Shader;font-size:28px;letter-spacing:1px;text-anchor:end;fill:url(#cream);stroke:url(#cream);stroke-width:1.01;stroke-linejoin:miter;paint-order:stroke" filter="url(#textShadow)"><tspan>PLAYER</tspan></text>
+    </g>
     <text inkscape:label="{replay.acc | acc}" x="1813" y="1022" style="font-family:Geom Graphic;font-size:17px;letter-spacing:1px;text-anchor:end;fill:url(#cream);opacity:0.85"><tspan>97.79%</tspan></text>
     <rect x="734" y="1038" width="1079" height="5" rx="2" fill="#12020a"/>
     <rect inkscape:label="bar:replay.progress" x="734" y="1038" width="1079" height="5" rx="2" fill="url(#cream)"/>
