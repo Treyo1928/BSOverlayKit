@@ -27,7 +27,7 @@ services:
 
   # The Discord bot (discord-bot/README.md): casters on the Casters scene and their voices on stream, players deafened
   # while they play. With no token it starts, says so and waits: nothing else is affected. Its settings
-  # (DISCORD_TOKEN, and optionally CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO) are in discord-bot/.env: copy
+  # (DISCORD_TOKEN, and optionally GUILD_ID, CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO) are in discord-bot/.env: copy
   # discord-bot/.env.example.
   casters:
     build: ./discord-bot

@@ -31,10 +31,14 @@ never sits in the players' channel.
    start it: on the server `docker compose up -d` in the overlay folder; on your own PC, `start.sh`. (On the server
    `OVERLAY_URL` and `OVERLAY_CODE` in the file are not used: compose fills them in.)
 
+If the bot is in more than one server, also set `GUILD_ID` in `.env` to the server it should work in (right-click the
+server → Copy Server ID): it then sees, joins and changes nothing in any other. Without it, the panel lists every
+server's voice channels.
+
 Then, in the overlay panel:
 
-- **Casters** card: pick the casting voice channel. Until you do, the bot follows the first voice channel with
-  "cast" in its name, if there is one.
+- **Casters** card: pick the casting voice channel. Until you do (or set `CASTER_CHANNEL_ID`), the bot joins
+  nothing.
 - **Players' voice channel** card: pick the channel the players and the TO sit in.
 
 ## Casters

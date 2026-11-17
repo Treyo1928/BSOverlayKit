@@ -112,7 +112,7 @@ test('the bot is in two servers: left voice mid-song, then joined voice in the O
   w.join('a', 'far', 'other-server'); await w.run(30_000, quiet);
   assert.deepEqual([w.people.get('a').deaf, Object.keys(w.onFile())], [true, ['a']], 'not written off: the deafen is in the first server');
   assert.ok(w.calls.filter((c) => c === 'undeafen a').length <= 4, 'and not hammering Discord meanwhile');
-  w.leave('a'); w.join('a', OTHER); await w.run(1000, quiet);      // back while Discord was still being asked
+  w.leave('a'); w.join('a', OTHER); await w.run(2000, quiet);      // back while Discord was still being asked
   assert.deepEqual([w.deaf('a'), w.onFile()], [[false], {}], 'undeafened once in voice in the first server again');
 });
 

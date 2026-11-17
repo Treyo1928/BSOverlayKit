@@ -135,7 +135,7 @@ function render() {
   botState();
   if (document.activeElement?.id !== "discordChannel") {
     const following = dc.channels.find((c) => c.id === dc.following);
-    $("#discordChannel").innerHTML = `<option value="">${following && !dc.chosen ? `The bot's own pick: ${esc(following.name)}` : "The bot's own pick (a channel with \"cast\" in its name)"}</option>`
+    $("#discordChannel").innerHTML = `<option value="">${following && !dc.chosen ? `The one in the bot's settings: ${esc(following.name)}` : "None picked: the bot joins no channel"}</option>`
       + dc.channels.map((c) => `<option value="${esc(c.id)}" ${c.id === dc.chosen ? "selected" : ""}>${esc(c.name)} · ${esc(c.guild)} (${c.people} in it)</option>`).join("")
       + (dc.chosen && !dc.channels.some((c) => c.id === dc.chosen) ? `<option value="${esc(dc.chosen)}" selected>A channel the bot cannot see now</option>` : "");
   }

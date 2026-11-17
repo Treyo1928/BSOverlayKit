@@ -4,8 +4,7 @@
 //   channel is all a caster does.
 //
 //   Which channel: the one picked in the overlay panel's Casters card (the bot tells the overlay which voice channels
-//   it can see). Until one is picked there: CASTER_CHANNEL_ID if set, else the first voice channel with "cast" in
-//   its name.
+//   it can see), else CASTER_CHANNEL_ID. With neither it joins nothing.
 //
 //   The bot sits in the channel muted, and only while somebody else is in it. What it hears there it passes to the overlay as it arrives, so the casters'
 //   voices are on stream (mixed in the panel: Sound). Nothing is recorded, kept or decoded here: each packet goes
@@ -16,7 +15,7 @@
 //   bot does not sit in that channel; it needs "Deafen Members" there.
 //
 //   Settings (environment, or .env beside this file): DISCORD_TOKEN, OVERLAY_URL, OVERLAY_CODE; optional
-//   CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO, STATE_DIR. See README.md.
+//   GUILD_ID, CASTER_CHANNEL_ID, IGNORE_USER_IDS, VOICE_AUDIO, STATE_DIR. See README.md.
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { Client, Events, GatewayIntentBits, PermissionFlagsBits, Routes } from 'discord.js';
@@ -25,6 +24,7 @@ import { EndBehaviorType, entersState, generateDependencyReport, joinVoiceChanne
 
 const env = (k, d = '') => (process.env[k] ?? d).trim();
 const TOKEN = env('DISCORD_TOKEN');
+const GUILD = env('GUILD_ID');           // set: the bot looks at this server only, whatever others it is in
 const IGNORE = new Set(env('IGNORE_USER_IDS').split(/[\s,]+/).filter(Boolean));   // people who are never casters
 const OVERLAY = env('OVERLAY_URL', 'http://127.0.0.1:8095').replace(/\/+$/, '');
 let OVERLAY_CODE = env('OVERLAY_CODE');
@@ -109,7 +109,7 @@ function hear(mine, uid) {
 // ---------------------------------------------------------------- the players' channel: deaf while they play
 // (the rules are in deafen.mjs; here is only how they reach Discord, the file, and the panel)
 const STATE_FILE = `${(env('STATE_DIR') || new URL('./state', import.meta.url).pathname).replace(/\/+$/, '')}/deafened.json`;
-const inVoice = (c) => (c?.isVoiceBased?.() ? [...c.members.values()].filter((m) => !m.user.bot) : []);
+const inVoice = (c) => (c ? [...c.members.values()].filter((m) => !m.user.bot) : []);
 const deafener = makeDeafener({
   log: (text) => console.log(text),
   store: {
@@ -120,9 +120,8 @@ const deafener = makeDeafener({
   discord: {
     // someone can be in voice in two servers at once (two devices): the server asked about, or the players'
     // channel's, comes first
-    state(uid, guildId = client.channels.cache.get(roomWanted)?.guild?.id) {
-      const guilds = [...client.guilds.cache.values()].sort((a, b) => (b.id === guildId) - (a.id === guildId));
-      for (const g of guilds) {
+    state(uid, guildId = voiceChannel(roomWanted)?.guild.id) {
+      for (const g of guilds().sort((a, b) => (b.id === guildId) - (a.id === guildId))) {
         const v = g.voiceStates.cache.get(uid);
         if (v?.channelId) return { guildId: g.id, channelId: v.channelId, deaf: !!v.serverDeaf };
       }
@@ -130,14 +129,14 @@ const deafener = makeDeafener({
     },
     // straight to Discord's API by id: works whatever this bot has or has not got cached about the person
     setDeaf: (guildId, uid, on, why) => client.rest.patch(Routes.guildMember(guildId, uid), { body: { deaf: on }, reason: `Overlay bot: ${why}` }),
-    members: (id) => inVoice(client.channels.cache.get(id)).map((m) => ({ id: m.id, guildId: m.guild.id, deaf: !!m.voice.serverDeaf })),
+    members: (id) => inVoice(voiceChannel(id)).map((m) => ({ id: m.id, guildId: m.guild.id, deaf: !!m.voice.serverDeaf })),
   },
 });
 let roomWanted = '', roomSent = '';      // the players' channel picked in the panel; what the overlay was last told of it
 /** Tell the overlay who is in the players' channel and how the deafening stands (for the panel). */
 function sendRoom(force = false) {
   if (!lineOk || line.readyState !== 1) return;
-  const c = client.channels.cache.get(roomWanted), room = c?.isVoiceBased?.() ? c : null;
+  const room = voiceChannel(roomWanted);
   const msg = JSON.stringify({
     type: 'room', channelId: room?.id ?? '', ...deafener.status(),
     may: !!room?.permissionsFor(room.guild.members.me)?.has(PermissionFlagsBits.DeafenMembers),
@@ -153,11 +152,15 @@ const talking = new Set();
 let channelId = '';                  // the channel being followed
 let connection = null;
 
-const voiceChannels = () => [...client.channels.cache.values()].filter((c) => c.isVoiceBased?.() && c.guild);
-/** The channel to follow: the panel's choice, else the one in the settings, else one that sounds like casting. */
+const guilds = () => [...client.guilds.cache.values()].filter((g) => !GUILD || g.id === GUILD);
+const voiceChannels = () => [...client.channels.cache.values()].filter((c) => c.isVoiceBased?.() && c.guild && (!GUILD || c.guild.id === GUILD));
+/** A voice channel by id, if it is one the bot may look at. */
+const voiceChannel = (id) => voiceChannels().find((c) => c.id === id) ?? null;
+/** The channel to follow: the panel's choice, else the one in the settings. Never a guess: the bot joins (and
+ *  passes on the sound of) only a channel somebody named. */
 function wanted(chosen) {
   const known = (id) => (id && voiceChannels().some((c) => c.id === id) ? id : '');
-  return known(chosen) || known(env('CASTER_CHANNEL_ID')) || (voiceChannels().find((c) => /cast/i.test(c.name))?.id ?? '');
+  return known(chosen) || known(env('CASTER_CHANNEL_ID'));
 }
 
 function castersNow() {
@@ -265,6 +268,7 @@ async function heartbeat() {
 client.once(Events.ClientReady, async () => {
   console.log(`logged in as ${client.user.tag}; in ${client.guilds.cache.size} server(s), ${voiceChannels().length} voice channel(s) visible`);
   if (!client.guilds.cache.size) console.warn('the bot is in no server yet: invite it (see README.md)');
+  if (GUILD) console.log(guilds().length ? `GUILD_ID is set: looking at "${guilds()[0].name}" only` : `GUILD_ID is set to ${GUILD}, but the bot is not in that server: it sees nothing until it is invited there`);
   openLine();
   setInterval(() => { deafener.tick(); sendRoom(); }, 1000);
   setInterval(() => sendRoom(true), 5000);
@@ -272,6 +276,7 @@ client.once(Events.ClientReady, async () => {
   setInterval(heartbeat, 8_000);
 });
 client.on(Events.VoiceStateUpdate, (before, after) => {
+  if (GUILD && after.guild.id !== GUILD) return;       // another server: none of this bot's business
   const snap = (v) => (v.channelId ? { guildId: v.guild.id, channelId: v.channelId, deaf: !!v.serverDeaf } : null);
   if (!after.member?.user.bot) { deafener.voiceChanged(after.id, snap(before), snap(after)); sendRoom(); }
   if (before.channelId === channelId || after.channelId === channelId) { sit(); sendCasters(); }
