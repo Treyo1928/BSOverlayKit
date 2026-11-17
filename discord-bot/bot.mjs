@@ -118,8 +118,11 @@ const deafener = makeDeafener({
     save(o) { mkdirSync(dirname(STATE_FILE), { recursive: true }); writeFileSync(`${STATE_FILE}.tmp`, JSON.stringify(o)); renameSync(`${STATE_FILE}.tmp`, STATE_FILE); },
   },
   discord: {
-    state(uid) {
-      for (const g of client.guilds.cache.values()) {
+    // someone can be in voice in two servers at once (two devices): the server asked about, or the players'
+    // channel's, comes first
+    state(uid, guildId = client.channels.cache.get(roomWanted)?.guild?.id) {
+      const guilds = [...client.guilds.cache.values()].sort((a, b) => (b.id === guildId) - (a.id === guildId));
+      for (const g of guilds) {
         const v = g.voiceStates.cache.get(uid);
         if (v?.channelId) return { guildId: g.id, channelId: v.channelId, deaf: !!v.serverDeaf };
       }

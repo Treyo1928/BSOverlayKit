@@ -15,7 +15,8 @@
 // Someone a person undeafened by hand during a song is left alone for the rest of that song.
 //
 // Discord is handed in (bot.mjs for the real thing, the tests for a pretend one):
-//   discord.state(uid) -> { guildId, channelId, deaf } | null     discord.members(channelId) -> [{ id, guildId, deaf }]
+//   discord.state(uid, guildId?) -> { guildId, channelId, deaf } | null: where they are in voice (in that server, if
+//     they are in voice in more than one)        discord.members(channelId) -> [{ id, guildId, deaf }]
 //   discord.setDeaf(guildId, uid, on, why) -> Promise; rejects with .code 40032 (not in voice), 10007 (left the server)
 //   store.load() -> saved object | null     store.save(object)
 export const STALE_MS = 7_000;          // no order for this long: nobody is wanted deaf
@@ -64,7 +65,8 @@ export function makeDeafener({ discord, store, now = Date.now, log = () => {} })
       const drop = () => { owed.delete(uid); save(); };
       if (!on && GONE.includes(e?.code)) return drop();                 // they left the server: nothing is owed
       if (e?.code === NOT_IN_VOICE) {                                    // not connected: tried again when they are back
-        nextTry.set(uid, now() + ABSENT_RETRY_MS);
+        // (they may have come back while Discord was being asked: then again in a moment, not in a while)
+        nextTry.set(uid, now() + (discord.state(uid, guildId)?.guildId === guildId ? 500 : ABSENT_RETRY_MS));
         if (on) drop();                                                  // the deafen never happened
         return;
       }
@@ -99,12 +101,14 @@ export function makeDeafener({ discord, store, now = Date.now, log = () => {} })
       if (!st.deaf) ask(uid, st.guildId, true, run === 'test' ? 'a test from the overlay panel' : 'playing a song');
     }
     for (const [uid, o] of owed) {
-      const st = discord.state(uid), tooLong = t - o.since > MAX_MS;
-      if (want.has(uid) && at && st?.channelId === at && !tooLong) continue;      // rightly deaf
+      // a server-deafen belongs to the server it was done in: it is undone there, and only while they are in voice
+      // there (in voice in another server the bot is in does not count)
+      const st = discord.state(uid, o.guildId), there = st?.guildId === o.guildId ? st : null, tooLong = t - o.since > MAX_MS;
+      if (want.has(uid) && at && there?.channelId === at && !tooLong) continue;   // rightly deaf
       if (tooLong && want.has(uid)) { released.set(`${want.get(uid)}|${uid}`, t); save(); }
       if (waiting(uid)) continue;
-      if (!st) nextTry.set(uid, t + ABSENT_RETRY_MS);                    // not in voice as far as is known: ask, but seldom
-      ask(uid, st?.guildId ?? o.guildId, false, 'no longer playing');
+      if (!there) nextTry.set(uid, t + ABSENT_RETRY_MS);                 // not in voice there as far as is known: ask, but seldom
+      ask(uid, o.guildId, false, 'no longer playing');
     }
     // anyone else deaf in the players' channel who should not be
     for (const m of at ? discord.members(at) : []) {
@@ -155,7 +159,7 @@ export function makeDeafener({ discord, store, now = Date.now, log = () => {} })
         nextTry.clear();
         tick();
         do await sleep(50); while (busy.size && now() < end);
-        if (now() >= end || ![...owed.keys()].some((uid) => discord.state(uid))) return [...owed.keys()];
+        if (now() >= end || ![...owed].some(([uid, o]) => discord.state(uid, o.guildId)?.guildId === o.guildId)) return [...owed.keys()];
         await sleep(300);
       }
     },

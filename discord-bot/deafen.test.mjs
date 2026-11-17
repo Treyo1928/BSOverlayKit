@@ -11,8 +11,9 @@ const refused = (text, code) => Object.assign(new Error(text), { code });
 function world({ file = null, people = new Map(), t = 1_000_000, inRoom = [] } = {}) {
   const w = {
     t, people, calls: [], disk: file, fail: null, gate: null, blind: false, d: null,
-    snap(uid) { const p = people.get(uid); return p?.channel ? { guildId: G, channelId: p.channel, deaf: p.deaf } : null; },
-    join(uid, channel = ROOM) { const before = w.snap(uid); const p = people.get(uid) ?? { deaf: false, here: true }; p.channel = channel; people.set(uid, p); w.d?.voiceChanged(uid, before, w.snap(uid)); },
+    // `deaf` is their server-deafen in G; another server (p.guild) has its own, which nothing here sets
+    snap(uid) { const p = people.get(uid); return p?.channel ? { guildId: p.guild ?? G, channelId: p.channel, deaf: (p.guild ?? G) === G && p.deaf } : null; },
+    join(uid, channel = ROOM, guild = G) { const before = w.snap(uid); const p = people.get(uid) ?? { deaf: false, here: true }; p.channel = channel; p.guild = guild; people.set(uid, p); w.d?.voiceChanged(uid, before, w.snap(uid)); },
     leave(uid) { const before = w.snap(uid); people.get(uid).channel = null; w.d?.voiceChanged(uid, before, null); },
     quitServer(uid) { Object.assign(people.get(uid), { channel: null, here: false }); },
     byHand(uid, deaf) { const before = w.snap(uid); people.get(uid).deaf = deaf; w.d.voiceChanged(uid, before, w.snap(uid)); },
@@ -27,7 +28,7 @@ function world({ file = null, people = new Map(), t = 1_000_000, inRoom = [] } =
       const e = w.fail?.(uid, on); if (e) throw e;
       const p = people.get(uid);
       if (!p?.here) throw refused('Unknown Member', 10007);
-      if (!p.channel) throw refused('Target user is not connected to voice.', 40032);
+      if (!p.channel || (p.guild ?? G) !== guildId) throw refused('Target user is not connected to voice.', 40032);
       const before = w.snap(uid); p.deaf = on; const after = w.snap(uid);
       setImmediate(() => w.d.voiceChanged(uid, before, after));     // Discord's own news of the change
     },
@@ -102,6 +103,17 @@ test('left voice mid-song and came back while it is still going: stays deaf, und
   assert.deepEqual(w.deaf('a'), [true]);
   await w.run(1000, quiet);
   assert.deepEqual(w.deaf('a'), [false]);
+});
+
+test('the bot is in two servers: left voice mid-song, then joined voice in the OTHER server: still owed in the first', async () => {
+  const w = inRoom('a');
+  await w.run(3000, w.song(['a']));
+  w.leave('a'); await w.run(2000, quiet);
+  w.join('a', 'far', 'other-server'); await w.run(30_000, quiet);
+  assert.deepEqual([w.people.get('a').deaf, Object.keys(w.onFile())], [true, ['a']], 'not written off: the deafen is in the first server');
+  assert.ok(w.calls.filter((c) => c === 'undeafen a').length <= 4, 'and not hammering Discord meanwhile');
+  w.leave('a'); w.join('a', OTHER); await w.run(1000, quiet);      // back while Discord was still being asked
+  assert.deepEqual([w.deaf('a'), w.onFile()], [[false], {}], 'undeafened once in voice in the first server again');
 });
 
 test('moved to another channel mid-song: undeafened there', async () => {
